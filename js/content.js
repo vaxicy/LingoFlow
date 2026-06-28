@@ -30,26 +30,109 @@
     isBilingualMode: false,
     isTranslating: false,
     hoverEnabled: true,
+    uiLanguage: 'auto',
     originalContent: new Map(), // Store original content for restoration
     translatedNodes: new Set() // Track translated nodes
   };
 
+  const NotificationText = {
+    translationFailed: {
+      en: 'Translation failed. Check your network.',
+      zh: '翻译失败，请检查网络连接'
+    },
+    translationInProgress: {
+      en: 'Translation in progress...',
+      zh: '正在翻译中，请稍候...'
+    },
+    scanning: {
+      en: 'Scanning page text...',
+      zh: '正在查找页面文本...'
+    },
+    noText: {
+      en: 'No translatable text found.',
+      zh: '未找到可翻译的文本'
+    },
+    found: {
+      en: count => `Found ${count} text blocks. Translating...`,
+      zh: count => `找到 ${count} 个文本块，开始翻译...`
+    },
+    reloaded: {
+      en: 'LingoFlow was reloaded. Refresh this page and try again.',
+      zh: 'LingoFlow 已重新加载，请刷新页面后再试'
+    },
+    partial: {
+      en: (success, fail) => `Translated ${success} blocks, ${fail} failed`,
+      zh: (success, fail) => `已翻译 ${success} 个文本块，${fail} 个失败`
+    },
+    done: {
+      en: count => `Bilingual mode: translated ${count} text blocks`,
+      zh: count => `双语模式：已翻译 ${count} 个文本块`
+    },
+    translationOnlyDone: {
+      en: count => `Translation mode: translated ${count} text blocks`,
+      zh: count => `译文模式：已翻译 ${count} 个文本块`
+    }
+  };
+
+  function isChineseUi() {
+    if (state.uiLanguage && state.uiLanguage !== 'auto') {
+      return state.uiLanguage.toLowerCase().startsWith('zh');
+    }
+    try {
+      return chrome.i18n.getUILanguage().toLowerCase().startsWith('zh');
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function statusText(key, ...args) {
+    const entry = NotificationText[key];
+    if (!entry) return key;
+    const value = isChineseUi() ? entry.zh : entry.en;
+    return typeof value === 'function' ? value(...args) : value;
+  }
+
   // Helper: Check if translation result is a fallback/error text (not a real translation)
   function isFallbackText(text) {
-    return text.startsWith('[翻译') ||
-           text.startsWith('[需翻译') ||
-           text.startsWith('[翻译超时]');
+    if (!text) return true;
+    return text.startsWith('[LingoFlow translation failed]') ||
+           text.startsWith('[LingoFlow translation timeout]') ||
+           text.startsWith('[LingoFlow context invalidated]');
+  }
+
+  function isContextInvalidatedText(text) {
+    return !!text && text.startsWith('[LingoFlow context invalidated]');
+  }
+
+  function getErrorMessage(error) {
+    if (!error) return '';
+    if (typeof error === 'string') return error;
+    if (error.message) return error.message;
+    try {
+      return JSON.stringify(error);
+    } catch (_) {
+      return String(error);
+    }
+  }
+
+  function isContextInvalidatedError(error) {
+    const message = getErrorMessage(error).toLowerCase();
+    return message.includes('extension context invalidated') ||
+           message.includes('context invalidated') ||
+           message.includes('receiving end does not exist') ||
+           message.includes('message port closed') ||
+           message.includes('extension has been reloaded');
   }
 
   // Helper: Check if text is primarily Chinese/CJK (skip translation for already-Chinese content)
   function isChineseText(text) {
-    const cleaned = text.replace(/[\s\n\r\t\d.,;:!?'""''()（）【】《》—–…·\-\/]/g, '');
+    const cleaned = (text || '').replace(/[\s\d\p{P}\p{S}]/gu, '');
     if (cleaned.length < 5) return false;
     let cjkCount = 0;
     for (const ch of cleaned) {
       if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(ch)) cjkCount++;
     }
-    return cjkCount / cleaned.length >= 0.45; // ≥45% CJK characters = treat as Chinese
+    return cjkCount / cleaned.length >= 0.45;
   }
 
   // Translation Engine - Pluggable architecture
@@ -71,7 +154,7 @@
         return new Promise((resolve) => {
           const timeoutId = setTimeout(() => {
             console.warn('LingoFlow: Translation request timed out');
-            resolve(`[翻译超时] ${text}`);
+            resolve(`[LingoFlow translation timeout] ${text}`);
           }, 6000);
 
           try {
@@ -85,23 +168,31 @@
                 clearTimeout(timeoutId);
 
                 if (chrome.runtime.lastError) {
-                  console.warn('LingoFlow: Background translate error', chrome.runtime.lastError);
-                  resolve(`[翻译中...] ${text}`);
+                  console.warn('LingoFlow: Background translate error:', getErrorMessage(chrome.runtime.lastError));
+                  if (isContextInvalidatedError(chrome.runtime.lastError)) {
+                    resolve(`[LingoFlow context invalidated] ${text}`);
+                    return;
+                  }
+                  resolve(`[LingoFlow translation failed] ${text}`);
                   return;
                 }
 
                 if (response && response.success && response.translation) {
                   resolve(response.translation);
                 } else {
-                  console.warn('LingoFlow: Translation failed', response && response.error);
-                  resolve(`[翻译中...] ${text}`);
+                  console.warn('LingoFlow: Translation failed:', getErrorMessage(response && response.error));
+                  resolve(`[LingoFlow translation failed] ${text}`);
                 }
               }
             );
           } catch (err) {
             clearTimeout(timeoutId);
-            console.warn('LingoFlow: sendMessage error', err);
-            resolve(`[翻译中...] ${text}`);
+            console.warn('LingoFlow: sendMessage error:', getErrorMessage(err));
+            if (isContextInvalidatedError(err)) {
+              resolve(`[LingoFlow context invalidated] ${text}`);
+              return;
+            }
+            resolve(`[LingoFlow translation failed] ${text}`);
           }
         });
       }
@@ -135,14 +226,14 @@
     // Save original content
     saveOriginal(element) {
       if (state.originalContent.has(element)) return;
-      state.originalContent.set(element, element.innerHTML);
+      state.originalContent.set(element, Array.from(element.childNodes).map(node => node.cloneNode(true)));
     },
 
     // Restore original content
     restoreOriginal(element) {
-      const original = state.originalContent.get(element);
-      if (original) {
-        element.innerHTML = original;
+      const originalNodes = state.originalContent.get(element);
+      if (originalNodes) {
+        element.replaceChildren(...originalNodes.map(node => node.cloneNode(true)));
         state.originalContent.delete(element);
         state.translatedNodes.delete(element);
         element.classList.remove('lingoflow-translated');
@@ -341,7 +432,7 @@
 
       // If translation failed (fallback text), show notification instead of result
       if (isFallbackText(translation)) {
-        this.showNotification('翻译失败，请检查网络连接');
+        this.showNotification(statusText('translationFailed'));
         return;
       }
 
@@ -480,15 +571,15 @@
     lookupWord(word) {
       // Mock dictionary - in real version, this would use a proper dictionary
       const dict = {
-        'hello': '你好',
-        'world': '世界',
-        'computer': '计算机',
-        'programming': '编程',
-        'language': '语言',
-        'learn': '学习',
-        'read': '阅读',
-        'website': '网站',
-        'translation': '翻译'
+        'hello': 'hello',
+        'world': 'world',
+        'computer': 'computer',
+        'programming': 'programming',
+        'language': 'language',
+        'learn': 'learn',
+        'read': 'read',
+        'website': 'website',
+        'translation': 'translation'
       };
 
       return dict[word.toLowerCase()] || null;
@@ -508,7 +599,7 @@
           break;
 
         case 'translate_page':
-          PageTranslator.translatePage();
+          PageTranslator.enableTranslationMode();
           sendResponse({ received: true });
           break;
 
@@ -534,322 +625,591 @@
 
   // Page Translator
   const PageTranslator = {
-    // Block-level tags that indicate an element is NOT a leaf paragraph
-    nonLeafBlockTags: ['P', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'LI', 'DIV', 'BLOCKQUOTE', 'UL', 'OL', 'TABLE', 'SECTION', 'ARTICLE', 'MAIN', 'HEADER', 'FOOTER', 'NAV', 'ASIDE'],
+    skipTags: new Set([
+      'SCRIPT', 'STYLE', 'CODE', 'PRE', 'TEXTAREA', 'INPUT', 'BUTTON',
+      'SVG', 'CANVAS', 'IFRAME', 'NOSCRIPT'
+    ]),
 
-    // Check if a <div> is a "leaf paragraph" (contains text but no nested block-level children)
-    isLeafParagraphDiv(el) {
-      if (el.tagName !== 'DIV') return false;
-      for (const child of el.children) {
-        if (this.nonLeafBlockTags.includes(child.tagName)) return false;
-      }
-      const text = el.textContent.trim();
-      return text.length >= 10;
+    skipSelectors: [
+      '[data-lingoflow]',
+      '[data-lingoflow-processed="true"]',
+      '.lingoflow-ui',
+      '#lingoflow-toolbar',
+      '#lingoflow-translation-result',
+      '#lingoflow-hover-card'
+    ].join(','),
+
+    blockTags: new Set([
+      'P', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+      'BLOCKQUOTE', 'TD', 'TH', 'FIGCAPTION', 'DD', 'DT'
+    ]),
+
+    nestedBlockTags: new Set([
+      'ADDRESS', 'ARTICLE', 'ASIDE', 'BLOCKQUOTE', 'DETAILS', 'DIALOG',
+      'DIV', 'DL', 'FIELDSET', 'FIGCAPTION', 'FIGURE', 'FOOTER', 'FORM',
+      'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HEADER', 'HGROUP', 'HR',
+      'LI', 'MAIN', 'NAV', 'OL', 'P', 'PRE', 'SECTION', 'TABLE', 'UL'
+    ]),
+
+    normalizeText(text) {
+      return (text || '').replace(/\s+/g, ' ').trim();
     },
 
-    // Find all paragraph-level elements in main content (two-phase strategy)
-    findParagraphElements(mainContent) {
-      // Phase 1: Standard leaf-level paragraph selectors
-      const standardSelectors = [
-        'p',
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-        'li', 'td', 'th', 'blockquote', 'dt', 'dd'
-      ].join(', ');
+    getTextStats(text) {
+      const normalized = this.normalizeText(text);
+      const content = normalized.replace(/[\s\d\p{P}\p{S}]/gu, '');
+      let cjkCount = 0;
+      let latinCount = 0;
 
-      let elements = Array.from(mainContent.querySelectorAll(standardSelectors));
-
-      // Filter: skip non-content areas and short text
-      // NOTE: intentionally exclude nav/footer/aside but NOT header — many sites put article content inside header
-      const skipAreaSelector = 'nav, footer, aside, [role="navigation"], [role="contentinfo"], [role="banner"]';
-      elements = elements.filter(el => {
-        if (!DOMProcessor.shouldTranslate(el)) return false;
-        if (el.closest(skipAreaSelector)) return false;
-        // Skip only obvious navigation UI classes, not content areas
-        if (el.closest('.sidebar, .menu, .navbar, .nav, .navigation, .menu-bar, .site-nav')) return false;
-        if ((el.textContent || '').trim().length < 10) return false;
-        return true;
-      });
-
-      // Phase 2: ALWAYS also collect leaf <div> paragraphs to supplement Phase 1
-      // This ensures Notion-style pages (where paragraphs are divs) are fully covered,
-      // and also catches div-wrapped text that standard selectors miss.
-      const allDivs = mainContent.querySelectorAll('div');
-      const phase1Set = new Set(elements);
-
-      for (const div of allDivs) {
-        // Skip elements that should NOT be translated
-        if (!DOMProcessor.shouldTranslate(div)) continue;
-        if (div.closest(skipAreaSelector)) continue;
-        if (div.closest('.sidebar, .menu, .navbar, .nav, .navigation, .menu-bar, .site-nav')) continue;
-        if (div.dataset.lfTranslated === '1') continue;
-        if (!this.isLeafParagraphDiv(div)) continue;
-
-        // Dedup: skip if this div CONTAINS or IS CONTAINED BY any phase-1 element
-        let hasOverlap = false;
-        for (const existing of phase1Set) {
-          if (div.contains(existing) || existing.contains(div)) {
-            hasOverlap = true;
-            break;
-          }
-        }
-        if (hasOverlap) continue;
-
-        // Also dedup against other already-added phase-2 divs
-        elements.push(div);
-        phase1Set.add(div); // reuse set for O(1) dedup
+      for (const ch of content) {
+        if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(ch)) cjkCount++;
+        if (/[A-Za-z]/.test(ch)) latinCount++;
       }
 
-      console.log('LingoFlow: Found ' + elements.length + ' total paragraph elements');
-
-      // Final safety dedup by element reference
-      const seen = new Set();
-      elements = elements.filter(el => {
-        if (seen.has(el)) return false;
-        seen.add(el);
-        return true;
-      });
-
-      // Dedup by text content: if two elements have nearly identical or overlapping
-      // textContent, keep only the first (more specific) one — avoids double-translation
-      // on pages that wrap <p> inside a leaf <div> or have sibling elements with same text.
-      const seenTexts = new Set();
-      elements = elements.filter(el => {
-        const text = (el.textContent || '').trim();
-        if (!text || text.length < 10) return false;
-        // Normalise whitespace for comparison
-        const norm = text.replace(/\s+/g, ' ');
-        // Exact match check first (fast path)
-        if (seenTexts.has(norm)) return false;
-        // Containment check: if this text is a substring of (or superset of)
-        // an already-seen text, it's likely a duplicate wrapper/sibling element.
-        // Require significant overlap (>70% of shorter text) to avoid false positives.
-        for (const existing of seenTexts) {
-          const shorter = norm.length <= existing.length ? norm : existing;
-          const longer = norm.length <= existing.length ? existing : norm;
-          if (longer.includes(shorter) && shorter.length / longer.length > 0.7) {
-            return false;
-          }
-        }
-        seenTexts.add(norm);
-        return true;
-      });
-
-      return elements;
+      return {
+        normalized,
+        contentLength: content.length,
+        cjkCount,
+        latinCount,
+        cjkRatio: content.length ? cjkCount / content.length : 0
+      };
     },
 
-    // Translate entire page (block-level granularity, one paragraph at a time)
-    async translatePage() {
-      if (state.isTranslating) return;
-      state.isTranslating = true;
+    hasLatinText(text) {
+      return this.getTextStats(text).latinCount >= 2;
+    },
 
-      UI.showNotification('正在查找页面段落...');
+    hasChineseText(text) {
+      const stats = this.getTextStats(text);
+      return stats.cjkCount >= 2 && stats.cjkRatio >= 0.3;
+    },
 
-      const mainContent = this.findMainContent();
-      const blocks = this.findParagraphElements(mainContent);
+    shouldTranslateText(text) {
+      const normalized = this.normalizeText(text);
+      if (normalized.length < 3) return false;
+      if (normalized.length > 2000) return false;
+      if (/^\d+([.,:/-]\d+)*$/.test(normalized)) return false;
+      if (!/[A-Za-z]{2,}/.test(normalized)) return false;
+      if (!/[A-Za-z0-9]/.test(normalized.replace(/[^\p{L}\p{N}]/gu, ''))) return false;
+      if (isChineseText(normalized)) return false;
+      return true;
+    },
 
-      console.log('LingoFlow: translatePage found ' + blocks.length + ' paragraph elements');
+    getElementText(element) {
+      if (!element) return '';
+      return this.normalizeText(element.innerText || element.textContent || '');
+    },
 
-      if (blocks.length === 0) {
-        state.isTranslating = false;
-        UI.showNotification('未找到可翻译的段落，请刷新页面后重试');
-        return;
+    hasChineseSibling(container) {
+      const siblings = [
+        container.previousElementSibling,
+        container.nextElementSibling
+      ].filter(Boolean);
+
+      return siblings.some(sibling => {
+        if (sibling.matches && sibling.matches('[data-lingoflow], .lingoflow-ui')) return false;
+        return this.hasChineseText(this.getElementText(sibling));
+      });
+    },
+
+    hasBilingualChildren(scope) {
+      if (!scope || scope === document.body || scope === document.documentElement) return false;
+      const scopeText = this.getElementText(scope);
+      if (scopeText.length > 700 || scope.children.length > 12) return false;
+
+      let hasEnglishChild = false;
+      let hasChineseChild = false;
+      const children = Array.from(scope.children).filter(child => {
+        return !(child.matches && child.matches('[data-lingoflow], .lingoflow-ui'));
+      });
+
+      for (const child of children) {
+        const text = this.getElementText(child);
+        if (this.hasLatinText(text)) hasEnglishChild = true;
+        if (this.hasChineseText(text)) hasChineseChild = true;
+        if (hasEnglishChild && hasChineseChild) return true;
       }
 
-      UI.showNotification('找到 ' + blocks.length + ' 处段落，开始翻译...');
+      return false;
+    },
 
-      let successCount = 0;
-      let failCount = 0;
+    hasBilingualDescendants(scope) {
+      if (!scope || scope === document.body || scope === document.documentElement) return false;
 
-      for (const el of blocks) {
-        // Skip if already translated (re-check since findParagraphElements may include new elements)
-        if (el.dataset.lfTranslated === '1') continue;
+      const scopeText = this.getElementText(scope);
+      if (scopeText.length < 6 || scopeText.length > 700) return false;
+      if (!this.hasLatinText(scopeText) || !this.hasChineseText(scopeText)) return false;
 
-        const text = el.textContent.trim();
-        if (!text || text.length < 10) continue;
+      const candidates = Array.from(scope.querySelectorAll('p, h1, h2, h3, h4, h5, h6, div, span, strong, b'));
+      let hasEnglish = false;
+      let hasChinese = false;
 
-        // Skip Chinese paragraphs to avoid double-translation
-        if (isChineseText(text)) {
-          console.log('LingoFlow: Skipping Chinese paragraph:', text.substring(0, 40));
-          el.dataset.lfTranslated = '1';
+      for (const candidate of candidates.slice(0, 30)) {
+        if (candidate.matches && candidate.matches('[data-lingoflow], .lingoflow-ui')) continue;
+        const text = this.getElementText(candidate);
+        if (this.hasLatinText(text)) hasEnglish = true;
+        if (this.hasChineseText(text)) hasChinese = true;
+        if (hasEnglish && hasChinese) return true;
+      }
+
+      return false;
+    },
+
+    hasBilingualAncestor(container) {
+      let scope = container.parentElement;
+      for (let depth = 0; scope && depth < 5; depth++, scope = scope.parentElement) {
+        if (this.hasBilingualChildren(scope) || this.hasBilingualDescendants(scope)) {
+          return true;
+        }
+      }
+      return false;
+    },
+
+    isHeadingContainer(container) {
+      return !!container && (/^H[1-6]$/.test(container.tagName) ||
+        container.getAttribute('role') === 'heading');
+    },
+
+    hasCatalogCardTranslation(container) {
+      let scope = container.parentElement;
+      for (let depth = 0; scope && depth < 5; depth++, scope = scope.parentElement) {
+        if (scope === document.body || scope === document.documentElement) return false;
+
+        const text = this.getElementText(scope);
+        if (text.length > 520 || text.length < 6) continue;
+        if (!this.hasLatinText(text) || !this.hasChineseText(text)) continue;
+
+        const hasDate = /\b20\d{2}[\/.-]\d{1,2}([\/.-]\d{1,2})?\b/.test(text);
+        const listLike = !!scope.closest('li, [role="listitem"], [role="list"], aside, nav, [role="navigation"]');
+        if ((hasDate || listLike) && this.hasBilingualDescendants(scope)) return true;
+      }
+
+      return false;
+    },
+
+    hasExistingTranslation(container) {
+      const text = this.getElementText(container);
+      if (this.hasLatinText(text) && this.hasChineseText(text)) return true;
+      if (this.hasChineseSibling(container)) return true;
+      if (this.isHeadingContainer(container)) return false;
+      return this.hasCatalogCardTranslation(container);
+    },
+
+    shouldSkipTextNode(node) {
+      if (!node || node.nodeType !== Node.TEXT_NODE || !node.parentElement) return true;
+
+      let element = node.parentElement;
+      while (element) {
+        if (this.skipTags.has(element.tagName)) return true;
+        if (element.matches && element.matches(this.skipSelectors)) return true;
+        if (element.isContentEditable) return true;
+        element = element.parentElement;
+      }
+
+      return !this.shouldTranslateText(node.textContent);
+    },
+
+    isLeafDiv(element) {
+      if (!element || element.tagName !== 'DIV') return false;
+      if (element.children.length === 0) return this.shouldTranslateText(element.textContent);
+      return !Array.from(element.children).some(child => this.nestedBlockTags.has(child.tagName));
+    },
+
+    isTranslationContainer(element) {
+      if (!element || element === document.body || element === document.documentElement) return false;
+      if (element.getAttribute('role') === 'heading') return true;
+      if (this.blockTags.has(element.tagName)) return true;
+      return this.isLeafDiv(element);
+    },
+
+    findTextContainer(textNode) {
+      let element = textNode.parentElement;
+      while (element && element !== document.body && element !== document.documentElement) {
+        if (this.skipTags.has(element.tagName)) return null;
+        if (element.matches && element.matches(this.skipSelectors)) return null;
+        if (element.isContentEditable) return null;
+        if (this.isTranslationContainer(element)) return element;
+        element = element.parentElement;
+      }
+      return null;
+    },
+
+    isNestedInDifferentContainer(textNode, container) {
+      let element = textNode.parentElement;
+      while (element && element !== container) {
+        if (this.isTranslationContainer(element)) return true;
+        element = element.parentElement;
+      }
+      return false;
+    },
+
+    collectTranslationUnits(root = document.body) {
+      const units = new Map();
+      const walker = document.createTreeWalker(
+        root,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode: (node) => {
+            return this.shouldSkipTextNode(node)
+              ? NodeFilter.FILTER_REJECT
+              : NodeFilter.FILTER_ACCEPT;
+          }
+        }
+      );
+
+      let node;
+      while ((node = walker.nextNode())) {
+        const container = this.findTextContainer(node);
+        if (!container || container.dataset.lingoflowProcessed === 'true') continue;
+        if (this.isNestedInDifferentContainer(node, container)) continue;
+        if (this.hasExistingTranslation(container)) {
+          this.markProcessed(container);
           continue;
         }
 
-        // Mark immediately to prevent double-translation from overlapping elements
-        el.dataset.lfTranslated = '1';
+        const text = this.normalizeText(node.textContent);
+        if (!this.shouldTranslateText(text)) continue;
 
-        const translation = await TranslationEngine.translate(text);
+        if (!units.has(container)) {
+          units.set(container, {
+            container,
+            textParts: []
+          });
+        }
+        units.get(container).textParts.push(text);
+      }
+
+      return Array.from(units.values())
+        .map(unit => ({
+          container: unit.container,
+          text: this.normalizeText(unit.textParts.join(' '))
+        }))
+        .filter(unit => this.shouldTranslateText(unit.text));
+    },
+
+    markProcessed(container) {
+      if (container) {
+        container.setAttribute('data-lingoflow-processed', 'true');
+      }
+    },
+
+    createBilingualBlock(translation, mode) {
+      const block = document.createElement('div');
+      block.className = `lingoflow-block lingoflow-block-${mode}`;
+      block.setAttribute('data-lingoflow', 'true');
+      block.setAttribute('data-lingoflow-mode', mode);
+
+      const original = document.createElement('div');
+      original.className = 'lingoflow-original';
+      original.setAttribute('data-lingoflow', 'true');
+
+      const translated = document.createElement('div');
+      translated.className = 'lingoflow-translation';
+      translated.setAttribute('data-lingoflow', 'true');
+      translated.textContent = translation;
+
+      const fragment = document.createDocumentFragment();
+      fragment.appendChild(original);
+      fragment.appendChild(translated);
+      block.appendChild(fragment);
+
+      return block;
+    },
+
+    createTranslationOnlyBlock(translation) {
+      const block = document.createElement('div');
+      block.className = 'lingoflow-translation-only';
+      block.setAttribute('data-lingoflow', 'true');
+      block.textContent = translation;
+      return block;
+    },
+
+    copyLayoutMargins(source, block) {
+      const style = window.getComputedStyle(source);
+      block.style.marginTop = style.marginTop;
+      block.style.marginRight = style.marginRight;
+      block.style.marginBottom = style.marginBottom;
+      block.style.marginLeft = style.marginLeft;
+      block.style.textAlign = style.textAlign;
+      block.style.color = style.color;
+      block.style.fontFamily = style.fontFamily;
+      block.style.fontSize = style.fontSize;
+      block.style.fontStyle = style.fontStyle;
+      block.style.fontWeight = style.fontWeight;
+      block.style.letterSpacing = style.letterSpacing;
+      block.style.lineHeight = style.lineHeight;
+    },
+
+    shouldRenderInside(container) {
+      return ['LI', 'DIV', 'TD', 'TH', 'BLOCKQUOTE', 'DD', 'DT', 'FIGCAPTION'].includes(container.tagName);
+    },
+
+    renderExternal(container, translation) {
+      if (!container || !container.parentNode) return false;
+
+      const range = document.createRange();
+      range.selectNode(container);
+      const marker = document.createComment('lingoflow-bilingual-anchor');
+      range.insertNode(marker);
+
+      const block = this.createBilingualBlock(translation, 'external');
+      const original = block.querySelector(':scope > .lingoflow-original');
+      this.copyLayoutMargins(container, block);
+      original.appendChild(container);
+      marker.replaceWith(block);
+      range.detach();
+
+      return true;
+    },
+
+    getInternalInsertionPoint(container) {
+      if (container.tagName !== 'LI') return null;
+      return Array.from(container.childNodes).find(node => {
+        return node.nodeType === Node.ELEMENT_NODE && ['UL', 'OL'].includes(node.tagName);
+      }) || null;
+    },
+
+    renderInternal(container, translation) {
+      if (!container) return false;
+
+      const block = this.createBilingualBlock(translation, 'internal');
+      const original = block.querySelector(':scope > .lingoflow-original');
+      const stopNode = this.getInternalInsertionPoint(container);
+      const fragment = document.createDocumentFragment();
+
+      while (container.firstChild && container.firstChild !== stopNode) {
+        fragment.appendChild(container.firstChild);
+      }
+
+      if (!fragment.childNodes.length) return false;
+
+      original.appendChild(fragment);
+      container.insertBefore(block, stopNode);
+      return true;
+    },
+
+    renderTranslationUnit(container, translation) {
+      return this.shouldRenderInside(container)
+        ? this.renderInternal(container, translation)
+        : this.renderExternal(container, translation);
+    },
+
+    hideOriginalContainer(container) {
+      container.setAttribute('data-lingoflow-hidden', 'true');
+      container.hidden = true;
+    },
+
+    renderTranslationOnlyUnit(container, translation) {
+      if (!container || !container.parentNode) return false;
+
+      const range = document.createRange();
+      range.selectNode(container);
+      const marker = document.createComment('lingoflow-translation-anchor');
+      range.insertNode(marker);
+
+      const block = this.createTranslationOnlyBlock(translation);
+      this.copyLayoutMargins(container, block);
+      marker.replaceWith(block);
+      range.detach();
+
+      this.hideOriginalContainer(container);
+      return true;
+    },
+
+    restoreBilingualBlock(block) {
+      const mode = block.getAttribute('data-lingoflow-mode');
+      const original = block.querySelector(':scope > .lingoflow-original');
+      const fragment = document.createDocumentFragment();
+
+      while (original && original.firstChild) {
+        fragment.appendChild(original.firstChild);
+      }
+
+      if (!fragment.childNodes.length) {
+        fragment.appendChild(document.createTextNode(''));
+      }
+
+      if (mode === 'internal') {
+        block.parentNode.insertBefore(fragment, block);
+        block.remove();
+      } else {
+        block.replaceWith(fragment);
+      }
+    },
+
+    async translatePage() {
+      return this.enableTranslationMode();
+    },
+
+    async enableTranslationMode() {
+      if (state.isTranslating) {
+        UI.showNotification(statusText('translationInProgress'));
+        return;
+      }
+      state.isTranslating = true;
+
+      UI.showNotification(statusText('scanning'));
+
+      const units = this.collectTranslationUnits(document.body);
+      console.log('LingoFlow: enableTranslationMode found ' + units.length + ' translation units');
+
+      if (units.length === 0) {
+        state.isTranslating = false;
+        UI.showNotification(statusText('noText'));
+        return;
+      }
+
+      UI.showNotification(statusText('found', units.length));
+
+      let successCount = 0;
+      let failCount = 0;
+      let stoppedByInvalidContext = false;
+
+      for (const unit of units) {
+        const container = unit.container;
+        if (!container.isConnected || container.dataset.lingoflowProcessed === 'true') continue;
+
+        this.markProcessed(container);
+        const translation = await TranslationEngine.translate(unit.text);
+
+        if (isContextInvalidatedText(translation)) {
+          container.removeAttribute('data-lingoflow-processed');
+          stoppedByInvalidContext = true;
+          break;
+        }
 
         if (isFallbackText(translation)) {
-          // Remove mark on failure so retry could work
-          delete el.dataset.lfTranslated;
+          container.removeAttribute('data-lingoflow-processed');
           failCount++;
           continue;
         }
 
-        DOMProcessor.saveOriginal(el);
-        el.classList.add('lingoflow-translated');
-
-        // Replace text content only (preserve element structure)
-        el.textContent = translation;
-        state.translatedNodes.add(el);
-        successCount++;
+        if (this.renderTranslationOnlyUnit(container, translation)) {
+          successCount++;
+        } else {
+          container.removeAttribute('data-lingoflow-processed');
+        }
       }
 
-      state.isTranslating = false;
-
-      if (successCount === 0 && failCount === 0) {
-        UI.showNotification('未找到可翻译的段落');
+      if (stoppedByInvalidContext) {
+        UI.showNotification(statusText('reloaded'));
+      } else if (successCount === 0 && failCount === 0) {
+        UI.showNotification(statusText('noText'));
       } else if (failCount > 0 && successCount === 0) {
-        UI.showNotification('翻译失败，请检查网络连接');
+        UI.showNotification(statusText('translationFailed'));
       } else if (failCount > 0) {
-        UI.showNotification(`已翻译 ${successCount} 处，${failCount} 处失败`);
-      } else if (successCount > 0) {
-        UI.showNotification(`已翻译 ${successCount} 处段落`);
+        UI.showNotification(statusText('partial', successCount, failCount));
+      } else {
+        UI.showNotification(statusText('translationOnlyDone', successCount));
       }
+
+      state.isBilingualMode = false;
+      state.isTranslating = false;
     },
 
-    // Toggle bilingual mode
     toggleBilingualMode() {
-      if (state.isBilingualMode) {
+      if (state.isBilingualMode || document.querySelector('.lingoflow-block[data-lingoflow="true"]')) {
         this.restoreOriginal();
-        state.isBilingualMode = false;
       } else {
         this.enableBilingualMode();
-        state.isBilingualMode = true;
       }
     },
 
-    // Enable bilingual mode (block-level granularity, one paragraph at a time)
     async enableBilingualMode() {
       if (state.isTranslating) {
-        UI.showNotification('正在翻译中，请稍候...');
+        UI.showNotification(statusText('translationInProgress'));
         return;
       }
       state.isTranslating = true;
 
-      UI.showNotification('正在查找页面段落...');
+      UI.showNotification(statusText('scanning'));
 
-      const mainContent = this.findMainContent();
-      const blocks = this.findParagraphElements(mainContent);
+      const units = this.collectTranslationUnits(document.body);
+      console.log('LingoFlow: enableBilingualMode found ' + units.length + ' translation units');
 
-      console.log('LingoFlow: enableBilingualMode found ' + blocks.length + ' paragraph elements');
-
-      if (blocks.length === 0) {
+      if (units.length === 0) {
         state.isTranslating = false;
-        UI.showNotification('未找到可翻译的段落，请刷新页面后重试');
+        UI.showNotification(statusText('noText'));
         return;
       }
 
-      UI.showNotification('找到 ' + blocks.length + ' 处段落，开始翻译...');
+      UI.showNotification(statusText('found', units.length));
 
       let successCount = 0;
       let failCount = 0;
+      let stoppedByInvalidContext = false;
 
-      for (const el of blocks) {
-        // Skip if already has translation sibling
-        if (el.nextElementSibling && el.nextElementSibling.classList.contains('lf-bilingual-trans')) continue;
-        if (el.dataset.lfTranslated === '1') continue;
+      for (const unit of units) {
+        const container = unit.container;
+        if (!container.isConnected || container.dataset.lingoflowProcessed === 'true') continue;
 
-        const text = el.textContent.trim();
-        if (!text || text.length < 10) continue;
+        this.markProcessed(container);
+        const translation = await TranslationEngine.translate(unit.text);
 
-        // Skip Chinese paragraphs to avoid double-translation
-        if (isChineseText(text)) {
-          console.log('LingoFlow: Skipping Chinese paragraph:', text.substring(0, 40));
-          el.dataset.lfTranslated = '1'; // Mark as processed
-          continue;
+        if (isContextInvalidatedText(translation)) {
+          container.removeAttribute('data-lingoflow-processed');
+          stoppedByInvalidContext = true;
+          break;
         }
 
-        // Mark immediately to prevent double-translation from overlapping elements
-        el.dataset.lfTranslated = '1';
-
-        const translation = await TranslationEngine.translate(text);
-
         if (isFallbackText(translation)) {
-          delete el.dataset.lfTranslated;
+          container.removeAttribute('data-lingoflow-processed');
           failCount++;
           continue;
         }
 
-        DOMProcessor.saveOriginal(el);
-        el.classList.add('lingoflow-translated');
-
-        // Deep-clone the entire element (tag + classes + subtree), then replace text.
-        // This lets the browser re-match all CSS rules automatically — no manual
-        // property copying needed, and the translation inherits the exact same styles.
-        const transEl = el.cloneNode(true);
-        // Preserve the id with an lf_ prefix so id-based CSS rules still apply
-        if (el.id) transEl.id = 'lf_' + el.id;
-        // Remove attributes that shouldn't carry over
-        transEl.removeAttribute('data-lf-translated');
-        transEl.removeAttribute('data-lf-processed');
-        // Remove classes that mark "translated original" — this is the translation, not the original
-        transEl.classList.remove('lingoflow-translated');
-        // Mark as bilingual translation block
-        transEl.classList.add('lf-bilingual-trans');
-        // Replace all text content with the translation (preserves element structure)
-        transEl.textContent = translation;
-
-        el.insertAdjacentElement('afterend', transEl);
-        state.translatedNodes.add(el);
-        successCount++;
+        if (this.renderTranslationUnit(container, translation)) {
+          successCount++;
+        } else {
+          container.removeAttribute('data-lingoflow-processed');
+        }
       }
 
-      if (successCount === 0 && failCount === 0) {
-        UI.showNotification('未找到可翻译的段落');
+      if (stoppedByInvalidContext) {
+        UI.showNotification(statusText('reloaded'));
+      } else if (successCount === 0 && failCount === 0) {
+        UI.showNotification(statusText('noText'));
       } else if (failCount > 0 && successCount === 0) {
-        UI.showNotification('翻译失败，请检查网络连接');
+        UI.showNotification(statusText('translationFailed'));
       } else if (failCount > 0) {
-        UI.showNotification(`已翻译 ${successCount} 处，${failCount} 处失败`);
-      } else if (successCount > 0) {
-        UI.showNotification(`双语对照：已翻译 ${successCount} 处段落`);
+        UI.showNotification(statusText('partial', successCount, failCount));
+      } else {
+        UI.showNotification(statusText('done', successCount));
       }
 
+      state.isBilingualMode = successCount > 0;
       state.isTranslating = false;
     },
 
-    // Restore original content
     restoreOriginal() {
-      // Remove all translation sibling blocks
-      document.querySelectorAll('.lf-bilingual-trans').forEach(el => el.remove());
+      const scrollX = window.scrollX;
+      const scrollY = window.scrollY;
 
-      // Restore original innerHTML for saved elements
-      for (const [element, originalHTML] of state.originalContent) {
-        element.innerHTML = originalHTML;
-        element.classList.remove('lingoflow-translated', 'lingoflow-bilingual');
-        delete element.dataset.lfTranslated;
-      }
+      document.querySelectorAll('.lingoflow-block[data-lingoflow="true"]').forEach(block => {
+        this.restoreBilingualBlock(block);
+      });
 
-      // Also clean up any data-lf-translated attributes on non-saved elements
-      document.querySelectorAll('[data-lf-translated]').forEach(el => {
+      document.querySelectorAll('[data-lingoflow]').forEach(node => {
+        node.remove();
+      });
+
+      document.querySelectorAll('[data-lingoflow-hidden]').forEach(el => {
+        el.hidden = false;
+        el.removeAttribute('data-lingoflow-hidden');
+      });
+
+      document.querySelectorAll('[data-lingoflow-processed]').forEach(el => {
+        el.removeAttribute('data-lingoflow-processed');
+        el.classList.remove('lingoflow-translated', 'lingoflow-bilingual');
         delete el.dataset.lfTranslated;
-        el.classList.remove('lingoflow-translated');
       });
 
       state.originalContent.clear();
       state.translatedNodes.clear();
       state.isBilingualMode = false;
-    },
-
-    // Find main content
-    findMainContent() {
-      // Try to find main content area
-      const selectors = ['article', 'main', '[role="main"]', '.content', '#content', 'body'];
-      for (const selector of selectors) {
-        const element = document.querySelector(selector);
-        if (element) return element;
-      }
-      return document.body;
-    },
-
-    // Escape HTML
-    escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+      window.scrollTo(scrollX, scrollY);
     }
   };
-
   // Initialize
   function init() {
     try {
@@ -859,6 +1219,7 @@
       chrome.storage.local.get(['lingoflow_settings'], (result) => {
         if (result.lingoflow_settings) {
           state.hoverEnabled = result.lingoflow_settings.hoverTranslation !== false;
+          state.uiLanguage = result.lingoflow_settings.uiLanguage || 'auto';
         }
       });
 
@@ -872,6 +1233,7 @@
         if (namespace === 'local' && changes.lingoflow_settings) {
           const settings = changes.lingoflow_settings.newValue;
           state.hoverEnabled = settings.hoverTranslation !== false;
+          state.uiLanguage = settings.uiLanguage || 'auto';
         }
       });
 

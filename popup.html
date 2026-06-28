@@ -11,6 +11,7 @@
     <!-- Header -->
     <div class="popup-header">
       <div class="logo">
+        <img class="logo-icon" src="icons/icon-48.png" alt="">
         <span class="logo-text">LingoFlow</span>
       </div>
     </div>
@@ -23,7 +24,7 @@
           <path d="M2 12h20"/>
           <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
         </svg>
-        <span data-i18n="translate_page">Translate Page</span>
+        <span data-i18n="translate_page">Translation Mode</span>
       </button>
 
       <button class="action-btn" data-action="bilingual-mode">
@@ -75,6 +76,160 @@
       <div class="status-indicator"></div>
       <span class="status-text" data-i18n="ready">Ready</span>
     </div>
+
+    <section class="popup-panel" id="history-panel" hidden>
+      <div class="panel-header">
+        <button class="panel-icon-btn" type="button" data-panel-close aria-label="Back">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5"/>
+            <path d="M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <h2 data-i18n="history">History</h2>
+        <button class="panel-danger-btn" type="button" id="history-clear-btn" data-i18n="clear_all">Clear all</button>
+      </div>
+      <label class="panel-search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input id="history-search" type="search" data-i18n-placeholder="search" placeholder="Search...">
+      </label>
+      <div class="panel-list" id="history-list"></div>
+      <div class="panel-empty" id="history-empty">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+        <strong data-i18n="no_history">No history yet</strong>
+        <span data-i18n="history_hint">Translation history will appear here</span>
+      </div>
+    </section>
+
+    <section class="popup-panel" id="vocabulary-panel" hidden>
+      <div class="panel-header">
+        <button class="panel-icon-btn" type="button" data-panel-close aria-label="Back">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5"/>
+            <path d="M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <h2 data-i18n="vocabulary">Vocabulary</h2>
+        <button class="panel-icon-btn" type="button" id="vocabulary-export-btn" aria-label="Export CSV">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <path d="M7 10l5 5 5-5"/>
+            <path d="M12 15V3"/>
+          </svg>
+        </button>
+      </div>
+      <label class="panel-search">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/>
+          <path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input id="vocabulary-search" type="search" data-i18n-placeholder="search" placeholder="Search...">
+      </label>
+      <div class="panel-tabs">
+        <button class="panel-tab active" type="button" data-vocab-filter="all" data-i18n="all">All</button>
+        <button class="panel-tab" type="button" data-vocab-filter="word" data-i18n="words">Words</button>
+        <button class="panel-tab" type="button" data-vocab-filter="sentence" data-i18n="sentences">Sentences</button>
+      </div>
+      <div class="panel-list" id="vocabulary-list"></div>
+      <div class="panel-empty" id="vocabulary-empty">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+        <strong data-i18n="no_saved_items">Nothing saved yet</strong>
+        <span data-i18n="save_hint">Select text on a page and save it to add items</span>
+      </div>
+    </section>
+
+    <section class="popup-panel" id="settings-panel" hidden>
+      <div class="panel-header">
+        <button class="panel-icon-btn" type="button" data-panel-close aria-label="Back">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5"/>
+            <path d="M12 19l-7-7 7-7"/>
+          </svg>
+        </button>
+        <h2 data-i18n="settings">Settings</h2>
+      </div>
+
+      <div class="settings-panel-list">
+        <div class="settings-row">
+          <div class="settings-row-copy">
+            <strong data-i18n="translate_to">Translate to</strong>
+          </div>
+          <select class="panel-select" id="popup-translate-to">
+            <option value="zh" data-i18n="chinese">Chinese</option>
+            <option value="en" data-i18n="english">English</option>
+          </select>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-copy">
+            <strong data-i18n="ui_language">UI Language</strong>
+            <span data-i18n="ui_language_desc">Language of the extension interface</span>
+          </div>
+          <select class="panel-select" id="popup-ui-language">
+            <option value="auto" data-i18n="follow_system">Follow System</option>
+            <option value="zh" data-i18n="chinese">Chinese</option>
+            <option value="en" data-i18n="english">English</option>
+          </select>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-copy">
+            <strong data-i18n="theme">Theme</strong>
+          </div>
+          <div class="panel-segment" id="popup-theme">
+            <button class="panel-segment-btn active" type="button" data-popup-theme="light" data-i18n="light">Light</button>
+            <button class="panel-segment-btn" type="button" data-popup-theme="dark" data-i18n="dark">Dark</button>
+          </div>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-copy">
+            <strong data-i18n="bilingual_mode_setting">Bilingual Mode</strong>
+            <span data-i18n="bilingual_mode_desc">Show translation below original text</span>
+          </div>
+          <label class="panel-switch">
+            <input type="checkbox" id="popup-bilingual-mode">
+            <span></span>
+          </label>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-copy">
+            <strong data-i18n="hover_translation">Hover Translation</strong>
+            <span data-i18n="hover_translation_desc">Show word definition on hover</span>
+          </div>
+          <label class="panel-switch">
+            <input type="checkbox" id="popup-hover-translation">
+            <span></span>
+          </label>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-copy">
+            <strong data-i18n="history_limit">History Limit</strong>
+            <span data-i18n="history_limit_desc">Maximum number of history records</span>
+          </div>
+          <select class="panel-select" id="popup-history-limit">
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-panel-footer">
+        <button class="panel-footer-btn muted" type="button" id="popup-settings-cancel" data-i18n="cancel">Cancel</button>
+        <button class="panel-footer-btn primary" type="button" id="popup-settings-save" data-i18n="save_settings">Save Changes</button>
+      </div>
+    </section>
   </div>
 
   <script src="js/i18n.js"></script>

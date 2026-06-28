@@ -153,39 +153,84 @@
   transform: translateY(0);
 }
 
-/* Translated Content */
-.lingoflow-translated {
-  position: relative;
+/* Bilingual Mode */
+.lingoflow-block {
+  max-width: 100%;
+  min-width: 0;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  box-sizing: border-box;
 }
 
-/* Bilingual mode: translation block — deep-cloned from original, so tag + classes
-   match exactly and the browser re-applies all CSS rules automatically.
-   We only add minimal safeguards to prevent overflow and separate from original. */
-.lf-bilingual-trans {
-  /* Inherit text color from the original element's CSS rules */
-  color: inherit;
+.lingoflow-block-external {
+  display: block;
+  width: 100%;
+}
 
-  /* Prevent background from original element obscuring the original text behind */
-  background: transparent !important;
+.lingoflow-block-internal {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
 
-  /* Layout safeguards */
-  overflow-wrap: break-word;
-  word-break: break-word;
-  overflow-x: hidden;
+.lingoflow-original,
+.lingoflow-translation {
+  display: block;
   max-width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  background: transparent;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
 
-  /* Small gap between original and translation */
-  margin-top: 2px;
+.lingoflow-original {
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+}
+
+.lingoflow-original > :first-child {
+  margin-top: 0 !important;
+}
+
+.lingoflow-original > :last-child {
+  margin-bottom: 0 !important;
 }
 
 .lingoflow-translation {
-  color: #7c7a9e;
-  font-size: 0.95em;
-  line-height: 1.6;
-  padding-left: 14px;
-  border-left: 2px solid #ede9fe;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  font-style: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  margin-top: 0.18em;
 }
 
+.lingoflow-translation-only {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  font-size: inherit;
+  font-style: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  text-align: inherit;
+  box-sizing: border-box;
+  overflow-wrap: anywhere;
+}
 /* Dark Mode */
 @media (prefers-color-scheme: dark) {
   #lingoflow-toolbar {
@@ -242,25 +287,6 @@
     color: #ffffff;
   }
 
-  .lingoflow-bilingual {
-    background: rgba(30, 27, 58, 0.5);
-    border-left-color: var(--lf-primary);
-  }
-
-  .lf-bilingual-trans {
-    color: inherit;
-    background: transparent !important;
-    overflow-wrap: break-word;
-    word-break: break-word;
-    overflow-x: hidden;
-    max-width: 100%;
-    margin-top: 2px;
-  }
-
-  .lingoflow-translation {
-    color: #a29cc8;
-    border-left-color: rgba(93, 79, 150, 0.4);
-  }
 }
 
 /* Animations */

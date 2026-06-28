@@ -313,7 +313,8 @@ function translateText(text, targetLang, sendResponse) {
     })
     .catch(error => {
       clearTimeout(timeoutId);
-      console.warn('LingoFlow: Google Translate error in background', error);
-      sendResponse({ success: false, error: error.message });
+      const message = error && error.message ? error.message : String(error);
+      console.warn('LingoFlow: Google Translate error in background:', message);
+      sendResponse({ success: false, error: message });
     });
 }

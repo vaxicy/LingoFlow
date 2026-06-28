@@ -36,7 +36,7 @@
     "description": "Context menu item"
   },
   "translate_page": {
-    "message": "Translate Page",
+    "message": "Translation Mode",
     "description": "Popup button"
   },
   "bilingual_mode": {

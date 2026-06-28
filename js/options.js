@@ -228,13 +228,14 @@ function showNotification(message) {
     position: fixed;
     bottom: 24px;
     right: 24px;
-    background: #10b981;
+    background: linear-gradient(135deg, #62a8ff 0%, #7c6cff 55%, #b8adff 100%);
     color: white;
     padding: 12px 20px;
-    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.24);
+    border-radius: 14px;
     font-size: 14px;
-    font-weight: 500;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-weight: 750;
+    box-shadow: 0 18px 40px rgba(73,109,255,0.28);
     z-index: 9999;
     animation: slideIn 0.3s ease;
   `;
