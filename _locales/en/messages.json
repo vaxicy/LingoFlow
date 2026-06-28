@@ -1,14 +1,14 @@
 {
   "app_name": {
-    "message": "LingoFlow",
+    "message": "LingoFlow - Reading Assistant",
     "description": "Application name"
   },
   "app_description": {
-    "message": "Modern Reading Assistant for Foreign Websites",
+    "message": "Modern Reading Assistant. Read any website effortlessly.",
     "description": "Application description"
   },
   "extension_description": {
-    "message": "Modern Reading Assistant for Foreign Websites. Read any website effortlessly.",
+    "message": "Modern Reading Assistant / 外文网站阅读助手",
     "description": "Extension description"
   },
   "translate": {
@@ -314,5 +314,21 @@
   "follow_system": {
     "message": "Follow System",
     "description": "UI language option"
+  },
+  "translation_engine": {
+    "message": "Translation Engine",
+    "description": "Translation engine setting label"
+  },
+  "translation_engine_desc": {
+    "message": "Select translation service provider",
+    "description": "Translation engine setting description"
+  },
+  "engine_google": {
+    "message": "Google Translate",
+    "description": "Google Translate engine option"
+  },
+  "engine_libretranslate": {
+    "message": "MyMemory (Free)",
+    "description": "MyMemory translation engine option"
   }
 }

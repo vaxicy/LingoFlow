@@ -143,7 +143,7 @@
 
   // Translation Engine - Pluggable architecture
   const TranslationEngine = {
-    // Current active engine
+    // Current active engine (loaded from settings)
     activeEngine: 'google',
 
     // Google Translate via background script (bypasses page CSP)
@@ -1229,6 +1229,7 @@
           state.hoverEnabled = result.lingoflow_settings.hoverTranslation !== false;
           state.uiLanguage = result.lingoflow_settings.uiLanguage || 'auto';
           state.existingBilingualStrategy = result.lingoflow_settings.existingBilingualStrategy || 'skip';
+          TranslationEngine.activeEngine = result.lingoflow_settings.translationEngine || 'google';
         }
       });
 

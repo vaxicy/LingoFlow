@@ -175,6 +175,7 @@ function openSettingsPanel() {
 
 function initSettingsPanel() {
   const controls = [
+    'popup-translation-engine',
     'popup-translate-to',
     'popup-ui-language',
     'popup-bilingual-mode',
@@ -219,6 +220,7 @@ function initSettingsPanel() {
 }
 
 function applyPopupSettings(settings) {
+  const translationEngine = document.getElementById('popup-translation-engine');
   const translateTo = document.getElementById('popup-translate-to');
   const uiLanguage = document.getElementById('popup-ui-language');
   const bilingualMode = document.getElementById('popup-bilingual-mode');
@@ -227,6 +229,7 @@ function applyPopupSettings(settings) {
   const historyLimit = document.getElementById('popup-history-limit');
   const theme = settings.theme || 'light';
 
+  if (translationEngine) translationEngine.value = settings.translationEngine || 'google';
   if (translateTo) translateTo.value = settings.targetLanguage || 'zh';
   if (uiLanguage) uiLanguage.value = settings.uiLanguage || 'auto';
   if (bilingualMode) bilingualMode.checked = !!settings.bilingualMode;
@@ -241,6 +244,7 @@ function applyPopupSettings(settings) {
 
 function getPopupSettingsFromUI() {
   return {
+    translationEngine: document.getElementById('popup-translation-engine')?.value || 'google',
     targetLanguage: document.getElementById('popup-translate-to')?.value || 'zh',
     uiLanguage: document.getElementById('popup-ui-language')?.value || 'auto',
     theme: document.querySelector('[data-popup-theme].active')?.getAttribute('data-popup-theme') || 'light',
@@ -281,6 +285,7 @@ function cloneSettings(settings) {
 
 function getDefaultSettings() {
   return {
+    translationEngine: 'google',
     targetLanguage: 'zh',
     uiLanguage: 'auto',
     theme: 'light',

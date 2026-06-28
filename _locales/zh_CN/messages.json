@@ -1,14 +1,14 @@
 {
   "app_name": {
-    "message": "LingoFlow",
+    "message": "LingoFlow - 外文网站阅读助手",
     "description": "应用名称"
   },
   "app_description": {
-    "message": "外文网站现代阅读助手",
+    "message": "外文网站现代阅读助手。轻松阅读任何外文网站。",
     "description": "应用描述"
   },
   "extension_description": {
-    "message": "外文网站现代阅读助手。轻松阅读任何网站。",
+    "message": "外文网站现代阅读助手 / Modern Reading Assistant",
     "description": "扩展描述"
   },
   "translate": {
@@ -314,5 +314,21 @@
   "follow_system": {
     "message": "跟随系统",
     "description": "界面语言选项"
+  },
+  "translation_engine": {
+    "message": "翻译引擎",
+    "description": "翻译引擎设置标签"
+  },
+  "translation_engine_desc": {
+    "message": "选择翻译服务提供商",
+    "description": "翻译引擎设置描述"
+  },
+  "engine_google": {
+    "message": "Google 翻译",
+    "description": "Google 翻译引擎选项"
+  },
+  "engine_libretranslate": {
+    "message": "MyMemory（免费无需注册）",
+    "description": "MyMemory 翻译引擎选项"
   }
 }

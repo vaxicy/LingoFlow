@@ -160,6 +160,17 @@
       <div class="settings-panel-list">
         <div class="settings-row">
           <div class="settings-row-copy">
+            <strong data-i18n="translation_engine">Translation Engine</strong>
+            <span data-i18n="translation_engine_desc">Select translation service provider</span>
+          </div>
+          <select class="panel-select" id="popup-translation-engine">
+            <option value="google" data-i18n="engine_google">Google Translate</option>
+            <option value="libretranslate" data-i18n="engine_libretranslate">LibreTranslate</option>
+          </select>
+        </div>
+
+        <div class="settings-row">
+          <div class="settings-row-copy">
             <strong data-i18n="translate_to">Translate to</strong>
           </div>
           <select class="panel-select" id="popup-translate-to">

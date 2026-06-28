@@ -29,6 +29,7 @@ chrome.runtime.onInstalled.addListener(() => {
     if (!result.lingoflow_settings) {
       chrome.storage.local.set({
         lingoflow_settings: {
+          translationEngine: 'google',
           targetLanguage: 'zh',
           uiLanguage: 'auto',
           theme: 'light',
@@ -264,6 +265,7 @@ function updateSettings(settings, sendResponse) {
 
 function getDefaultSettings(overrides = {}) {
   return {
+    translationEngine: 'google',
     targetLanguage: 'zh',
     uiLanguage: 'auto',
     theme: 'light',
@@ -280,55 +282,122 @@ function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
 
-// Translation via Google Translate free API (background context, no CSP limits)
+// Translation dispatcher — routes to the selected engine
 function translateText(text, targetLang, sendResponse) {
+  // Read engine preference from settings
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
+    if (engine === 'libretranslate') {
+      translateWithLibreTranslate(text, targetLang, sendResponse);
+    } else {
+      translateWithGoogle(text, targetLang, sendResponse);
+    }
+  });
+}
+
+// MyMemory Translation API (free, no registration required)
+function translateWithLibreTranslate(text, targetLang, sendResponse) {
   const tl = targetLang === 'zh' ? 'zh-CN' :
              targetLang === 'en' ? 'en' : 'zh-CN';
 
   const maxLen = 2000;
   const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
 
-  // Use the 'single' endpoint which is more reliable and widely used
-  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${tl}&dt=t&q=${encodeURIComponent(truncated)}`;
+  // MyMemory does NOT support 'auto' as source; use 'en' for English-to-Chinese scenarios
+  // For Chinese-to-English, use 'zh-CN'
+  const srcLang = tl.startsWith('zh') ? 'en' : 'zh-CN';
+  const url = `https://api.mymemory.translated.net/get?${new URLSearchParams({ q: truncated, langpair: `${srcLang}|${tl}` })}`;
 
-  console.log('LingoFlow: Background translating', truncated.length, 'chars to', tl);
+  console.log('LingoFlow: MyMemory translating', truncated.length, 'chars from', srcLang, 'to', tl);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
-    console.warn('LingoFlow: Translation request timed out after 5s');
+    console.warn('LingoFlow: MyMemory request timed out after 8s');
     controller.abort();
-  }, 5000);
+  }, 8000);
 
   fetch(url, { signal: controller.signal })
     .then(response => {
       clearTimeout(timeoutId);
-      console.log('LingoFlow: Google Translate response status', response.status);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
       return response.json();
     })
     .then(data => {
-      // Google 'single' API returns: [[[translatedText, originalText, ...], ...], ...]
+      if (data && data.responseStatus === 200 && data.responseData) {
+        const translatedText = data.responseData.translatedText;
+        if (!translatedText) {
+          console.warn('LingoFlow: MyMemory returned empty text');
+          translateWithGoogle(text, targetLang, sendResponse);
+          return;
+        }
+        // MyMemory sometimes returns original text unchanged when it can't translate
+        if (translatedText.trim() === truncated.trim()) {
+          console.warn('LingoFlow: MyMemory returned same text as input, falling back to Google');
+          translateWithGoogle(text, targetLang, sendResponse);
+          return;
+        }
+        console.log('LingoFlow: MyMemory succeeded, result length:', translatedText.length);
+        sendResponse({ success: true, translation: translatedText });
+      } else {
+        const errMsg = data ? (data.responseDetails || JSON.stringify(data)) : 'Invalid response';
+        console.warn('LingoFlow: MyMemory error response:', errMsg);
+        translateWithGoogle(text, targetLang, sendResponse);
+      }
+    })
+    .catch(error => {
+      clearTimeout(timeoutId);
+      const message = error && error.message ? error.message : String(error);
+      console.warn('LingoFlow: MyMemory error:', message);
+      console.log('LingoFlow: Falling back to Google Translate');
+      translateWithGoogle(text, targetLang, sendResponse);
+    });
+}
+
+// Google Translate (non-official free endpoint)
+function translateWithGoogle(text, targetLang, sendResponse) {
+  const tl = targetLang === 'zh' ? 'zh-CN' :
+             targetLang === 'en' ? 'en' : 'zh-CN';
+
+  const maxLen = 2000;
+  const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
+
+  const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${tl}&dt=t&q=${encodeURIComponent(truncated)}`;
+
+  console.log('LingoFlow: Google Translate translating', truncated.length, 'chars to', tl);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    console.warn('LingoFlow: Google Translate request timed out after 5s');
+    controller.abort();
+  }, 5000);
+
+  fetch(url, { signal: controller.signal })
+    .then(response => {
+      clearTimeout(timeoutId);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
       if (data && data[0] && Array.isArray(data[0])) {
-        // Concatenate all translation segments
         const translation = data[0].map(segment => segment[0]).join('');
         if (translation) {
-          console.log('LingoFlow: Translation succeeded, result length:', translation.length);
+          console.log('LingoFlow: Google Translate succeeded, result length:', translation.length);
           sendResponse({ success: true, translation: translation });
         } else {
-          console.warn('LingoFlow: Empty translation result from API');
           sendResponse({ success: false, error: 'Empty translation' });
         }
       } else {
-        console.warn('LingoFlow: Invalid response format from Google Translate', data);
         sendResponse({ success: false, error: 'Invalid response format' });
       }
     })
     .catch(error => {
       clearTimeout(timeoutId);
       const message = error && error.message ? error.message : String(error);
-      console.warn('LingoFlow: Google Translate error in background:', message);
+      console.warn('LingoFlow: Google Translate error:', message);
       sendResponse({ success: false, error: message });
     });
 }

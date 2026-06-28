@@ -18,6 +18,20 @@
     <!-- Settings Content -->
     <div class="settings-content">
 
+      <!-- Translation Engine -->
+      <div class="setting-group">
+        <div class="setting-label">
+          <span data-i18n="translation_engine">Translation Engine</span>
+          <span class="setting-description" data-i18n="translation_engine_desc">Select translation service provider</span>
+        </div>
+        <div class="setting-control">
+          <select id="translation-engine" class="setting-select">
+            <option value="google" data-i18n="engine_google">Google Translate</option>
+            <option value="libretranslate" data-i18n="engine_libretranslate">LibreTranslate</option>
+          </select>
+        </div>
+      </div>
+
       <!-- Translate To (was: Target Language) -->
       <div class="setting-group">
         <div class="setting-label">

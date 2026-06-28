@@ -23,6 +23,10 @@ function loadSettings() {
 }
 
 function applySettings(settings) {
+  // Translation Engine
+  const translationEngine = document.getElementById('translation-engine');
+  if (translationEngine) translationEngine.value = settings.translationEngine || 'google';
+
   // Translate to
   const translateTo = document.getElementById('translate-to');
   if (translateTo) translateTo.value = settings.targetLanguage || 'zh';
@@ -77,6 +81,10 @@ function updateButtonStates() {
 // ======================== Event Listeners ========================
 
 function initEventListeners() {
+  // Translation Engine
+  const translationEngine = document.getElementById('translation-engine');
+  if (translationEngine) translationEngine.addEventListener('change', markChanged);
+
   // Translate to
   const translateTo = document.getElementById('translate-to');
   if (translateTo) translateTo.addEventListener('change', markChanged);
@@ -155,6 +163,7 @@ function initEventListeners() {
 // ======================== Save / Cancel ========================
 
 function getSettingsFromUI() {
+  const translationEngine = document.getElementById('translation-engine')?.value || 'google';
   const targetLanguage = document.getElementById('translate-to')?.value || 'zh';
   const uiLanguage = document.getElementById('ui-language')?.value || 'auto';
   const theme = document.querySelector('.toggle-btn.active')?.getAttribute('data-value') || 'light';
@@ -163,7 +172,7 @@ function getSettingsFromUI() {
   const existingBilingualStrategy = document.getElementById('existing-bilingual-strategy')?.value || 'skip';
   const historyLimit = parseInt(document.getElementById('history-limit')?.value) || 50;
 
-  return { targetLanguage, uiLanguage, theme, bilingualMode, hoverTranslation, existingBilingualStrategy, historyLimit };
+  return { translationEngine, targetLanguage, uiLanguage, theme, bilingualMode, hoverTranslation, existingBilingualStrategy, historyLimit };
 }
 
 function saveSettings() {

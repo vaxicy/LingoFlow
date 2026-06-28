@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "LingoFlow",
+  "name": "LingoFlow - 外文网站阅读助手",
   "version": "1.0.0",
-  "description": "Modern Reading Assistant for Foreign Websites. Read any website effortlessly.",
+  "description": "外文网站现代阅读助手 / Modern Reading Assistant",
   "default_locale": "en",
   "permissions": [
     "storage",
