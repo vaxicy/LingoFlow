@@ -47,7 +47,14 @@ function initModeSwitches() {
   if (settingsBtn) settingsBtn.addEventListener('click', () => openSettingsPanel());
 }
 
+let _modeToggleLock = false;
+
 function onModeToggle(mode) {
+  if (_modeToggleLock) return;
+  _modeToggleLock = true;
+  // Prevent rapid re-toggle for 400ms
+  setTimeout(() => { _modeToggleLock = false; }, 400);
+
   const translateToggle = document.getElementById('mode-translate');
   const bilingualToggle = document.getElementById('mode-bilingual');
 
@@ -209,7 +216,6 @@ function openSettingsPanel() {
 // SiliconFlow free models list (must match background.js)
 const SILICONFLOW_MODELS = [
   { id: 'tencent/Hunyuan-MT-7B',       name: 'Hunyuan-MT-7B（推荐·翻译专用）' },
-  { id: 'Qwen/Qwen2.5-7B-Instruct',     name: 'Qwen2.5-7B-Instruct' },
   { id: 'THUDM/GLM-4-9B-0414',          name: 'GLM-4-9B' }
 ];
 

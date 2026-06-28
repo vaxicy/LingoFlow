@@ -16,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // SiliconFlow free models list (must match background.js)
 const SILICONFLOW_MODELS = [
   { id: 'tencent/Hunyuan-MT-7B',       name: 'Hunyuan-MT-7B（推荐·翻译专用）' },
-  { id: 'Qwen/Qwen2.5-7B-Instruct',     name: 'Qwen2.5-7B-Instruct' },
   { id: 'THUDM/GLM-4-9B-0414',          name: 'GLM-4-9B' }
 ];
 

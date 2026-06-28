@@ -29,6 +29,7 @@
   const state = {
     isBilingualMode: false,
     isTranslating: false,
+    isTranslated: false,       // whether page currently has active translation
     hoverEnabled: true,
     uiLanguage: 'auto',
     existingBilingualStrategy: 'skip',
@@ -812,6 +813,8 @@
         if (this.skipTags.has(element.tagName)) return true;
         if (element.matches && element.matches(this.skipSelectors)) return true;
         if (element.isContentEditable) return true;
+        // Skip elements hidden by a previous translation (not yet fully restored)
+        if (element.hasAttribute && element.hasAttribute('data-lingoflow-hidden')) return true;
         element = element.parentElement;
       }
 
@@ -1054,6 +1057,12 @@
         UI.showNotification(statusText('translationInProgress'));
         return;
       }
+
+      // If page already has translation, restore first to avoid double-translating
+      if (state.isTranslated) {
+        this.restoreOriginal();
+      }
+
       state.isTranslating = true;
 
       UI.showNotification(statusText('scanning'));
@@ -1111,6 +1120,9 @@
         UI.showNotification(statusText('translationOnlyDone', successCount));
       }
 
+      if (successCount > 0) {
+        state.isTranslated = true;
+      }
       state.isBilingualMode = false;
       state.isTranslating = false;
     },
@@ -1128,6 +1140,12 @@
         UI.showNotification(statusText('translationInProgress'));
         return;
       }
+
+      // If page already has translation, restore first
+      if (state.isTranslated) {
+        this.restoreOriginal();
+      }
+
       state.isTranslating = true;
 
       UI.showNotification(statusText('scanning'));
@@ -1185,6 +1203,9 @@
         UI.showNotification(statusText('done', successCount));
       }
 
+      if (successCount > 0) {
+        state.isTranslated = true;
+      }
       state.isBilingualMode = successCount > 0;
       state.isTranslating = false;
     },
@@ -1215,6 +1236,7 @@
       state.originalContent.clear();
       state.translatedNodes.clear();
       state.isBilingualMode = false;
+      state.isTranslated = false;
       window.scrollTo(scrollX, scrollY);
     }
   };

@@ -305,7 +305,6 @@ function translateText(text, targetLang, sendResponse) {
 // Priority: verified working models first, then untested ones as backup
 const SILICONFLOW_FREE_MODELS = [
   'tencent/Hunyuan-MT-7B',          // ✅ Verified working - dedicated MT model, fast & reliable
-  'Qwen/Qwen2.5-7B-Instruct',
   'THUDM/GLM-4-9B-0414'
 ];
 
