@@ -1,0 +1,293 @@
+/* LingoFlow Content Styles */
+
+:root {
+  --lf-primary: #818cf8;
+  --lf-primary-light: #a78bfa;
+  --lf-primary-dark: #6366f1;
+  --lf-gradient: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c4b5fd 100%);
+  --lf-shadow-purple: 0 4px 20px rgba(139, 92, 246, 0.15);
+}
+
+/* Floating Toolbar */
+#lingoflow-toolbar {
+  position: absolute;
+  z-index: 2147483647;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(196, 181, 253, 0.4);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(129, 140, 248, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+  padding: 6px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  animation: lingoflow-fade-in 0.2s ease-out;
+}
+
+.lingoflow-toolbar-content {
+  display: flex;
+  gap: 4px;
+}
+
+.lingoflow-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  color: #4b5563;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.lingoflow-btn:hover {
+  background: #f5f3ff;
+  color: var(--lf-primary-dark);
+}
+
+.lingoflow-btn:active {
+  transform: scale(0.96);
+}
+
+.lingoflow-translate-btn:hover {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.lingoflow-copy-btn:hover {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.lingoflow-save-btn:hover {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+/* Translation Result */
+#lingoflow-translation-result {
+  position: absolute;
+  z-index: 2147483647;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(196, 181, 253, 0.35);
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(129, 140, 248, 0.14), 0 4px 12px rgba(0, 0, 0, 0.04);
+  padding: 18px;
+  max-width: 420px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  animation: lingoflow-fade-in 0.2s ease-out;
+}
+
+.lingoflow-result-original {
+  color: #9ca3af;
+  font-size: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f5f3ff;
+}
+
+.lingoflow-result-translation {
+  color: #1e1b4b;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+/* Hover Card */
+#lingoflow-hover-card {
+  position: absolute;
+  z-index: 2147483647;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(196, 181, 253, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(129, 140, 248, 0.12);
+  padding: 14px 18px;
+  max-width: 320px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  animation: lingoflow-fade-in 0.15s ease-out;
+}
+
+.lingoflow-hover-word {
+  font-weight: 600;
+  color: #1e1b4b;
+  margin-bottom: 5px;
+}
+
+.lingoflow-hover-definition {
+  color: #7c7a9e;
+  line-height: 1.5;
+}
+
+/* Notification */
+.lingoflow-notification {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 2147483647;
+  background: var(--lf-gradient);
+  color: #ffffff;
+  padding: 13px 22px;
+  border-radius: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 6px 24px rgba(129, 140, 248, 0.35);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.lingoflow-notification-show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Translated Content */
+.lingoflow-translated {
+  position: relative;
+}
+
+/* Bilingual mode: translation block — deep-cloned from original, so tag + classes
+   match exactly and the browser re-applies all CSS rules automatically.
+   We only add minimal safeguards to prevent overflow and separate from original. */
+.lf-bilingual-trans {
+  /* Inherit text color from the original element's CSS rules */
+  color: inherit;
+
+  /* Prevent background from original element obscuring the original text behind */
+  background: transparent !important;
+
+  /* Layout safeguards */
+  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow-x: hidden;
+  max-width: 100%;
+
+  /* Small gap between original and translation */
+  margin-top: 2px;
+}
+
+.lingoflow-translation {
+  color: #7c7a9e;
+  font-size: 0.95em;
+  line-height: 1.6;
+  padding-left: 14px;
+  border-left: 2px solid #ede9fe;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  #lingoflow-toolbar {
+    background: rgba(30, 27, 58, 0.94);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-color: rgba(93, 79, 150, 0.4);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  .lingoflow-btn {
+    color: #d1d5db;
+  }
+
+  .lingoflow-btn:hover {
+    background: rgba(124, 58, 237, 0.15);
+    color: #c4b5fd;
+  }
+
+  #lingoflow-translation-result {
+    background: rgba(30, 27, 58, 0.95);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-color: rgba(93, 79, 150, 0.4);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  }
+
+  .lingoflow-result-original {
+    color: #a29cc8;
+    border-bottom-color: rgba(93, 79, 150, 0.3);
+  }
+
+  .lingoflow-result-translation {
+    color: #f0eeff;
+  }
+
+  #lingoflow-hover-card {
+    background: rgba(30, 27, 58, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-color: rgba(93, 79, 150, 0.4);
+  }
+
+  .lingoflow-hover-word {
+    color: #f0eeff;
+  }
+
+  .lingoflow-hover-definition {
+    color: #a29cc8;
+  }
+
+  .lingoflow-notification {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: #ffffff;
+  }
+
+  .lingoflow-bilingual {
+    background: rgba(30, 27, 58, 0.5);
+    border-left-color: var(--lf-primary);
+  }
+
+  .lf-bilingual-trans {
+    color: inherit;
+    background: transparent !important;
+    overflow-wrap: break-word;
+    word-break: break-word;
+    overflow-x: hidden;
+    max-width: 100%;
+    margin-top: 2px;
+  }
+
+  .lingoflow-translation {
+    color: #a29cc8;
+    border-left-color: rgba(93, 79, 150, 0.4);
+  }
+}
+
+/* Animations */
+@keyframes lingoflow-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  #lingoflow-toolbar {
+    padding: 4px;
+  }
+
+  .lingoflow-btn {
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+
+  #lingoflow-translation-result {
+    max-width: 320px;
+    padding: 14px;
+  }
+}

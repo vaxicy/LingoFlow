@@ -1,0 +1,244 @@
+/* LingoFlow Popup Styles */
+
+:root {
+  --lf-primary: #818cf8;
+  --lf-primary-light: #a78bfa;
+  --lf-primary-dark: #6366f1;
+  --lf-gradient: linear-gradient(135deg, #818cf8 0%, #a78bfa 50%, #c4b5fd 100%);
+  --lf-gradient-subtle: linear-gradient(135deg, #a78bfa 0%, #c4b5fd 100%);
+  --lf-bg-light: #fafaff;
+  --lf-surface-light: #ffffff;
+  --lf-border-light: #e8e6ef;
+  --lf-bg-dark: #1a1730;
+  --lf-surface-dark: #252240;
+  --lf-border-dark: #3d3655;
+  --lf-text-dark: #f0eeff;
+  --lf-text-muted-dark: #a29cc8;
+  --lf-shadow-purple: 0 4px 20px rgba(139, 92, 246, 0.15);
+  --lf-shadow-purple-lg: 0 8px 32px rgba(139, 92, 246, 0.2);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 320px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--lf-bg-light);
+  color: #111827;
+  overflow-x: hidden;
+}
+
+.popup-container {
+  padding: 18px;
+}
+
+/* Header */
+.popup-header {
+  margin-bottom: 18px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--lf-primary);
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: 700;
+  background: var(--lf-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.3px;
+}
+
+/* Main Actions */
+.popup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 13px 16px;
+  border: 1px solid var(--lf-border-light);
+  background: var(--lf-surface-light);
+  border-radius: 14px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #374151;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background: #f5f3ff;
+  border-color: #c4b5fd;
+  transform: translateY(-1px);
+  box-shadow: var(--lf-shadow-purple);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.action-btn svg {
+  color: #a29cc8;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.action-btn:hover svg {
+  color: var(--lf-primary);
+}
+
+/* Secondary Actions */
+.popup-secondary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.secondary-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 14px 8px;
+  border: 1px solid var(--lf-border-light);
+  background: var(--lf-surface-light);
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #9ca3af;
+  transition: all 0.2s ease;
+}
+
+.secondary-btn:hover {
+  background: #f5f3ff;
+  border-color: #c4b5fd;
+  color: var(--lf-primary-dark);
+}
+
+.secondary-btn svg {
+  color: #c4b5fd;
+  transition: color 0.2s ease;
+}
+
+.secondary-btn:hover svg {
+  color: var(--lf-primary);
+}
+
+/* Status */
+.popup-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #f5f3ff;
+  border-radius: 10px;
+  font-size: 12px;
+  color: #7c3aed;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #a78bfa;
+  animation: pulse 2s infinite;
+}
+
+.status-text {
+  font-weight: 500;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  body {
+    background: var(--lf-bg-dark);
+    color: var(--lf-text-dark);
+  }
+
+  .action-btn {
+    background: var(--lf-surface-dark);
+    border-color: var(--lf-border-dark);
+    color: #d1d5db;
+  }
+
+  .action-btn:hover {
+    background: #302a50;
+    border-color: #5b4f8a;
+    box-shadow: var(--lf-shadow-purple-lg);
+  }
+
+  .action-btn svg {
+    color: #6b6288;
+  }
+
+  .secondary-btn {
+    background: var(--lf-surface-dark);
+    border-color: var(--lf-border-dark);
+    color: var(--lf-text-muted-dark);
+  }
+
+  .secondary-btn:hover {
+    background: #302a50;
+    border-color: #5b4f8a;
+    color: #c4b5fd;
+  }
+
+  .secondary-btn svg {
+    color: #5b4f8a;
+  }
+
+  .popup-status {
+    background: #252240;
+    color: #c4b5fd;
+  }
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d8d5f0;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b8b3d6;
+}

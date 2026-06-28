@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create LingoFlow Icons</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      background: #f9fafb;
+    }
+
+    h1 {
+      color: #111827;
+      margin-bottom: 20px;
+    }
+
+    .info {
+      background: #dbeafe;
+      border: 1px solid #93c5fd;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 24px;
+      color: #1e40af;
+    }
+
+    .icon-preview {
+      display: flex;
+      gap: 24px;
+      margin: 24px 0;
+      padding: 24px;
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .icon-item {
+      text-align: center;
+    }
+
+    .icon-item h3 {
+      margin-bottom: 12px;
+      color: #374151;
+    }
+
+    canvas {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: white;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+    }
+
+    .btn-secondary {
+      background: #f3f4f6;
+      color: #374151;
+      border: 1px solid #d1d5db;
+    }
+
+    .btn-secondary:hover {
+      background: #e5e7eb;
+    }
+
+    .instructions {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      padding: 24px;
+      margin-top: 24px;
+    }
+
+    .instructions h2 {
+      color: #111827;
+      margin-bottom: 16px;
+    }
+
+    .instructions ol {
+      margin-left: 20px;
+      color: #374151;
+      line-height: 1.8;
+    }
+
+    .instructions code {
+      background: #f3f4f6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .status {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 500;
+      display: none;
+    }
+
+    .status.success {
+      background: #d1fae5;
+      color: #065f46;
+      display: block;
+    }
+
+    .status.error {
+      background: #fee2e2;
+      color: #991b1b;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔵 LingoFlow Icon Generator</h1>
+
+  <div class="info">
+    <strong>Instructions:</strong> This page will help you create PNG icons for the LingoFlow Chrome extension.
+    Click the buttons below to generate and download the icons.
+  </div>
+
+  <div class="icon-preview">
+    <div class="icon-item">
+      <h3>16x16</h3>
+      <canvas id="canvas16" width="16" height="16"></canvas>
+    </div>
+    <div class="icon-item">
+      <h3>48x48</h3>
+      <canvas id="canvas48" width="48" height="48"></canvas>
+    </div>
+    <div class="icon-item">
+      <h3>128x128</h3>
+      <canvas id="canvas128" width="128" height="128"></canvas>
+    </div>
+  </div>
+
+  <div class="buttons">
+    <button class="btn-primary" onclick="generateIcons()">Generate Icons</button>
+    <button class="btn-secondary" onclick="downloadIcons()">Download Icons</button>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <div class="instructions">
+    <h2>📋 How to Use</h2>
+    <ol>
+      <li>Click <code>Generate Icons</code> to create icon previews</li>
+      <li>Click <code>Download Icons</code> to save PNG files</li>
+      <li>Move downloaded files to the <code>icons</code> folder</li>
+      <li>Rename files to: <code>icon16.png</code>, <code>icon48.png</code>, <code>icon128.png</code></li>
+      <li>Load the extension in Chrome: <code>chrome://extensions/</code></li>
+    </ol>
+  </div>
+
+  <script>
+    // SVG content
+    const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" stroke="#3b82f6" stroke-width="10" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="64" cy="64" r="56"/>
+      <line x1="64" y1="8" x2="64" y2="120"/>
+      <path d="M8 64h112"/>
+      <path d="M64 8a88 88 0 0 1 24 56 88 88 0 0 1-24 56 88 88 0 0 1-24-56 88 88 0 0 1 24-56z"/>
+    </svg>`;
+
+    let generatedIcons = {};
+
+    // Generate icons
+    function generateIcons() {
+      const sizes = [16, 48, 128];
+
+      sizes.forEach(size => {
+        const canvas = document.getElementById(`canvas${size}`);
+        const ctx = canvas.getContext('2d');
+
+        // Create image from SVG
+        const img = new Image();
+        const svgBlob = new Blob([svgContent], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(svgBlob);
+
+        img.onload = () => {
+          ctx.clearRect(0, 0, size, size);
+          ctx.drawImage(img, 0, 0, size, size);
+          URL.revokeObjectURL(url);
+
+          // Store for download
+          generatedIcons[size] = canvas.toDataURL('image/png');
+        };
+
+        img.src = url;
+      });
+
+      showStatus('Icons generated successfully!', 'success');
+    }
+
+    // Download icons
+    function downloadIcons() {
+      if (Object.keys(generatedIcons).length === 0) {
+        showStatus('Please generate icons first!', 'error');
+        return;
+      }
+
+      const sizes = [16, 48, 128];
+
+      sizes.forEach(size => {
+        if (generatedIcons[size]) {
+          const link = document.createElement('a');
+          link.download = `icon${size}.png`;
+          link.href = generatedIcons[size];
+          link.click();
+        }
+      });
+
+      showStatus('Icons downloaded! Check your downloads folder.', 'success');
+    }
+
+    // Show status
+    function showStatus(message, type) {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = `status ${type}`;
+
+      setTimeout(() => {
+        status.className = 'status';
+      }, 3000);
+    }
+
+    // Auto-generate on load
+    window.addEventListener('load', () => {
+      setTimeout(generateIcons, 100);
+    });
+  </script>
+</body>
+</html>

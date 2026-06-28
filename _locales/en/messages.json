@@ -1,0 +1,302 @@
+{
+  "app_name": {
+    "message": "LingoFlow",
+    "description": "Application name"
+  },
+  "app_description": {
+    "message": "Modern Reading Assistant for Foreign Websites",
+    "description": "Application description"
+  },
+  "extension_description": {
+    "message": "Modern Reading Assistant for Foreign Websites. Read any website effortlessly.",
+    "description": "Extension description"
+  },
+  "translate": {
+    "message": "Translate",
+    "description": "Translate button"
+  },
+  "copy": {
+    "message": "Copy",
+    "description": "Copy button"
+  },
+  "save": {
+    "message": "Save",
+    "description": "Save button"
+  },
+  "translate_selection": {
+    "message": "Translate Selection",
+    "description": "Context menu item"
+  },
+  "save_to_vocabulary": {
+    "message": "Save to Vocabulary",
+    "description": "Context menu item"
+  },
+  "copy_text": {
+    "message": "Copy Text",
+    "description": "Context menu item"
+  },
+  "translate_page": {
+    "message": "Translate Page",
+    "description": "Popup button"
+  },
+  "bilingual_mode": {
+    "message": "Bilingual Mode",
+    "description": "Popup button"
+  },
+  "restore_original": {
+    "message": "Restore Original",
+    "description": "Popup button"
+  },
+  "vocabulary": {
+    "message": "Vocabulary",
+    "description": "Popup button"
+  },
+  "history": {
+    "message": "History",
+    "description": "Popup button"
+  },
+  "settings": {
+    "message": "Settings",
+    "description": "Popup button"
+  },
+  "settings_title": {
+    "message": "LingoFlow Settings",
+    "description": "Settings page title"
+  },
+  "vocabulary_title": {
+    "message": "Vocabulary",
+    "description": "Vocabulary page title"
+  },
+  "history_title": {
+    "message": "History",
+    "description": "History page title"
+  },
+  "search": {
+    "message": "Search...",
+    "description": "Search placeholder"
+  },
+  "search_results": {
+    "message": "Search Results",
+    "description": "Search results title"
+  },
+  "no_results": {
+    "message": "No results found",
+    "description": "No results message"
+  },
+  "no_saved_items": {
+    "message": "No saved items yet",
+    "description": "Empty vocabulary message"
+  },
+  "no_history": {
+    "message": "No history yet",
+    "description": "Empty history message"
+  },
+  "save_hint": {
+    "message": "Select text on any webpage and click \"Save\" to add to vocabulary",
+    "description": "Vocabulary empty hint"
+  },
+  "history_hint": {
+    "message": "Translation history will appear here",
+    "description": "History empty hint"
+  },
+  "delete_confirm": {
+    "message": "Are you sure you want to delete?",
+    "description": "Delete confirmation message"
+  },
+  "clear_confirm": {
+    "message": "Are you sure you want to clear all?",
+    "description": "Clear all confirmation message"
+  },
+  "copied": {
+    "message": "Copied!",
+    "description": "Copy success notification"
+  },
+  "saved": {
+    "message": "Saved!",
+    "description": "Save success notification"
+  },
+  "cleared": {
+    "message": "Cleared!",
+    "description": "Clear success notification"
+  },
+  "export_csv": {
+    "message": "Export CSV",
+    "description": "Export CSV button"
+  },
+  "export_json": {
+    "message": "Export JSON",
+    "description": "Export JSON button"
+  },
+  "clear_all": {
+    "message": "Clear All",
+    "description": "Clear all button"
+  },
+  "ready": {
+    "message": "Ready",
+    "description": "Status ready"
+  },
+  "not_supported": {
+    "message": "This page is not supported",
+    "description": "Page not supported status"
+  },
+  "error_cannot_access": {
+    "message": "Error: Cannot access this page",
+    "description": "Error message for inaccessible page"
+  },
+  "target_language": {
+    "message": "Target Language",
+    "description": "Settings label"
+  },
+  "theme": {
+    "message": "Theme",
+    "description": "Settings label"
+  },
+  "light": {
+    "message": "Light",
+    "description": "Theme option"
+  },
+  "dark": {
+    "message": "Dark",
+    "description": "Theme option"
+  },
+  "bilingual_mode_setting": {
+    "message": "Bilingual Mode",
+    "description": "Settings label"
+  },
+  "bilingual_mode_desc": {
+    "message": "Show translation below original text",
+    "description": "Settings description"
+  },
+  "hover_translation": {
+    "message": "Hover Translation",
+    "description": "Settings label"
+  },
+  "hover_translation_desc": {
+    "message": "Show word definition on hover",
+    "description": "Settings description"
+  },
+  "history_limit": {
+    "message": "History Limit",
+    "description": "Settings label"
+  },
+  "history_limit_desc": {
+    "message": "Maximum number of history records",
+    "description": "Settings description"
+  },
+  "clear_history": {
+    "message": "Clear History",
+    "description": "Settings button"
+  },
+  "clear_history_desc": {
+    "message": "Delete all translation history",
+    "description": "Settings description"
+  },
+  "export_vocabulary": {
+    "message": "Export Vocabulary",
+    "description": "Settings button"
+  },
+  "export_vocabulary_desc": {
+    "message": "Export saved words and sentences",
+    "description": "Settings description"
+  },
+  "privacy": {
+    "message": "Privacy",
+    "description": "Settings section"
+  },
+  "privacy_text": {
+    "message": "LingoFlow does not collect any personal data. All data is stored locally in your browser. No login or registration required.",
+    "description": "Privacy description"
+  },
+  "version": {
+    "message": "Version 1.0.0",
+    "description": "Version text"
+  },
+  "word": {
+    "message": "Word",
+    "description": "Item type"
+  },
+  "sentence": {
+    "message": "Sentence",
+    "description": "Item type"
+  },
+  "all": {
+    "message": "All",
+    "description": "Filter option"
+  },
+  "words": {
+    "message": "Words",
+    "description": "Filter option"
+  },
+  "sentences": {
+    "message": "Sentences",
+    "description": "Filter option"
+  },
+  "source": {
+    "message": "Source",
+    "description": "Source URL label"
+  },
+  "date": {
+    "message": "Date",
+    "description": "Date label"
+  },
+  "delete": {
+    "message": "Delete",
+    "description": "Delete button"
+  },
+  "no_definition": {
+    "message": "No definition found",
+    "description": "Hover card message"
+  },
+  "page_not_supported": {
+    "message": "This page is not supported",
+    "description": "Status message for chrome:// pages"
+  },
+  "chinese": {
+    "message": "Chinese",
+    "description": "Language option"
+  },
+  "english": {
+    "message": "English",
+    "description": "Language option"
+  },
+  "clear": {
+    "message": "Clear",
+    "description": "Clear button"
+  },
+  "save_settings": {
+    "message": "Save Changes",
+    "description": "Settings page save button"
+  },
+  "cancel": {
+    "message": "Cancel",
+    "description": "Settings page cancel button"
+  },
+  "settings_saved": {
+    "message": "Settings saved",
+    "description": "Settings saved notification"
+  },
+  "settings_canceled": {
+    "message": "Canceled",
+    "description": "Settings canceled notification"
+  },
+  "unsaved_changes": {
+    "message": "You have unsaved changes. Are you sure you want to leave?",
+    "description": "Unsaved changes confirmation"
+  },
+  "translate_to": {
+    "message": "Translate to",
+    "description": "Target language setting label"
+  },
+  "ui_language": {
+    "message": "UI Language",
+    "description": "UI language setting label"
+  },
+  "ui_language_desc": {
+    "message": "Language of the extension interface",
+    "description": "UI language setting description"
+  },
+  "follow_system": {
+    "message": "Follow System",
+    "description": "UI language option"
+  }
+}

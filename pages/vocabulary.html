@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LingoFlow - Vocabulary</title>
+  <link rel="stylesheet" href="../css/vocabulary.css">
+</head>
+<body>
+  <div class="vocabulary-container">
+    <!-- Header -->
+    <div class="vocabulary-header">
+      <div class="header-left">
+        <h1 data-i18n="vocabulary_title">Vocabulary</h1>
+      </div>
+      <div class="header-right">
+        <div class="search-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="search-input" data-i18n-placeholder="search" placeholder="Search...">
+        </div>
+        <button class="btn-icon" id="export-btn" title="Export">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="vocabulary-filters">
+      <button class="filter-btn active" data-filter="all" data-i18n="all">All</button>
+      <button class="filter-btn" data-filter="word" data-i18n="words">Words</button>
+      <button class="filter-btn" data-filter="sentence" data-i18n="sentences">Sentences</button>
+    </div>
+
+    <!-- Vocabulary List -->
+    <div class="vocabulary-list" id="vocabulary-list">
+      <!-- Items will be dynamically added here -->
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="empty-state" style="display: none;">
+      <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+      </svg>
+      <p data-i18n="no_saved_items">No saved items yet</p>
+      <p class="empty-hint" data-i18n="save_hint">Select text on any webpage and click "Save" to add to vocabulary</p>
+    </div>
+  </div>
+
+  <script src="../js/i18n.js"></script>
+  <script src="../js/vocabulary.js"></script>
+</body>
+</html>
