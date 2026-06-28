@@ -27,7 +27,32 @@
         <div class="setting-control">
           <select id="translation-engine" class="setting-select">
             <option value="google" data-i18n="engine_google">Google Translate</option>
-            <option value="libretranslate" data-i18n="engine_libretranslate">LibreTranslate</option>
+            <option value="mymemory" data-i18n="engine_mymemory">MyMemory (Free)</option>
+            <option value="siliconflow" data-i18n="engine_siliconflow">硅基流动 AI（免费）</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- API Key (shown when SiliconFlow is selected) -->
+      <div class="setting-group" id="api-key-row" hidden>
+        <div class="setting-label">
+          <span data-i18n="api_key_label">API Key</span>
+          <span class="setting-description" data-i18n="api_key_desc">SiliconFlow API key (free at siliconflow.cn)</span>
+        </div>
+        <div class="setting-control">
+          <input type="password" id="siliconflow-key" class="setting-input" placeholder="sk-..." autocomplete="off">
+        </div>
+      </div>
+
+      <!-- AI Model (shown when SiliconFlow is selected) -->
+      <div class="setting-group" id="model-row" hidden>
+        <div class="setting-label">
+          <span data-i18n="model_label">AI 模型</span>
+          <span class="setting-description" data-i18n="model_desc">选择用于翻译的免费 AI 模型</span>
+        </div>
+        <div class="setting-control">
+          <select id="siliconflow-model" class="setting-select">
+            <!-- Options populated by JS -->
           </select>
         </div>
       </div>

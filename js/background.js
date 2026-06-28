@@ -30,13 +30,16 @@ chrome.runtime.onInstalled.addListener(() => {
       chrome.storage.local.set({
         lingoflow_settings: {
           translationEngine: 'google',
+          siliconflowApiKey: '',
+          siliconflowModel: 'tencent/Hunyuan-MT-7B',
           targetLanguage: 'zh',
           uiLanguage: 'auto',
           theme: 'light',
           bilingualMode: false,
           hoverTranslation: true,
           existingBilingualStrategy: 'skip',
-          historyLimit: 50
+          historyLimit: 50,
+          activeMode: null
         }
       });
     }
@@ -273,6 +276,7 @@ function getDefaultSettings(overrides = {}) {
     hoverTranslation: true,
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
+    activeMode: null,
     ...overrides
   };
 }
@@ -287,28 +291,159 @@ function translateText(text, targetLang, sendResponse) {
   // Read engine preference from settings
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
-    if (engine === 'libretranslate') {
-      translateWithLibreTranslate(text, targetLang, sendResponse);
+    if (engine === 'siliconflow') {
+      translateWithSiliconFlow(text, targetLang, sendResponse);
+    } else if (engine === 'mymemory') {
+      translateWithMyMemory(text, targetLang, sendResponse);
     } else {
       translateWithGoogle(text, targetLang, sendResponse);
     }
   });
 }
 
-// MyMemory Translation API (free, no registration required)
-function translateWithLibreTranslate(text, targetLang, sendResponse) {
-  const tl = targetLang === 'zh' ? 'zh-CN' :
-             targetLang === 'en' ? 'en' : 'zh-CN';
+// SiliconFlow free models - auto fallback in order
+// Priority: verified working models first, then untested ones as backup
+const SILICONFLOW_FREE_MODELS = [
+  'tencent/Hunyuan-MT-7B',          // ✅ Verified working - dedicated MT model, fast & reliable
+  'Qwen/Qwen2.5-7B-Instruct',
+  'THUDM/GLM-4-9B-0414'
+];
 
-  const maxLen = 2000;
+// SiliconFlow AI Translation (free tier, requires API key)
+// Tries user-selected model first, then falls back through remaining models, then Google
+function translateWithSiliconFlow(text, targetLang, sendResponse) {
+  const tl = targetLang === 'zh' ? '中文' :
+             targetLang === 'en' ? 'English' : '中文';
+
+  // Overall safety timeout: force fallback to Google after this
+  const overallTimeoutMs = 30000; // 30 seconds total max
+  let overallTimer = setTimeout(() => {
+    console.warn('LingoFlow: SiliconFlow overall timeout, falling back to Google');
+    translateWithGoogle(text, targetLang, sendResponse);
+  }, overallTimeoutMs);
+  let responseSent = false;
+
+  function done(result) {
+    if (responseSent) return;
+    responseSent = true;
+    clearTimeout(overallTimer);
+    if (result !== undefined) {
+      sendResponse({ success: true, translation: result });
+    }
+  }
+
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const settings = result.lingoflow_settings || {};
+    const apiKey = settings.siliconflowApiKey || '';
+    const selectedModel = settings.siliconflowModel || 'tencent/Hunyuan-MT-7B';
+
+    if (!apiKey) {
+      done();
+      console.warn('LingoFlow: SiliconFlow API key not set, falling back to Google');
+      translateWithGoogle(text, targetLang, sendResponse);
+      return;
+    }
+
+    const maxLen = 2000;
+    const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
+
+    // Build fallback list: selected model first, then others (excluding selected)
+    const fallbackModels = [selectedModel];
+    SILICONFLOW_FREE_MODELS.forEach(m => { if (m !== selectedModel) fallbackModels.push(m); });
+
+    tryNextModel(0);
+
+    function tryNextModel(index) {
+      if (responseSent) return; // already handled
+
+      if (index >= fallbackModels.length) {
+        done();
+        console.warn('LingoFlow: All SiliconFlow models failed, falling back to Google');
+        translateWithGoogle(text, targetLang, sendResponse);
+        return;
+      }
+
+      const model = fallbackModels[index];
+      const isPrimary = index === 0;
+      const url = 'https://api.siliconflow.cn/v1/chat/completions';
+      const body = {
+        model: model,
+        messages: [
+          { role: 'system', content: `You are a professional translator. Translate the following text to ${tl}. Only output the translated text, no explanations, no notes.` },
+          { role: 'user', content: truncated }
+        ],
+        temperature: 0.2,
+        top_p: 0.9,
+        max_tokens: Math.min(truncated.length * 4, 2000)
+      };
+
+      const label = isPrimary ? `[primary] ${model}` : `[${index}/${fallbackModels.length-1}] ${model}`;
+      console.log(`LingoFlow: SiliconFlow trying ${label}`);
+
+      const controller = new AbortController();
+      // Primary model gets more time (15s), backup models get less (6s)
+      const timeoutMs = isPrimary ? 15000 : 6000;
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, timeoutMs);
+
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      })
+        .then(response => {
+          clearTimeout(timeoutId);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
+        })
+        .then(data => {
+          if (responseSent) return;
+          clearTimeout(timeoutId);
+          if (data && data.choices && data.choices[0] && data.choices[0].message) {
+            const translatedText = data.choices[0].message.content.trim();
+            if (translatedText.length === 0) {
+              console.warn(`LingoFlow: SiliconFlow ${model} returned empty, trying next...`);
+              tryNextModel(index + 1);
+              return;
+            }
+            console.log(`LingoFlow: SiliconFlow ${label} succeeded (${translatedText.length} chars)`);
+            done(translatedText);
+          } else {
+            console.warn(`LingoFlow: SiliconFlow ${model} invalid response, trying next...`);
+            tryNextModel(index + 1);
+          }
+        })
+        .catch(error => {
+          clearTimeout(timeoutId);
+          if (responseSent) return;
+          const msg = error && error.message ? error.message : String(error);
+          console.warn(`LingoFlow: SiliconFlow ${model}: ${msg}, trying next...`);
+          tryNextModel(index + 1);
+        });
+    }
+  });
+}
+
+// MyMemory Translation (free, no API key required)
+// Docs: https://mymemory.translated.net/doc/spec.php
+function translateWithMyMemory(text, targetLang, sendResponse) {
+  // MyMemory does NOT support 'auto' as source language.
+  // We infer source from the target: if target is 'zh' we assume source is 'en',
+  // and vice-versa. This covers the two most common LingoFlow use-cases.
+  const src = targetLang === 'zh' ? 'en' : 'zh-CN';
+  const tgt = targetLang === 'zh' ? 'zh-CN' : 'en';
+
+  const maxLen = 500; // MyMemory free tier is limited to ~500 chars per request
   const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
 
-  // MyMemory does NOT support 'auto' as source; use 'en' for English-to-Chinese scenarios
-  // For Chinese-to-English, use 'zh-CN'
-  const srcLang = tl.startsWith('zh') ? 'en' : 'zh-CN';
-  const url = `https://api.mymemory.translated.net/get?${new URLSearchParams({ q: truncated, langpair: `${srcLang}|${tl}` })}`;
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(truncated)}&langpair=${encodeURIComponent(src)}|${encodeURIComponent(tgt)}`;
 
-  console.log('LingoFlow: MyMemory translating', truncated.length, 'chars from', srcLang, 'to', tl);
+  console.log('LingoFlow: MyMemory translating', truncated.length, 'chars', src, '->', tgt);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
@@ -325,24 +460,13 @@ function translateWithLibreTranslate(text, targetLang, sendResponse) {
       return response.json();
     })
     .then(data => {
-      if (data && data.responseStatus === 200 && data.responseData) {
+      if (data && data.responseStatus === 200 && data.responseData && data.responseData.translatedText) {
         const translatedText = data.responseData.translatedText;
-        if (!translatedText) {
-          console.warn('LingoFlow: MyMemory returned empty text');
-          translateWithGoogle(text, targetLang, sendResponse);
-          return;
-        }
-        // MyMemory sometimes returns original text unchanged when it can't translate
-        if (translatedText.trim() === truncated.trim()) {
-          console.warn('LingoFlow: MyMemory returned same text as input, falling back to Google');
-          translateWithGoogle(text, targetLang, sendResponse);
-          return;
-        }
         console.log('LingoFlow: MyMemory succeeded, result length:', translatedText.length);
         sendResponse({ success: true, translation: translatedText });
       } else {
-        const errMsg = data ? (data.responseDetails || JSON.stringify(data)) : 'Invalid response';
-        console.warn('LingoFlow: MyMemory error response:', errMsg);
+        const msg = (data && data.responseStatus) ? `MyMemory error ${data.responseStatus}` : 'Invalid response';
+        console.warn('LingoFlow: MyMemory failed:', msg);
         translateWithGoogle(text, targetLang, sendResponse);
       }
     })

@@ -327,8 +327,40 @@
     "message": "Google Translate",
     "description": "Google Translate engine option"
   },
-  "engine_libretranslate": {
+  "engine_mymemory": {
     "message": "MyMemory (Free)",
     "description": "MyMemory translation engine option"
+  },
+  "engine_siliconflow": {
+    "message": "SiliconFlow AI (Free)",
+    "description": "SiliconFlow translation engine option"
+  },
+  "api_key_label": {
+    "message": "API Key",
+    "description": "API Key label"
+  },
+  "api_key_desc": {
+    "message": "SiliconFlow API key (free at siliconflow.cn)",
+    "description": "API Key description"
+  },
+  "api_key_placeholder": {
+    "message": "sk-...",
+    "description": "API Key input placeholder"
+  },
+  "model_label": {
+    "message": "AI Model",
+    "description": "Model selector label"
+  },
+  "model_desc": {
+    "message": "Select a free AI model for translation",
+    "description": "Model selector description"
+  },
+  "translate_page_desc": {
+    "message": "Replace English with Chinese translation",
+    "description": "Translation mode description in popup"
+  },
+  "bilingual_mode_desc_short": {
+    "message": "Show translation below original",
+    "description": "Bilingual mode short description in popup"
   }
 }

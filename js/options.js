@@ -13,6 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ======================== Load & Apply ========================
 
+// SiliconFlow free models list (must match background.js)
+const SILICONFLOW_MODELS = [
+  { id: 'tencent/Hunyuan-MT-7B',       name: 'Hunyuan-MT-7B（推荐·翻译专用）' },
+  { id: 'Qwen/Qwen2.5-7B-Instruct',     name: 'Qwen2.5-7B-Instruct' },
+  { id: 'THUDM/GLM-4-9B-0414',          name: 'GLM-4-9B' }
+];
+
 function loadSettings() {
   chrome.runtime.sendMessage({ action: 'get_settings' }, (response) => {
     if (response && response.settings) {
@@ -25,7 +32,21 @@ function loadSettings() {
 function applySettings(settings) {
   // Translation Engine
   const translationEngine = document.getElementById('translation-engine');
-  if (translationEngine) translationEngine.value = settings.translationEngine || 'google';
+  if (translationEngine) {
+    translationEngine.value = settings.translationEngine || 'google';
+    const isSF = translationEngine.value === 'siliconflow';
+    toggleOptionsApiKeyRow(isSF);
+    toggleOptionsModelRow(isSF);
+  }
+
+  // API Key
+  const apiKeyInput = document.getElementById('siliconflow-key');
+  if (apiKeyInput) apiKeyInput.value = settings.siliconflowApiKey || '';
+
+  // SiliconFlow Model
+  populateOptionsModelSelect();
+  const modelSelect = document.getElementById('siliconflow-model');
+  if (modelSelect) modelSelect.value = settings.siliconflowModel || 'tencent/Hunyuan-MT-7B';
 
   // Translate to
   const translateTo = document.getElementById('translate-to');
@@ -83,7 +104,17 @@ function updateButtonStates() {
 function initEventListeners() {
   // Translation Engine
   const translationEngine = document.getElementById('translation-engine');
-  if (translationEngine) translationEngine.addEventListener('change', markChanged);
+  if (translationEngine) translationEngine.addEventListener('change', () => {
+    markChanged();
+    const isSF = translationEngine.value === 'siliconflow';
+    toggleOptionsApiKeyRow(isSF);
+    toggleOptionsModelRow(isSF);
+  });
+  const apiKeyInput = document.getElementById('siliconflow-key');
+  if (apiKeyInput) {
+    apiKeyInput.addEventListener('input', markChanged);
+    apiKeyInput.addEventListener('change', markChanged);
+  }
 
   // Translate to
   const translateTo = document.getElementById('translate-to');
@@ -164,6 +195,8 @@ function initEventListeners() {
 
 function getSettingsFromUI() {
   const translationEngine = document.getElementById('translation-engine')?.value || 'google';
+  const siliconflowApiKey = document.getElementById('siliconflow-key')?.value || '';
+  const siliconflowModel = document.getElementById('siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B';
   const targetLanguage = document.getElementById('translate-to')?.value || 'zh';
   const uiLanguage = document.getElementById('ui-language')?.value || 'auto';
   const theme = document.querySelector('.toggle-btn.active')?.getAttribute('data-value') || 'light';
@@ -172,7 +205,7 @@ function getSettingsFromUI() {
   const existingBilingualStrategy = document.getElementById('existing-bilingual-strategy')?.value || 'skip';
   const historyLimit = parseInt(document.getElementById('history-limit')?.value) || 50;
 
-  return { translationEngine, targetLanguage, uiLanguage, theme, bilingualMode, hoverTranslation, existingBilingualStrategy, historyLimit };
+  return { translationEngine, siliconflowApiKey, siliconflowModel, targetLanguage, uiLanguage, theme, bilingualMode, hoverTranslation, existingBilingualStrategy, historyLimit };
 }
 
 function saveSettings() {
@@ -203,6 +236,30 @@ function cancelChanges() {
 function previewLanguage(lang) {
   // Live preview: apply language immediately without saving
   setLanguage(lang);
+}
+
+// ======================== UI Helpers ========================
+
+function toggleOptionsApiKeyRow(show) {
+  const row = document.getElementById('api-key-row');
+  if (row) row.hidden = !show;
+}
+
+function toggleOptionsModelRow(show) {
+  const row = document.getElementById('model-row');
+  if (row) row.hidden = !show;
+}
+
+function populateOptionsModelSelect() {
+  const select = document.getElementById('siliconflow-model');
+  if (!select) return;
+  select.textContent = '';
+  SILICONFLOW_MODELS.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.name;
+    select.appendChild(opt);
+  });
 }
 
 // ======================== Export ========================

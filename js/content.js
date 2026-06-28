@@ -161,7 +161,7 @@
           const timeoutId = setTimeout(() => {
             console.warn('LingoFlow: Translation request timed out');
             resolve(`[LingoFlow translation timeout] ${text}`);
-          }, 6000);
+          }, 50000); // 50s - must be longer than background.js overall timeout (45s)
 
           try {
             chrome.runtime.sendMessage(

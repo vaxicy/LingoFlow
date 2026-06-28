@@ -84,6 +84,10 @@ body {
   border-bottom: 1px solid rgba(184, 173, 255, 0.15);
 }
 
+.setting-group[hidden] {
+  display: none;
+}
+
 .setting-group:last-child {
   border-bottom: none;
 }
@@ -145,6 +149,30 @@ body {
 .setting-select option {
   color: #111827;
   background: #ffffff;
+}
+
+.setting-input {
+  min-width: 180px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--lf-border);
+  border-radius: 13px;
+  outline: none;
+  color: var(--lf-text);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.025)),
+    rgba(16, 22, 43, 0.82);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.setting-input:hover,
+.setting-input:focus {
+  border-color: var(--lf-border-strong);
+  box-shadow: 0 0 0 4px rgba(124, 108, 255, 0.16);
+}
 }
 
 .toggle-group {

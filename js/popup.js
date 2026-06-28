@@ -3,10 +3,13 @@
 document.addEventListener('DOMContentLoaded', () => {
   console.log('LingoFlow: Popup loaded');
 
-  // Initialize buttons
-  initButtons();
+  // Initialize mode switches + buttons
+  initModeSwitches();
   initPanels();
   loadPopupLanguage();
+
+  // Restore active mode state from storage
+  restoreModeState();
 
   // Update status
   updateStatus();
@@ -22,45 +25,75 @@ const panelState = {
   settingsDirty: false
 };
 
-// Initialize button event listeners
-function initButtons() {
-  const buttons = document.querySelectorAll('[data-action]');
+// ======================== Mode Switches ========================
 
-  buttons.forEach(button => {
-    button.addEventListener('click', (e) => {
-      const action = button.getAttribute('data-action');
-      handleAction(action);
-    });
-  });
+function initModeSwitches() {
+  const translateToggle = document.getElementById('mode-translate');
+  const bilingualToggle = document.getElementById('mode-bilingual');
+
+  if (translateToggle) {
+    translateToggle.addEventListener('change', () => onModeToggle('translate'));
+  }
+  if (bilingualToggle) {
+    bilingualToggle.addEventListener('change', () => onModeToggle('bilingual'));
+  }
+
+  // Secondary nav buttons (vocabulary / history / settings)
+  const vocabBtn = document.querySelector('[data-action="vocabulary"]');
+  const historyBtn = document.querySelector('[data-action="history"]');
+  const settingsBtn = document.querySelector('[data-action="settings"]');
+  if (vocabBtn) vocabBtn.addEventListener('click', () => openVocabularyPanel());
+  if (historyBtn) historyBtn.addEventListener('click', () => openHistoryPanel());
+  if (settingsBtn) settingsBtn.addEventListener('click', () => openSettingsPanel());
 }
 
-// Handle button actions
-async function handleAction(action) {
-  switch (action) {
-    case 'translate-page':
+function onModeToggle(mode) {
+  const translateToggle = document.getElementById('mode-translate');
+  const bilingualToggle = document.getElementById('mode-bilingual');
+
+  if (mode === 'translate') {
+    if (translateToggle && translateToggle.checked) {
+      // Activating translate → turn off bilingual
+      if (bilingualToggle) bilingualToggle.checked = false;
+      setActiveMode('translate');
       sendMessageToContent({ action: 'translate_page' });
-      break;
-
-    case 'bilingual-mode':
-      sendMessageToContent({ action: 'bilingual_mode' });
-      break;
-
-    case 'restore-original':
+    } else {
+      // Deactivating translate → restore original
+      setActiveMode(null);
       sendMessageToContent({ action: 'restore_original' });
-      break;
-
-    case 'vocabulary':
-      openVocabularyPanel();
-      break;
-
-    case 'history':
-      openHistoryPanel();
-      break;
-
-    case 'settings':
-      openSettingsPanel();
-      break;
+    }
   }
+
+  if (mode === 'bilingual') {
+    if (bilingualToggle && bilingualToggle.checked) {
+      // Activating bilingual → turn off translate
+      if (translateToggle) translateToggle.checked = false;
+      setActiveMode('bilingual');
+      sendMessageToContent({ action: 'bilingual_mode' });
+    } else {
+      // Deactivating bilingual → restore original
+      setActiveMode(null);
+      sendMessageToContent({ action: 'restore_original' });
+    }
+  }
+}
+
+function setActiveMode(mode) {
+  chrome.runtime.sendMessage(
+    { action: 'update_settings', settings: { activeMode: mode } },
+    () => {}
+  );
+}
+
+function restoreModeState() {
+  chrome.runtime.sendMessage({ action: 'get_settings' }, (response) => {
+    const settings = response && response.settings;
+    const activeMode = settings && settings.activeMode;
+    const translateToggle = document.getElementById('mode-translate');
+    const bilingualToggle = document.getElementById('mode-bilingual');
+    if (translateToggle) translateToggle.checked = (activeMode === 'translate');
+    if (bilingualToggle) bilingualToggle.checked = (activeMode === 'bilingual');
+  });
 }
 
 function initPanels() {
@@ -173,9 +206,18 @@ function openSettingsPanel() {
   });
 }
 
+// SiliconFlow free models list (must match background.js)
+const SILICONFLOW_MODELS = [
+  { id: 'tencent/Hunyuan-MT-7B',       name: 'Hunyuan-MT-7B（推荐·翻译专用）' },
+  { id: 'Qwen/Qwen2.5-7B-Instruct',     name: 'Qwen2.5-7B-Instruct' },
+  { id: 'THUDM/GLM-4-9B-0414',          name: 'GLM-4-9B' }
+];
+
 function initSettingsPanel() {
   const controls = [
     'popup-translation-engine',
+    'popup-siliconflow-key',
+    'popup-siliconflow-model',
     'popup-translate-to',
     'popup-ui-language',
     'popup-bilingual-mode',
@@ -189,11 +231,25 @@ function initSettingsPanel() {
     if (!control) return;
     control.addEventListener('change', () => {
       setSettingsDirty(true);
+      if (id === 'popup-translation-engine') {
+        const isSF = control.value === 'siliconflow';
+        toggleApiKeyRow(isSF);
+        toggleModelRow(isSF);
+      }
       if (id === 'popup-ui-language' && typeof setLanguage === 'function') {
         setLanguage(control.value || 'auto');
       }
     });
   });
+
+  // Also listen on input events for the API key field
+  const apiKeyInput = document.getElementById('popup-siliconflow-key');
+  if (apiKeyInput) {
+    apiKeyInput.addEventListener('input', () => { setSettingsDirty(true); });
+  }
+
+  // Populate model selector options
+  populateModelSelect('popup-siliconflow-model');
 
   document.querySelectorAll('[data-popup-theme]').forEach(button => {
     button.addEventListener('click', () => {
@@ -219,8 +275,32 @@ function initSettingsPanel() {
   }
 }
 
+function populateModelSelect(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  select.textContent = '';
+  SILICONFLOW_MODELS.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.name;
+    select.appendChild(opt);
+  });
+}
+
+function toggleApiKeyRow(show) {
+  const row = document.getElementById('popup-api-key-row');
+  if (row) row.hidden = !show;
+}
+
+function toggleModelRow(show) {
+  const row = document.getElementById('popup-model-row');
+  if (row) row.hidden = !show;
+}
+
 function applyPopupSettings(settings) {
   const translationEngine = document.getElementById('popup-translation-engine');
+  const apiKeyInput = document.getElementById('popup-siliconflow-key');
+  const modelSelect = document.getElementById('popup-siliconflow-model');
   const translateTo = document.getElementById('popup-translate-to');
   const uiLanguage = document.getElementById('popup-ui-language');
   const bilingualMode = document.getElementById('popup-bilingual-mode');
@@ -229,7 +309,14 @@ function applyPopupSettings(settings) {
   const historyLimit = document.getElementById('popup-history-limit');
   const theme = settings.theme || 'light';
 
-  if (translationEngine) translationEngine.value = settings.translationEngine || 'google';
+  if (translationEngine) {
+    translationEngine.value = settings.translationEngine || 'google';
+    const isSF = translationEngine.value === 'siliconflow';
+    toggleApiKeyRow(isSF);
+    toggleModelRow(isSF);
+  }
+  if (apiKeyInput) apiKeyInput.value = settings.siliconflowApiKey || '';
+  if (modelSelect) modelSelect.value = settings.siliconflowModel || 'tencent/Hunyuan-MT-7B';
   if (translateTo) translateTo.value = settings.targetLanguage || 'zh';
   if (uiLanguage) uiLanguage.value = settings.uiLanguage || 'auto';
   if (bilingualMode) bilingualMode.checked = !!settings.bilingualMode;
@@ -245,6 +332,8 @@ function applyPopupSettings(settings) {
 function getPopupSettingsFromUI() {
   return {
     translationEngine: document.getElementById('popup-translation-engine')?.value || 'google',
+    siliconflowApiKey: document.getElementById('popup-siliconflow-key')?.value || '',
+    siliconflowModel: document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B',
     targetLanguage: document.getElementById('popup-translate-to')?.value || 'zh',
     uiLanguage: document.getElementById('popup-ui-language')?.value || 'auto',
     theme: document.querySelector('[data-popup-theme].active')?.getAttribute('data-popup-theme') || 'light',
@@ -292,7 +381,8 @@ function getDefaultSettings() {
     bilingualMode: false,
     hoverTranslation: true,
     existingBilingualStrategy: 'skip',
-    historyLimit: 50
+    historyLimit: 50,
+    activeMode: null
   };
 }
 

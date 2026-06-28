@@ -16,32 +16,42 @@
       </div>
     </div>
 
-    <!-- Main Actions -->
-    <div class="popup-actions">
-      <button class="action-btn" data-action="translate-page">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
-          <path d="M2 12h20"/>
-          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
-        </svg>
-        <span data-i18n="translate_page">Translation Mode</span>
-      </button>
+    <!-- Mode Switches -->
+    <div class="popup-modes">
+      <div class="mode-row">
+        <div class="mode-row-info">
+          <div class="mode-row-label">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+              <path d="M2 12h20"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+            <span data-i18n="translate_page">Translation Mode</span>
+          </div>
+          <div class="mode-row-desc" data-i18n="translate_page_desc">Replace English with Chinese translation</div>
+        </div>
+        <label class="popup-switch">
+          <input type="checkbox" id="mode-translate">
+          <span></span>
+        </label>
+      </div>
 
-      <button class="action-btn" data-action="bilingual-mode">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-          <line x1="12" y1="3" x2="12" y2="21"/>
-        </svg>
-        <span data-i18n="bilingual_mode">Bilingual Mode</span>
-      </button>
-
-      <button class="action-btn" data-action="restore-original">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="1 4 1 10 7 10"/>
-          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
-        </svg>
-        <span data-i18n="restore_original">Restore Original</span>
-      </button>
+      <div class="mode-row">
+        <div class="mode-row-info">
+          <div class="mode-row-label">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <line x1="12" y1="3" x2="12" y2="21"/>
+            </svg>
+            <span data-i18n="bilingual_mode">Bilingual Mode</span>
+          </div>
+          <div class="mode-row-desc" data-i18n="bilingual_mode_desc_short">Show translation below original</div>
+        </div>
+        <label class="popup-switch">
+          <input type="checkbox" id="mode-bilingual">
+          <span></span>
+        </label>
+      </div>
     </div>
 
     <!-- Secondary Actions -->
@@ -165,7 +175,26 @@
           </div>
           <select class="panel-select" id="popup-translation-engine">
             <option value="google" data-i18n="engine_google">Google Translate</option>
-            <option value="libretranslate" data-i18n="engine_libretranslate">LibreTranslate</option>
+            <option value="mymemory" data-i18n="engine_mymemory">MyMemory (Free)</option>
+            <option value="siliconflow" data-i18n="engine_siliconflow">硅基流动 AI（免费）</option>
+          </select>
+        </div>
+
+        <div class="settings-row" id="popup-api-key-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="api_key_label">API Key</strong>
+            <span data-i18n="api_key_desc">SiliconFlow API key (free at siliconflow.cn)</span>
+          </div>
+          <input type="password" class="panel-input" id="popup-siliconflow-key" placeholder="sk-..." autocomplete="off">
+        </div>
+
+        <div class="settings-row" id="popup-model-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="model_label">AI 模型</strong>
+            <span data-i18n="model_desc">选择用于翻译的免费 AI 模型</span>
+          </div>
+          <select class="panel-select" id="popup-siliconflow-model">
+            <!-- Options populated by JS -->
           </select>
         </div>
 

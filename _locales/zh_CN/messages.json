@@ -327,8 +327,40 @@
     "message": "Google 翻译",
     "description": "Google 翻译引擎选项"
   },
-  "engine_libretranslate": {
-    "message": "MyMemory（免费无需注册）",
+  "engine_mymemory": {
+    "message": "MyMemory（免费）",
     "description": "MyMemory 翻译引擎选项"
+  },
+  "engine_siliconflow": {
+    "message": "硅基流动 AI（免费）",
+    "description": "硅基流动翻译引擎选项"
+  },
+  "api_key_label": {
+    "message": "API Key",
+    "description": "API Key 标签"
+  },
+  "api_key_desc": {
+    "message": "硅基流动 API 密钥（在 siliconflow.cn 免费获取）",
+    "description": "API Key 描述"
+  },
+  "api_key_placeholder": {
+    "message": "sk-...",
+    "description": "API Key 输入框占位符"
+  },
+  "model_label": {
+    "message": "AI 模型",
+    "description": "模型选择标签"
+  },
+  "model_desc": {
+    "message": "选择用于翻译的免费 AI 模型",
+    "description": "模型选择描述"
+  },
+  "translate_page_desc": {
+    "message": "将页面英文替换为中文译文",
+    "description": "弹出窗口中译文模式的描述"
+  },
+  "bilingual_mode_desc_short": {
+    "message": "在原文下方显示中文翻译",
+    "description": "弹出窗口中双语模式的简短描述"
   }
 }
