@@ -34,6 +34,7 @@ chrome.runtime.onInstalled.addListener(() => {
           theme: 'light',
           bilingualMode: false,
           hoverTranslation: true,
+          existingBilingualStrategy: 'skip',
           historyLimit: 50
         }
       });
@@ -243,22 +244,35 @@ function convertToCSV(data) {
 function getSettings(sendResponse) {
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     sendResponse({
-      settings: result.lingoflow_settings || {
-        targetLanguage: 'zh',
-        uiLanguage: 'auto',
-        theme: 'light',
-        bilingualMode: false,
-        hoverTranslation: true,
-        historyLimit: 50
-      }
+      settings: getDefaultSettings(result.lingoflow_settings)
     });
   });
 }
 
 function updateSettings(settings, sendResponse) {
-  chrome.storage.local.set({ lingoflow_settings: settings }, () => {
-    sendResponse({ success: true });
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const merged = getDefaultSettings({
+      ...(result.lingoflow_settings || {}),
+      ...(settings || {})
+    });
+
+    chrome.storage.local.set({ lingoflow_settings: merged }, () => {
+      sendResponse({ success: true });
+    });
   });
+}
+
+function getDefaultSettings(overrides = {}) {
+  return {
+    targetLanguage: 'zh',
+    uiLanguage: 'auto',
+    theme: 'light',
+    bilingualMode: false,
+    hoverTranslation: true,
+    existingBilingualStrategy: 'skip',
+    historyLimit: 50,
+    ...overrides
+  };
 }
 
 // Utility functions

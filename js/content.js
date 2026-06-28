@@ -31,6 +31,7 @@
     isTranslating: false,
     hoverEnabled: true,
     uiLanguage: 'auto',
+    existingBilingualStrategy: 'skip',
     originalContent: new Map(), // Store original content for restoration
     translatedNodes: new Set() // Track translated nodes
   };
@@ -133,6 +134,11 @@
       if (/[\u4e00-\u9fff\u3400-\u4dbf]/.test(ch)) cjkCount++;
     }
     return cjkCount / cleaned.length >= 0.45;
+  }
+
+  function hasMixedLatinAndChinese(text) {
+    const value = text || '';
+    return /[A-Za-z]{2,}/.test(value) && /[\u4e00-\u9fff\u3400-\u4dbf]/.test(value);
   }
 
   // Translation Engine - Pluggable architecture
@@ -691,6 +697,7 @@
       if (/^\d+([.,:/-]\d+)*$/.test(normalized)) return false;
       if (!/[A-Za-z]{2,}/.test(normalized)) return false;
       if (!/[A-Za-z0-9]/.test(normalized.replace(/[^\p{L}\p{N}]/gu, ''))) return false;
+      if (hasMixedLatinAndChinese(normalized)) return false;
       if (isChineseText(normalized)) return false;
       return true;
     },
@@ -788,6 +795,8 @@
     },
 
     hasExistingTranslation(container) {
+      if (state.existingBilingualStrategy === 'translate_english') return false;
+
       const text = this.getElementText(container);
       if (this.hasLatinText(text) && this.hasChineseText(text)) return true;
       if (this.hasChineseSibling(container)) return true;
@@ -863,7 +872,6 @@
         if (!container || container.dataset.lingoflowProcessed === 'true') continue;
         if (this.isNestedInDifferentContainer(node, container)) continue;
         if (this.hasExistingTranslation(container)) {
-          this.markProcessed(container);
           continue;
         }
 
@@ -1220,6 +1228,7 @@
         if (result.lingoflow_settings) {
           state.hoverEnabled = result.lingoflow_settings.hoverTranslation !== false;
           state.uiLanguage = result.lingoflow_settings.uiLanguage || 'auto';
+          state.existingBilingualStrategy = result.lingoflow_settings.existingBilingualStrategy || 'skip';
         }
       });
 
@@ -1234,6 +1243,7 @@
           const settings = changes.lingoflow_settings.newValue;
           state.hoverEnabled = settings.hoverTranslation !== false;
           state.uiLanguage = settings.uiLanguage || 'auto';
+          state.existingBilingualStrategy = settings.existingBilingualStrategy || 'skip';
         }
       });
 

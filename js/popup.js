@@ -179,6 +179,7 @@ function initSettingsPanel() {
     'popup-ui-language',
     'popup-bilingual-mode',
     'popup-hover-translation',
+    'popup-existing-bilingual-strategy',
     'popup-history-limit'
   ];
 
@@ -222,6 +223,7 @@ function applyPopupSettings(settings) {
   const uiLanguage = document.getElementById('popup-ui-language');
   const bilingualMode = document.getElementById('popup-bilingual-mode');
   const hoverTranslation = document.getElementById('popup-hover-translation');
+  const existingBilingualStrategy = document.getElementById('popup-existing-bilingual-strategy');
   const historyLimit = document.getElementById('popup-history-limit');
   const theme = settings.theme || 'light';
 
@@ -229,6 +231,7 @@ function applyPopupSettings(settings) {
   if (uiLanguage) uiLanguage.value = settings.uiLanguage || 'auto';
   if (bilingualMode) bilingualMode.checked = !!settings.bilingualMode;
   if (hoverTranslation) hoverTranslation.checked = settings.hoverTranslation !== false;
+  if (existingBilingualStrategy) existingBilingualStrategy.value = settings.existingBilingualStrategy || 'skip';
   if (historyLimit) historyLimit.value = String(settings.historyLimit || 50);
 
   document.querySelectorAll('[data-popup-theme]').forEach(button => {
@@ -243,6 +246,7 @@ function getPopupSettingsFromUI() {
     theme: document.querySelector('[data-popup-theme].active')?.getAttribute('data-popup-theme') || 'light',
     bilingualMode: document.getElementById('popup-bilingual-mode')?.checked || false,
     hoverTranslation: document.getElementById('popup-hover-translation')?.checked !== false,
+    existingBilingualStrategy: document.getElementById('popup-existing-bilingual-strategy')?.value || 'skip',
     historyLimit: parseInt(document.getElementById('popup-history-limit')?.value, 10) || 50
   };
 }
@@ -282,6 +286,7 @@ function getDefaultSettings() {
     theme: 'light',
     bilingualMode: false,
     hoverTranslation: true,
+    existingBilingualStrategy: 'skip',
     historyLimit: 50
   };
 }
@@ -574,6 +579,22 @@ function attemptSendAfterInjection(tabId, message, attemptsLeft) {
 // Inline fallback handler: a minimal self-contained content script.
 // This runs inside the page context and handles translate/bilingual actions directly
 function createInlineHandler(initialMessage) {
+  var existingBilingualStrategy = 'skip';
+
+  try {
+    chrome.storage.local.get(['lingoflow_settings'], function(result) {
+      if (result && result.lingoflow_settings) {
+        existingBilingualStrategy = result.lingoflow_settings.existingBilingualStrategy || 'skip';
+      }
+    });
+
+    chrome.storage.onChanged.addListener(function(changes, namespace) {
+      if (namespace === 'local' && changes.lingoflow_settings) {
+        existingBilingualStrategy = changes.lingoflow_settings.newValue.existingBilingualStrategy || 'skip';
+      }
+    });
+  } catch (_) {}
+
   injectBilingualStyles();
 
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -653,6 +674,7 @@ function createInlineHandler(initialMessage) {
     if (normalized.length < 3 || normalized.length > 2000) return false;
     if (/^\d+([.,:/-]\d+)*$/.test(normalized)) return false;
     if (!/[A-Za-z]{2,}/.test(normalized)) return false;
+    if (/[A-Za-z]{2,}/.test(normalized) && /[\u4e00-\u9fff\u3400-\u4dbf]/.test(normalized)) return false;
     if (isChinese(normalized)) return false;
     return true;
   }
@@ -744,6 +766,8 @@ function createInlineHandler(initialMessage) {
   }
 
   function hasExistingTranslation(container) {
+    if (existingBilingualStrategy === 'translate_english') return false;
+
     var text = getElementText(container);
     if (hasLatinText(text) && hasChineseText(text)) return true;
     if (hasChineseSibling(container)) return true;
@@ -814,7 +838,6 @@ function createInlineHandler(initialMessage) {
       if (!container || container.dataset.lingoflowProcessed === 'true') continue;
       if (isNestedInDifferentContainer(node, container)) continue;
       if (hasExistingTranslation(container)) {
-        container.setAttribute('data-lingoflow-processed', 'true');
         continue;
       }
       var text = normalizeText(node.textContent);

@@ -45,6 +45,10 @@ function applySettings(settings) {
   const hoverTranslation = document.getElementById('hover-translation');
   if (hoverTranslation) hoverTranslation.checked = settings.hoverTranslation !== false;
 
+  // Existing bilingual content
+  const existingBilingualStrategy = document.getElementById('existing-bilingual-strategy');
+  if (existingBilingualStrategy) existingBilingualStrategy.value = settings.existingBilingualStrategy || 'skip';
+
   // History limit
   const historyLimit = document.getElementById('history-limit');
   if (historyLimit) historyLimit.value = settings.historyLimit || 50;
@@ -103,6 +107,10 @@ function initEventListeners() {
   const hoverTranslation = document.getElementById('hover-translation');
   if (hoverTranslation) hoverTranslation.addEventListener('change', markChanged);
 
+  // Existing bilingual content
+  const existingBilingualStrategy = document.getElementById('existing-bilingual-strategy');
+  if (existingBilingualStrategy) existingBilingualStrategy.addEventListener('change', markChanged);
+
   // History limit
   const historyLimit = document.getElementById('history-limit');
   if (historyLimit) historyLimit.addEventListener('change', markChanged);
@@ -152,9 +160,10 @@ function getSettingsFromUI() {
   const theme = document.querySelector('.toggle-btn.active')?.getAttribute('data-value') || 'light';
   const bilingualMode = document.getElementById('bilingual-mode')?.checked || false;
   const hoverTranslation = document.getElementById('hover-translation')?.checked !== false;
+  const existingBilingualStrategy = document.getElementById('existing-bilingual-strategy')?.value || 'skip';
   const historyLimit = parseInt(document.getElementById('history-limit')?.value) || 50;
 
-  return { targetLanguage, uiLanguage, theme, bilingualMode, hoverTranslation, historyLimit };
+  return { targetLanguage, uiLanguage, theme, bilingualMode, hoverTranslation, existingBilingualStrategy, historyLimit };
 }
 
 function saveSettings() {

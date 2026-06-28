@@ -175,6 +175,22 @@
     "message": "Show word definition on hover",
     "description": "Settings description"
   },
+  "existing_bilingual_content": {
+    "message": "Existing bilingual content",
+    "description": "Settings label"
+  },
+  "existing_bilingual_content_desc": {
+    "message": "Choose how to handle pages that already include translations",
+    "description": "Settings description"
+  },
+  "skip_existing_bilingual": {
+    "message": "Skip",
+    "description": "Existing bilingual content option"
+  },
+  "translate_english_only": {
+    "message": "English only",
+    "description": "Existing bilingual content option"
+  },
   "history_limit": {
     "message": "History Limit",
     "description": "Settings label"

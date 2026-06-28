@@ -175,6 +175,22 @@
     "message": "悬停时显示词义",
     "description": "设置描述"
   },
+  "existing_bilingual_content": {
+    "message": "已有双语内容",
+    "description": "设置标签"
+  },
+  "existing_bilingual_content_desc": {
+    "message": "选择如何处理页面里已经自带的译文",
+    "description": "设置描述"
+  },
+  "skip_existing_bilingual": {
+    "message": "跳过",
+    "description": "已有双语内容选项"
+  },
+  "translate_english_only": {
+    "message": "只翻译英文",
+    "description": "已有双语内容选项"
+  },
   "history_limit": {
     "message": "历史记录限制",
     "description": "设置标签"

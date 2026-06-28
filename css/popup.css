@@ -510,6 +510,10 @@ body {
   font-weight: 750;
 }
 
+.panel-select.wide {
+  width: 136px;
+}
+
 .panel-select:focus {
   border-color: rgba(124, 108, 255, 0.58);
   box-shadow: 0 0 0 4px rgba(124, 108, 255, 0.16);
