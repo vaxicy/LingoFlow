@@ -92,11 +92,11 @@
     "description": "空历史消息"
   },
   "save_hint": {
-    "message": "在网页上选择文本并点击「保存」即可添加到生词本",
+    "message": "选中文本并保存，会出现在这里",
     "description": "收藏为空提示"
   },
   "history_hint": {
-    "message": "翻译历史将显示在这里",
+    "message": "翻译过的内容会显示在这里",
     "description": "历史为空提示"
   },
   "delete_confirm": {

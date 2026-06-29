@@ -347,9 +347,15 @@
 
   // UI Components
   const UI = {
+    selectionContext: null,
+
     // Create floating toolbar
-    createFloatingToolbar(x, y, selectedText) {
+    createFloatingToolbar(selectionContext) {
       this.removeFloatingToolbar();
+      this.removeTranslationResult();
+
+      this.selectionContext = selectionContext;
+      const selectedText = selectionContext.text;
 
       const toolbar = document.createElement('div');
       toolbar.id = 'lingoflow-toolbar';
@@ -383,56 +389,73 @@
         </div>
       `;
 
-      // Position toolbar
-      toolbar.style.left = `${x}px`;
-      toolbar.style.top = `${y}px`;
-
       // Add event listeners
       toolbar.querySelector('.lingoflow-translate-btn').addEventListener('click', (e) => {
-        this.handleTranslate(selectedText);
-        this.removeFloatingToolbar();
+        e.preventDefault();
+        e.stopPropagation();
+        this.handleTranslate(selectedText, selectionContext);
       });
 
       toolbar.querySelector('.lingoflow-copy-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         this.handleCopy(selectedText);
         this.removeFloatingToolbar();
       });
 
       toolbar.querySelector('.lingoflow-save-btn').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
         this.handleSave(selectedText);
         this.removeFloatingToolbar();
       });
 
       document.body.appendChild(toolbar);
 
-      // Adjust position if out of viewport
-      this.adjustToolbarPosition(toolbar);
+      this.positionFloatingElement(toolbar, selectionContext.rect, {
+        preferred: 'above',
+        offset: 10
+      });
     },
 
     // Remove floating toolbar
     removeFloatingToolbar() {
       const toolbar = document.getElementById('lingoflow-toolbar');
       if (toolbar) toolbar.remove();
+      this.selectionContext = null;
     },
 
-    // Adjust toolbar position to stay in viewport
-    adjustToolbarPosition(toolbar) {
-      const rect = toolbar.getBoundingClientRect();
-      const viewportWidth = window.innerWidth;
-      const viewportHeight = window.innerHeight;
+    positionFloatingElement(element, anchorRect, options = {}) {
+      const preferred = options.preferred || 'below';
+      const offset = options.offset || 8;
+      const margin = 10;
+      const rect = element.getBoundingClientRect();
+      const anchorLeft = anchorRect.left + window.scrollX;
+      const anchorTop = anchorRect.top + window.scrollY;
+      const anchorBottom = anchorRect.bottom + window.scrollY;
 
-      if (rect.right > viewportWidth) {
-        toolbar.style.left = `${viewportWidth - rect.width - 10}px`;
+      let left = anchorLeft + (anchorRect.width / 2) - (rect.width / 2);
+      left = Math.max(window.scrollX + margin, Math.min(left, window.scrollX + window.innerWidth - rect.width - margin));
+
+      const aboveTop = anchorTop - rect.height - offset;
+      const belowTop = anchorBottom + offset;
+      const hasSpaceAbove = aboveTop >= window.scrollY + margin;
+      const hasSpaceBelow = belowTop + rect.height <= window.scrollY + window.innerHeight - margin;
+      let top = preferred === 'above' && hasSpaceAbove ? aboveTop : belowTop;
+
+      if (!hasSpaceBelow && hasSpaceAbove) {
+        top = aboveTop;
       }
 
-      if (rect.bottom > viewportHeight) {
-        toolbar.style.top = `${parseInt(toolbar.style.top) - rect.height - 10}px`;
-      }
+      top = Math.max(window.scrollY + margin, Math.min(top, window.scrollY + window.innerHeight - rect.height - margin));
+
+      element.style.left = `${left}px`;
+      element.style.top = `${top}px`;
     },
 
     // Show translation result
-    showTranslationResult(x, y, originalText, translation) {
-      this.removeTranslationResult();
+    showTranslationResult(selectionContext, originalText, translation) {
+      this.removeFloatingToolbar();
 
       const result = document.createElement('div');
       result.id = 'lingoflow-translation-result';
@@ -440,18 +463,43 @@
 
       result.innerHTML = `
         <div class="lingoflow-result-content">
+          <div class="lingoflow-result-label">Original</div>
           <div class="lingoflow-result-original">${this.escapeHtml(originalText)}</div>
+          <div class="lingoflow-result-label">Translation</div>
           <div class="lingoflow-result-translation">${this.escapeHtml(translation)}</div>
+          <div class="lingoflow-result-actions">
+            <button class="lingoflow-result-btn" type="button" data-result-action="copy">${this.escapeHtml(getMessage('copy') || 'Copy')}</button>
+            <button class="lingoflow-result-btn" type="button" data-result-action="save">${this.escapeHtml(getMessage('save') || 'Save')}</button>
+            <button class="lingoflow-result-close" type="button" aria-label="Close">×</button>
+          </div>
         </div>
       `;
 
-      result.style.left = `${x}px`;
-      result.style.top = `${y + 40}px`;
-
       document.body.appendChild(result);
+      this.positionFloatingElement(result, selectionContext.rect, {
+        preferred: 'above',
+        offset: 10
+      });
 
-      // Auto remove after 5 seconds
-      setTimeout(() => this.removeTranslationResult(), 5000);
+      result.querySelector('[data-result-action="copy"]').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.handleCopy(translation);
+      });
+
+      result.querySelector('[data-result-action="save"]').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.handleSave(originalText, translation);
+      });
+
+      result.querySelector('.lingoflow-result-close').addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.removeTranslationResult();
+      });
+
+      setTimeout(() => this.removeTranslationResult(), 12000);
     },
 
     // Remove translation result
@@ -499,8 +547,34 @@
     },
 
     // Handle translate action
-    async handleTranslate(text) {
+    setToolbarLoading(isLoading) {
+      const toolbar = document.getElementById('lingoflow-toolbar');
+      if (!toolbar) return;
+
+      toolbar.classList.toggle('lingoflow-toolbar-loading', isLoading);
+      toolbar.querySelectorAll('.lingoflow-btn').forEach(button => {
+        button.disabled = isLoading;
+      });
+
+      const label = toolbar.querySelector('.lingoflow-translate-btn span');
+      if (label) label.textContent = isLoading ? 'Translating...' : (getMessage('translate') || 'Translate');
+    },
+
+    // Handle translate action
+    async handleTranslate(text, selectionContext = this.selectionContext) {
+      if (!selectionContext) {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+          selectionContext = {
+            text,
+            rect: selection.getRangeAt(0).getBoundingClientRect()
+          };
+        }
+      }
+
+      this.setToolbarLoading(true);
       const translation = await TranslationEngine.translate(text);
+      this.setToolbarLoading(false);
 
       // If translation failed (fallback text), show notification instead of result
       if (isFallbackText(translation)) {
@@ -519,16 +593,10 @@
       });
 
       // Show result
-      const selection = window.getSelection();
-      if (selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        this.showTranslationResult(
-          rect.left + window.scrollX,
-          rect.bottom + window.scrollY,
-          text,
-          translation
-        );
+      if (selectionContext && selectionContext.rect) {
+        this.showTranslationResult(selectionContext, text, translation);
+      } else {
+        this.showNotification(translation);
       }
     },
 
@@ -540,11 +608,12 @@
     },
 
     // Handle save action
-    handleSave(text) {
+    handleSave(text, translation) {
       chrome.runtime.sendMessage({
         action: 'save_to_vocabulary',
         data: {
           text: text,
+          translation: translation || '',
           type: text.split(' ').length > 1 ? 'sentence' : 'word',
           sourceUrl: window.location.href
         }
@@ -587,6 +656,8 @@
   const EventHandlers = {
     // Handle text selection
     handleTextSelection(e) {
+      if (e.target && e.target.closest && e.target.closest('.lingoflow-ui')) return;
+
       const selection = window.getSelection();
       const selectedText = selection.toString().trim();
 
@@ -594,11 +665,19 @@
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
 
-        UI.createFloatingToolbar(
-          rect.left + window.scrollX,
-          rect.bottom + window.scrollY,
-          selectedText
-        );
+        UI.createFloatingToolbar({
+          text: selectedText,
+          rect: {
+            left: rect.left,
+            right: rect.right,
+            top: rect.top,
+            bottom: rect.bottom,
+            width: rect.width,
+            height: rect.height
+          },
+          scrollX: window.scrollX,
+          scrollY: window.scrollY
+        });
       } else {
         UI.removeFloatingToolbar();
       }
@@ -1412,6 +1491,21 @@
 
       // Event listeners
       document.addEventListener('mouseup', (e) => EventHandlers.handleTextSelection(e));
+      document.addEventListener('mousedown', (e) => {
+        if (e.target && e.target.closest && e.target.closest('.lingoflow-ui')) return;
+        UI.removeFloatingToolbar();
+        UI.removeTranslationResult();
+      });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          UI.removeFloatingToolbar();
+          UI.removeTranslationResult();
+        }
+      });
+      window.addEventListener('scroll', () => {
+        UI.removeFloatingToolbar();
+        UI.removeTranslationResult();
+      }, { passive: true });
       document.addEventListener('mouseover', (e) => EventHandlers.handleMouseHover(e));
       document.addEventListener('mouseout', () => UI.removeHoverCard());
 
