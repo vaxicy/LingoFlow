@@ -770,6 +770,75 @@
       }
     },
 
+    getContextSelectionContext(text) {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const rect = selection.getRangeAt(0).getBoundingClientRect();
+        if (rect && (rect.width || rect.height)) {
+          return {
+            text,
+            rect: {
+              left: rect.left,
+              right: rect.right,
+              top: rect.top,
+              bottom: rect.bottom,
+              width: rect.width,
+              height: rect.height
+            }
+          };
+        }
+      }
+
+      const width = 1;
+      const height = 1;
+      const left = Math.max(12, (window.innerWidth / 2) - 1);
+      const top = Math.max(12, window.innerHeight * 0.32);
+      return {
+        text,
+        rect: {
+          left,
+          right: left + width,
+          top,
+          bottom: top + height,
+          width,
+          height
+        }
+      };
+    },
+
+    async showResultForText(text) {
+      const selectionContext = this.getContextSelectionContext(text);
+      this.showNotification('Translating...');
+      const result = await SelectionLookup.resolve(text);
+      if (!result || result.error || !result.translation) {
+        this.showNotification(statusText('translationFailed'));
+        return false;
+      }
+
+      chrome.runtime.sendMessage({
+        action: 'add_to_history',
+        data: {
+          text,
+          translation: result.translation,
+          sourceUrl: window.location.href
+        }
+      });
+
+      this.showTranslationResult(selectionContext, result);
+      return true;
+    },
+
+    async saveTextWithResolvedResult(text) {
+      this.showNotification('Saving...');
+      const result = await SelectionLookup.resolve(text);
+      if (!result || result.error || !result.translation) {
+        this.showNotification(statusText('translationFailed'));
+        return false;
+      }
+      this.saveResolvedResult(result);
+      return true;
+    },
+
     // Handle copy action
     handleCopy(text) {
       navigator.clipboard.writeText(text).then(() => {
@@ -926,12 +995,12 @@
     handleMessage(request, sender, sendResponse) {
       switch (request.action) {
         case 'translate_selection':
-          UI.handleTranslate(request.text);
+          UI.showResultForText(request.text);
           sendResponse({ received: true });
           break;
 
         case 'save_selection':
-          UI.handleSave(request.text);
+          UI.saveTextWithResolvedResult(request.text);
           sendResponse({ received: true });
           break;
 

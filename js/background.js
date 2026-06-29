@@ -330,7 +330,9 @@ function lookupDictionary(text, targetLang, sendResponse) {
           if (translationResponse && translationResponse.success && translationResponse.translation) {
             result.translation = translationResponse.translation;
           }
-          sendResponse({ success: true, result });
+          localizeDictionaryMeanings(result, targetLang || 'zh')
+            .then(localized => sendResponse({ success: true, result: localized }))
+            .catch(() => sendResponse({ success: true, result }));
         });
         return;
       }
@@ -394,6 +396,67 @@ function fallbackDictionaryTranslation(word, targetLang, sendResponse) {
         examples: []
       },
       error: response && response.error
+    });
+  });
+}
+
+function localizeDictionaryMeanings(result, targetLang) {
+  const target = targetLang || 'zh';
+  if (target !== 'zh' && target !== 'zh-CN' && target !== 'zh-Hans') {
+    return Promise.resolve(result);
+  }
+
+  const meanings = Array.isArray(result.meanings) ? result.meanings : [];
+  const definitions = meanings.map(item => item.definition || '').filter(Boolean);
+  if (!definitions.length) return Promise.resolve(result);
+
+  return translateTextsForDictionary(definitions, target).then(translations => {
+    let cursor = 0;
+    result.meanings = meanings.map(item => {
+      if (!item.definition) return item;
+      const translated = translations[cursor++];
+      return {
+        ...item,
+        originalDefinition: item.definition,
+        definition: translated && !String(translated).startsWith('[LingoFlow') ? translated : item.definition
+      };
+    });
+    return result;
+  });
+}
+
+function translateTextsForDictionary(texts, targetLang) {
+  return new Promise((resolve) => {
+    const list = Array.isArray(texts) ? texts : [];
+    if (!list.length) {
+      resolve([]);
+      return;
+    }
+
+    chrome.storage.local.get(['lingoflow_settings'], (result) => {
+      const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
+      const translations = new Array(list.length);
+      let index = 0;
+
+      function next() {
+        if (index >= list.length) {
+          resolve(translations);
+          return;
+        }
+
+        const current = index++;
+        translateOneForBatch(list[current], targetLang, engine)
+          .then(translation => {
+            translations[current] = translation;
+            next();
+          })
+          .catch(() => {
+            translations[current] = list[current];
+            next();
+          });
+      }
+
+      next();
     });
   });
 }
