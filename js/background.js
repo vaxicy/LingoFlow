@@ -91,6 +91,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       translateText(request.text, request.targetLang, sendResponse);
       return true; // Keep channel open for async response
 
+    case 'translate_batch':
+      translateBatch(request.texts, request.targetLang, sendResponse);
+      return true;
+
     case 'save_to_vocabulary':
       saveToVocabulary(request.data);
       break;
@@ -297,6 +301,73 @@ function translateText(text, targetLang, sendResponse) {
       translateWithMyMemory(text, targetLang, sendResponse);
     } else {
       translateWithGoogle(text, targetLang, sendResponse);
+    }
+  });
+}
+
+function translateBatch(texts, targetLang, sendResponse) {
+  const list = Array.isArray(texts) ? texts.filter(text => typeof text === 'string' && text.trim()) : [];
+  if (!list.length) {
+    sendResponse({ success: true, translations: [] });
+    return;
+  }
+
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
+    const translations = new Array(list.length);
+    const concurrency = 3;
+    let cursor = 0;
+    let active = 0;
+    let finished = 0;
+
+    function runNext() {
+      while (active < concurrency && cursor < list.length) {
+        const index = cursor++;
+        active++;
+
+        translateOneForBatch(list[index], targetLang, engine)
+          .then(translation => {
+            translations[index] = translation;
+          })
+          .catch(error => {
+            const message = error && error.message ? error.message : String(error);
+            console.warn('LingoFlow: Batch translation item failed:', message);
+            translations[index] = `[LingoFlow translation failed] ${list[index]}`;
+          })
+          .finally(() => {
+            active--;
+            finished++;
+
+            if (finished === list.length) {
+              sendResponse({ success: true, translations });
+              return;
+            }
+
+            runNext();
+          });
+      }
+    }
+
+    runNext();
+  });
+}
+
+function translateOneForBatch(text, targetLang, engine) {
+  return new Promise((resolve) => {
+    const respond = (response) => {
+      if (response && response.success && response.translation) {
+        resolve(response.translation);
+      } else {
+        resolve(`[LingoFlow translation failed] ${text}`);
+      }
+    };
+
+    if (engine === 'siliconflow') {
+      translateWithSiliconFlow(text, targetLang, respond);
+    } else if (engine === 'mymemory') {
+      translateWithMyMemory(text, targetLang, respond);
+    } else {
+      translateWithGoogle(text, targetLang, respond);
     }
   });
 }

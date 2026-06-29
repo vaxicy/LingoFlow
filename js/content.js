@@ -33,6 +33,10 @@
     hoverEnabled: true,
     uiLanguage: 'auto',
     existingBilingualStrategy: 'skip',
+    activeTranslationMode: null,
+    mutationObserver: null,
+    mutationTimer: null,
+    observerStopTimer: null,
     originalContent: new Map(), // Store original content for restoration
     translatedNodes: new Set() // Track translated nodes
   };
@@ -142,6 +146,22 @@
     return /[A-Za-z]{2,}/.test(value) && /[\u4e00-\u9fff\u3400-\u4dbf]/.test(value);
   }
 
+  function isAllCapsShortLabel(text) {
+    const normalized = (text || '').replace(/\s+/g, ' ').trim();
+    if (!normalized || normalized.length > 24) return false;
+
+    const words = normalized.split(/\s+/);
+    if (words.length > 3) return false;
+
+    const cleaned = normalized.replace(/[^A-Za-z0-9+#.&/-]/g, '');
+    if (!cleaned || cleaned.length < 2) return false;
+    if (!/[A-Z]{2,}/.test(cleaned)) return false;
+    if (/[a-z]/.test(cleaned)) return false;
+
+    const letters = cleaned.replace(/[^A-Za-z]/g, '');
+    return letters.length >= 2 && letters.length <= 12;
+  }
+
   // Translation Engine - Pluggable architecture
   const TranslationEngine = {
     // Current active engine (loaded from settings)
@@ -212,6 +232,51 @@
         default:
           return await this.googleTranslator.translate(text, targetLang);
       }
+    },
+
+    async translateMany(texts, targetLang = 'zh') {
+      const list = Array.isArray(texts) ? texts : [];
+      if (!list.length) return [];
+
+      const tl = targetLang === 'zh' ? 'zh-CN' :
+                 targetLang === 'en' ? 'en' : 'zh-CN';
+
+      return new Promise((resolve) => {
+        const timeoutId = setTimeout(() => {
+          console.warn('LingoFlow: Batch translation timed out, falling back to single requests');
+          Promise.all(list.map(text => this.translate(text, targetLang))).then(resolve);
+        }, 55000);
+
+        try {
+          chrome.runtime.sendMessage(
+            {
+              action: 'translate_batch',
+              texts: list.map(text => text.length > 2000 ? text.substring(0, 2000) : text),
+              targetLang: tl
+            },
+            (response) => {
+              clearTimeout(timeoutId);
+
+              if (chrome.runtime.lastError) {
+                console.warn('LingoFlow: Batch translation send failed:', getErrorMessage(chrome.runtime.lastError));
+                Promise.all(list.map(text => this.translate(text, targetLang))).then(resolve);
+                return;
+              }
+
+              if (response && Array.isArray(response.translations)) {
+                resolve(response.translations);
+                return;
+              }
+
+              Promise.all(list.map(text => this.translate(text, targetLang))).then(resolve);
+            }
+          );
+        } catch (err) {
+          clearTimeout(timeoutId);
+          console.warn('LingoFlow: Batch translation error:', getErrorMessage(err));
+          Promise.all(list.map(text => this.translate(text, targetLang))).then(resolve);
+        }
+      });
     }
   };
 
@@ -698,6 +763,7 @@
       if (/^\d+([.,:/-]\d+)*$/.test(normalized)) return false;
       if (!/[A-Za-z]{2,}/.test(normalized)) return false;
       if (!/[A-Za-z0-9]/.test(normalized.replace(/[^\p{L}\p{N}]/gu, ''))) return false;
+      if (isAllCapsShortLabel(normalized)) return false;
       if (hasMixedLatinAndChinese(normalized)) return false;
       if (isChineseText(normalized)) return false;
       return true;
@@ -1048,6 +1114,126 @@
       }
     },
 
+    chunkUnits(units, size = 10) {
+      const chunks = [];
+      for (let i = 0; i < units.length; i += size) {
+        chunks.push(units.slice(i, i + size));
+      }
+      return chunks;
+    },
+
+    async translateAndRenderUnits(units, renderMode) {
+      const chunks = this.chunkUnits(units, 10);
+      let chunkCursor = 0;
+      let successCount = 0;
+      let failCount = 0;
+      let stoppedByInvalidContext = false;
+      const concurrency = 2;
+
+      const renderUnit = (unit, translation) => {
+        const container = unit.container;
+        if (!container.isConnected || container.dataset.lingoflowProcessed === 'true') return;
+
+        this.markProcessed(container);
+
+        if (isContextInvalidatedText(translation)) {
+          container.removeAttribute('data-lingoflow-processed');
+          stoppedByInvalidContext = true;
+          return;
+        }
+
+        if (isFallbackText(translation)) {
+          container.removeAttribute('data-lingoflow-processed');
+          failCount++;
+          return;
+        }
+
+        const rendered = renderMode === 'translation'
+          ? this.renderTranslationOnlyUnit(container, translation)
+          : this.renderTranslationUnit(container, translation);
+
+        if (rendered) {
+          successCount++;
+        } else {
+          container.removeAttribute('data-lingoflow-processed');
+        }
+      };
+
+      const worker = async () => {
+        while (chunkCursor < chunks.length && !stoppedByInvalidContext) {
+          const chunk = chunks[chunkCursor++];
+          const activeChunk = chunk.filter(unit => {
+            return unit.container.isConnected && unit.container.dataset.lingoflowProcessed !== 'true';
+          });
+
+          if (!activeChunk.length) continue;
+
+          const translations = await TranslationEngine.translateMany(activeChunk.map(unit => unit.text));
+          activeChunk.forEach((unit, index) => {
+            renderUnit(unit, translations[index]);
+          });
+        }
+      };
+
+      await Promise.all(Array.from({ length: Math.min(concurrency, chunks.length) }, () => worker()));
+
+      return { successCount, failCount, stoppedByInvalidContext };
+    },
+
+    async runIncrementalTranslation(mode, root = document.body, notify = false) {
+      const units = this.collectTranslationUnits(root);
+      if (!units.length) return { successCount: 0, failCount: 0, stoppedByInvalidContext: false };
+      if (notify) UI.showNotification(statusText('found', units.length));
+      return this.translateAndRenderUnits(units, mode);
+    },
+
+    scheduleSecondScan(mode) {
+      window.setTimeout(() => {
+        if (!state.activeTranslationMode || state.isTranslating) return;
+        this.runIncrementalTranslation(mode, document.body, false);
+      }, 800);
+    },
+
+    startDynamicTranslationObserver(mode) {
+      this.stopDynamicTranslationObserver();
+      state.activeTranslationMode = mode;
+
+      state.mutationObserver = new MutationObserver((mutations) => {
+        if (!state.activeTranslationMode || state.isTranslating) return;
+        const hasNewText = mutations.some(mutation => {
+          return Array.from(mutation.addedNodes).some(node => {
+            if (node.nodeType === Node.TEXT_NODE) return this.shouldTranslateText(node.textContent);
+            if (node.nodeType === Node.ELEMENT_NODE) return this.shouldTranslateText(node.textContent || '');
+            return false;
+          });
+        });
+
+        if (!hasNewText) return;
+
+        clearTimeout(state.mutationTimer);
+        state.mutationTimer = window.setTimeout(() => {
+          if (!state.activeTranslationMode || state.isTranslating) return;
+          this.runIncrementalTranslation(mode, document.body, false);
+        }, 500);
+      });
+
+      state.mutationObserver.observe(document.body, { childList: true, subtree: true });
+      state.observerStopTimer = window.setTimeout(() => this.stopDynamicTranslationObserver(), 10000);
+    },
+
+    stopDynamicTranslationObserver() {
+      if (state.mutationObserver) {
+        state.mutationObserver.disconnect();
+        state.mutationObserver = null;
+      }
+
+      clearTimeout(state.mutationTimer);
+      clearTimeout(state.observerStopTimer);
+      state.mutationTimer = null;
+      state.observerStopTimer = null;
+      state.activeTranslationMode = null;
+    },
+
     async translatePage() {
       return this.enableTranslationMode();
     },
@@ -1078,35 +1264,8 @@
 
       UI.showNotification(statusText('found', units.length));
 
-      let successCount = 0;
-      let failCount = 0;
-      let stoppedByInvalidContext = false;
-
-      for (const unit of units) {
-        const container = unit.container;
-        if (!container.isConnected || container.dataset.lingoflowProcessed === 'true') continue;
-
-        this.markProcessed(container);
-        const translation = await TranslationEngine.translate(unit.text);
-
-        if (isContextInvalidatedText(translation)) {
-          container.removeAttribute('data-lingoflow-processed');
-          stoppedByInvalidContext = true;
-          break;
-        }
-
-        if (isFallbackText(translation)) {
-          container.removeAttribute('data-lingoflow-processed');
-          failCount++;
-          continue;
-        }
-
-        if (this.renderTranslationOnlyUnit(container, translation)) {
-          successCount++;
-        } else {
-          container.removeAttribute('data-lingoflow-processed');
-        }
-      }
+      const result = await this.translateAndRenderUnits(units, 'translation');
+      const { successCount, failCount, stoppedByInvalidContext } = result;
 
       if (stoppedByInvalidContext) {
         UI.showNotification(statusText('reloaded'));
@@ -1122,6 +1281,8 @@
 
       if (successCount > 0) {
         state.isTranslated = true;
+        this.scheduleSecondScan('translation');
+        this.startDynamicTranslationObserver('translation');
       }
       state.isBilingualMode = false;
       state.isTranslating = false;
@@ -1161,35 +1322,8 @@
 
       UI.showNotification(statusText('found', units.length));
 
-      let successCount = 0;
-      let failCount = 0;
-      let stoppedByInvalidContext = false;
-
-      for (const unit of units) {
-        const container = unit.container;
-        if (!container.isConnected || container.dataset.lingoflowProcessed === 'true') continue;
-
-        this.markProcessed(container);
-        const translation = await TranslationEngine.translate(unit.text);
-
-        if (isContextInvalidatedText(translation)) {
-          container.removeAttribute('data-lingoflow-processed');
-          stoppedByInvalidContext = true;
-          break;
-        }
-
-        if (isFallbackText(translation)) {
-          container.removeAttribute('data-lingoflow-processed');
-          failCount++;
-          continue;
-        }
-
-        if (this.renderTranslationUnit(container, translation)) {
-          successCount++;
-        } else {
-          container.removeAttribute('data-lingoflow-processed');
-        }
-      }
+      const result = await this.translateAndRenderUnits(units, 'bilingual');
+      const { successCount, failCount, stoppedByInvalidContext } = result;
 
       if (stoppedByInvalidContext) {
         UI.showNotification(statusText('reloaded'));
@@ -1205,6 +1339,8 @@
 
       if (successCount > 0) {
         state.isTranslated = true;
+        this.scheduleSecondScan('bilingual');
+        this.startDynamicTranslationObserver('bilingual');
       }
       state.isBilingualMode = successCount > 0;
       state.isTranslating = false;
@@ -1213,6 +1349,7 @@
     restoreOriginal() {
       const scrollX = window.scrollX;
       const scrollY = window.scrollY;
+      this.stopDynamicTranslationObserver();
 
       document.querySelectorAll('.lingoflow-block[data-lingoflow="true"]').forEach(block => {
         this.restoreBilingualBlock(block);

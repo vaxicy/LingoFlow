@@ -770,11 +770,25 @@ function createInlineHandler(initialMessage) {
     return cjk / cleaned.length >= 0.45;
   }
 
+  function isAllCapsShortLabel(text) {
+    var normalized = (text || '').replace(/\s+/g, ' ').trim();
+    if (!normalized || normalized.length > 24) return false;
+    var words = normalized.split(/\s+/);
+    if (words.length > 3) return false;
+    var cleaned = normalized.replace(/[^A-Za-z0-9+#.&/-]/g, '');
+    if (!cleaned || cleaned.length < 2) return false;
+    if (!/[A-Z]{2,}/.test(cleaned)) return false;
+    if (/[a-z]/.test(cleaned)) return false;
+    var letters = cleaned.replace(/[^A-Za-z]/g, '');
+    return letters.length >= 2 && letters.length <= 12;
+  }
+
   function shouldTranslateText(text) {
     var normalized = normalizeText(text);
     if (normalized.length < 3 || normalized.length > 2000) return false;
     if (/^\d+([.,:/-]\d+)*$/.test(normalized)) return false;
     if (!/[A-Za-z]{2,}/.test(normalized)) return false;
+    if (isAllCapsShortLabel(normalized)) return false;
     if (/[A-Za-z]{2,}/.test(normalized) && /[\u4e00-\u9fff\u3400-\u4dbf]/.test(normalized)) return false;
     if (isChinese(normalized)) return false;
     return true;
