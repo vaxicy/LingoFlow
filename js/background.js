@@ -504,6 +504,11 @@ function translateBatch(texts, targetLang, sendResponse) {
       return;
     }
 
+    if (engine === 'siliconflow') {
+      translateBatchWithSiliconFlow(list, targetLang, sendResponse);
+      return;
+    }
+
     const translations = new Array(list.length);
     const concurrency = 3;
     let cursor = 0;
@@ -575,11 +580,273 @@ const SILICONFLOW_FALLBACK_MODELS = [
   'THUDM/GLM-4-9B-0414'
 ];
 
+const SILICONFLOW_MODEL_META = {
+  'tencent/Hunyuan-MT-7B': { pricing: 'free', maxItems: 30, maxChars: 6000, chunkDelay: 300 },
+  'deepseek-ai/DeepSeek-V4-Flash': { pricing: 'paid', maxItems: 18, maxChars: 4200, chunkDelay: 450 },
+  'deepseek-ai/DeepSeek-V4-Pro': { pricing: 'paid', maxItems: 10, maxChars: 3200, chunkDelay: 650 },
+  'THUDM/GLM-4-9B-0414': { pricing: 'free', maxItems: 22, maxChars: 4500, chunkDelay: 350 }
+};
+
+const translationMemory = new Map();
+const TRANSLATION_MEMORY_LIMIT = 800;
+
+function getTranslationCacheKey(engine, model, targetLang, text) {
+  return [engine, model || '', targetLang || '', String(text || '').trim()].join('\u0001');
+}
+
+function getCachedTranslation(engine, model, targetLang, text) {
+  return translationMemory.get(getTranslationCacheKey(engine, model, targetLang, text));
+}
+
+function setCachedTranslation(engine, model, targetLang, text, translation) {
+  if (!translation || String(translation).startsWith('[LingoFlow')) return;
+  const key = getTranslationCacheKey(engine, model, targetLang, text);
+  if (translationMemory.has(key)) translationMemory.delete(key);
+  translationMemory.set(key, translation);
+  if (translationMemory.size > TRANSLATION_MEMORY_LIMIT) {
+    const firstKey = translationMemory.keys().next().value;
+    translationMemory.delete(firstKey);
+  }
+}
+
+function getSiliconFlowFallbackModels(selectedModel) {
+  const selected = selectedModel || 'tencent/Hunyuan-MT-7B';
+  const selectedMeta = SILICONFLOW_MODEL_META[selected] || {};
+  const fallbacks = [selected];
+
+  SILICONFLOW_FALLBACK_MODELS.forEach(model => {
+    if (model === selected) return;
+    const meta = SILICONFLOW_MODEL_META[model] || {};
+    if (selectedMeta.pricing === 'paid' && meta.pricing === 'paid') return;
+    fallbacks.push(model);
+  });
+
+  return fallbacks;
+}
+
+function getSiliconFlowTargetName(targetLang) {
+  return targetLang === 'zh' || targetLang === 'zh-CN' ? 'Simplified Chinese' :
+         targetLang === 'en' ? 'English' : 'Simplified Chinese';
+}
+
+function createSiliconFlowTextChunks(texts, model) {
+  const meta = SILICONFLOW_MODEL_META[model] || { maxItems: 18, maxChars: 4200 };
+  const chunks = [];
+  let current = [];
+  let currentChars = 0;
+
+  texts.forEach((text, index) => {
+    const value = String(text || '');
+    const itemChars = value.length;
+    if (current.length && (current.length >= meta.maxItems || currentChars + itemChars > meta.maxChars)) {
+      chunks.push(current);
+      current = [];
+      currentChars = 0;
+    }
+    current.push({ index, text: value });
+    currentChars += itemChars;
+  });
+
+  if (current.length) chunks.push(current);
+  return chunks;
+}
+
+function translateBatchWithSiliconFlow(texts, targetLang, sendResponse) {
+  const list = Array.isArray(texts) ? texts : [];
+  if (!list.length) {
+    sendResponse({ success: true, translations: [] });
+    return;
+  }
+
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const settings = result.lingoflow_settings || {};
+    const apiKey = (settings.siliconflowApiKey || '').trim();
+    const selectedModel = settings.siliconflowModel || 'tencent/Hunyuan-MT-7B';
+
+    if (!apiKey) {
+      console.warn('LingoFlow: SiliconFlow API key not set for batch, falling back to Google');
+      translateBatchWithGoogleFallback(list, targetLang).then(translations => {
+        sendResponse({ success: true, translations });
+      });
+      return;
+    }
+
+    const translations = new Array(list.length);
+    let pendingCount = 0;
+
+    list.forEach((text, index) => {
+      const cached = getCachedTranslation('siliconflow', selectedModel, targetLang, text);
+      if (cached) {
+        translations[index] = cached;
+      } else {
+        pendingCount++;
+      }
+    });
+
+    if (!pendingCount) {
+      console.log('LingoFlow: SiliconFlow batch served from cache', list.length, 'items');
+      sendResponse({ success: true, translations });
+      return;
+    }
+
+    const uniquePendingMap = new Map();
+    list.forEach((text, index) => {
+      if (!translations[index]) {
+        const key = String(text || '').trim();
+        if (!uniquePendingMap.has(key)) {
+          uniquePendingMap.set(key, { text, indexes: [] });
+        }
+        uniquePendingMap.get(key).indexes.push(index);
+      }
+    });
+
+    const uniquePending = Array.from(uniquePendingMap.values());
+    const compactTexts = uniquePending.map(item => item.text);
+    const chunks = createSiliconFlowTextChunks(compactTexts, selectedModel);
+    const compactTranslations = new Array(compactTexts.length);
+    const fallbackModels = getSiliconFlowFallbackModels(selectedModel);
+    console.log('LingoFlow: SiliconFlow batch translating', compactTexts.length, 'unique uncached items in', chunks.length, 'request(s) with', selectedModel);
+
+    runSiliconFlowChunkQueue(chunks, {
+      apiKey,
+      targetLang,
+      selectedModel,
+      fallbackModels,
+      translations: compactTranslations
+    })
+      .then(() => {
+        uniquePending.forEach((item, offset) => {
+          const translated = compactTranslations[offset] || item.text;
+          item.indexes.forEach(index => {
+            translations[index] = translated;
+          });
+          setCachedTranslation('siliconflow', selectedModel, targetLang, item.text, translated);
+        });
+        sendResponse({ success: true, translations: translations.map((item, index) => item || list[index]) });
+      })
+      .catch(error => {
+        const message = error && error.message ? error.message : String(error);
+        console.warn('LingoFlow: SiliconFlow batch failed:', message, '- falling back to Google');
+        translateBatchWithGoogleFallback(list, targetLang).then(fallbackTranslations => {
+          sendResponse({ success: true, translations: fallbackTranslations });
+        });
+      });
+  });
+}
+
+async function runSiliconFlowChunkQueue(chunks, context) {
+  const meta = SILICONFLOW_MODEL_META[context.selectedModel] || { chunkDelay: 450 };
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    try {
+      const result = await translateSiliconFlowChunkWithFallbacks(chunk, context.targetLang, context.apiKey, context.fallbackModels);
+      chunk.forEach((item, offset) => {
+        context.translations[item.index] = result[offset] || item.text;
+      });
+    } catch (error) {
+      const message = error && error.message ? error.message : String(error);
+      console.warn(`LingoFlow: SiliconFlow chunk ${i + 1}/${chunks.length} failed:`, message, '- falling back to Google for this chunk');
+      const fallback = await translateBatchWithGoogleFallback(chunk.map(item => item.text), context.targetLang);
+      chunk.forEach((item, offset) => {
+        context.translations[item.index] = fallback[offset] || item.text;
+      });
+    }
+
+    if (i < chunks.length - 1) {
+      await delay(meta.chunkDelay || 450);
+    }
+  }
+}
+
+async function translateSiliconFlowChunkWithFallbacks(chunk, targetLang, apiKey, models) {
+  let lastError = null;
+  for (let i = 0; i < models.length; i++) {
+    const model = models[i];
+    try {
+      return await translateSiliconFlowChunk(chunk, targetLang, apiKey, model, 0, i === 0);
+    } catch (error) {
+      lastError = error;
+      const message = error && error.message ? error.message : String(error);
+      console.warn(`LingoFlow: SiliconFlow batch model ${model} failed:`, message);
+    }
+  }
+  throw lastError || new Error('SiliconFlow batch failed');
+}
+
+function translateSiliconFlowChunk(chunk, targetLang, apiKey, model, attempt, isPrimary) {
+  const target = getSiliconFlowTargetName(targetLang);
+  const payload = chunk.map((item, offset) => ({
+    id: offset,
+    text: item.text
+  }));
+  const url = 'https://api.siliconflow.cn/v1/chat/completions';
+  const body = {
+    model,
+    messages: [
+      {
+        role: 'system',
+        content: [
+          'You are a professional translation engine.',
+          `Translate each text value to ${target}.`,
+          'Return ONLY a valid JSON array. No markdown. No explanations.',
+          'The output array must have the same length and order as the input array.',
+          'Each output item must be a string translation.'
+        ].join(' ')
+      },
+      { role: 'user', content: JSON.stringify(payload) }
+    ],
+    temperature: 0.1,
+    top_p: 0.9,
+    max_tokens: Math.min(Math.max(JSON.stringify(payload).length * 2, 512), 8192)
+  };
+
+  console.log('LingoFlow: SiliconFlow batch chunk translating', chunk.length, 'items with', model);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), isPrimary ? 28000 : 16000);
+
+  return fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(body),
+    signal: controller.signal
+  })
+    .then(response => {
+      clearTimeout(timeoutId);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      clearTimeout(timeoutId);
+      const text = data &&
+        data.choices &&
+        data.choices[0] &&
+        data.choices[0].message &&
+        data.choices[0].message.content
+          ? data.choices[0].message.content.trim()
+          : '';
+      const translations = parseGeminiTranslationArray(text, chunk.length);
+      console.log('LingoFlow: SiliconFlow batch chunk succeeded, items:', translations.length);
+      return translations;
+    })
+    .catch(error => {
+      clearTimeout(timeoutId);
+      const message = error && error.message ? error.message : String(error);
+      if (attempt < 1 && /HTTP (429|500|502|503|504)|abort/i.test(message)) {
+        console.warn('LingoFlow: SiliconFlow batch chunk retrying after:', message);
+        return delay(1400).then(() => translateSiliconFlowChunk(chunk, targetLang, apiKey, model, attempt + 1, isPrimary));
+      }
+      throw error;
+    });
+}
+
 // SiliconFlow AI Translation (requires API key; model pricing depends on the selected model)
 // Tries user-selected model first, then falls back through remaining models, then Google
 function translateWithSiliconFlow(text, targetLang, sendResponse) {
-  const tl = targetLang === 'zh' ? '中文' :
-             targetLang === 'en' ? 'English' : '中文';
+  const tl = getSiliconFlowTargetName(targetLang);
 
   // Overall safety timeout: force fallback to Google after this
   const overallTimeoutMs = 30000; // 30 seconds total max
@@ -602,6 +869,12 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
     const settings = result.lingoflow_settings || {};
     const apiKey = settings.siliconflowApiKey || '';
     const selectedModel = settings.siliconflowModel || 'tencent/Hunyuan-MT-7B';
+    const cached = getCachedTranslation('siliconflow', selectedModel, targetLang, text);
+
+    if (cached) {
+      sendResponse({ success: true, translation: cached });
+      return;
+    }
 
     if (!apiKey) {
       done();
@@ -678,6 +951,7 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
               return;
             }
             console.log(`LingoFlow: SiliconFlow ${label} succeeded (${translatedText.length} chars)`);
+            setCachedTranslation('siliconflow', selectedModel, targetLang, text, translatedText);
             done(translatedText);
           } else {
             console.warn(`LingoFlow: SiliconFlow ${model} invalid response, trying next...`);
