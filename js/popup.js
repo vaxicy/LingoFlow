@@ -273,6 +273,7 @@ function openSettingsPanel() {
 
 // SiliconFlow models list (must match background.js)
 const SILICONFLOW_MODELS = [
+  // 免费模型
   {
     id: 'tencent/Hunyuan-MT-7B',
     name: 'Hunyuan-MT-7B',
@@ -280,26 +281,35 @@ const SILICONFLOW_MODELS = [
     descZh: '翻译专用 · 默认推荐',
     descEn: 'Translation · Default'
   },
+  // 付费模型 - MiniMax
   {
-    id: 'deepseek-ai/DeepSeek-V4-Flash',
-    name: 'DeepSeek-V4-Flash',
+    id: 'MiniMaxAI/MiniMax-M2.5',
+    name: 'MiniMax-M2.5',
     badge: 'paid',
-    descZh: '快速 · 高性价比',
-    descEn: 'Fast · Cost-effective'
+    descZh: 'MiniMax · 长文本',
+    descEn: 'MiniMax · Long context'
+  },
+  // 付费模型 - DeepSeek
+  {
+    id: 'Pro/deepseek-ai/DeepSeek-V3.2',
+    name: 'DeepSeek-V3.2',
+    badge: 'paid',
+    descZh: '最新 · 高性能',
+    descEn: 'Latest · High performance'
   },
   {
-    id: 'deepseek-ai/DeepSeek-V4-Pro',
-    name: 'DeepSeek-V4-Pro',
+    id: 'deepseek-ai/DeepSeek-R1',
+    name: 'DeepSeek-R1',
     badge: 'paid',
-    descZh: '高质量 · 长文精翻',
-    descEn: 'High quality · Long text'
+    descZh: '推理增强 · 精准',
+    descEn: 'Reasoning · Accurate'
   },
   {
-    id: 'THUDM/GLM-4-9B-0414',
-    name: 'GLM-4-9B',
-    badge: 'free',
-    descZh: '备用 · 通用',
-    descEn: 'Backup · General'
+    id: 'deepseek-ai/DeepSeek-V3',
+    name: 'DeepSeek-V3',
+    badge: 'paid',
+    descZh: '稳定 · 高性价比',
+    descEn: 'Stable · Cost-effective'
   }
 ];
 
@@ -756,7 +766,21 @@ function syncSiliconFlowModelSelect(value) {
   badge.className = `model-select-badge model-select-badge-${currentModel.badge === 'paid' ? 'paid' : 'free'}`;
   menu.textContent = '';
 
-  SILICONFLOW_MODELS.forEach(model => {
+  let lastBadgeType = null;
+
+  SILICONFLOW_MODELS.forEach((model, index) => {
+    // Add separator between free and paid models
+    if (index > 0 && lastBadgeType !== model.badge) {
+      const separator = document.createElement('div');
+      separator.className = 'model-select-separator';
+      separator.setAttribute('role', 'separator');
+      const separatorText = document.createElement('span');
+      separatorText.textContent = model.badge === 'paid' ? getMessage('paid_models') : getMessage('free_models');
+      separator.appendChild(separatorText);
+      menu.appendChild(separator);
+    }
+    lastBadgeType = model.badge;
+
     const option = document.createElement('button');
     option.className = 'model-select-option';
     option.type = 'button';

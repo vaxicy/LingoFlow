@@ -1280,6 +1280,33 @@ body {
   display: none;
 }
 
+.model-select-separator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-bottom: 1px solid rgba(184, 173, 255, 0.1);
+  color: rgba(214, 217, 255, 0.52);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  margin-bottom: 2px;
+}
+
+.model-select-separator::before,
+.model-select-separator::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: rgba(184, 173, 255, 0.1);
+}
+
+.model-select-separator span {
+  flex: 0 0 auto;
+  padding: 0 4px;
+}
+
 .model-select-option {
   display: flex;
   align-items: center;

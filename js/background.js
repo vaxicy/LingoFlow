@@ -575,16 +575,18 @@ function translateOneForBatch(text, targetLang, engine) {
 // Priority: verified working models first, then untested ones as backup
 const SILICONFLOW_FALLBACK_MODELS = [
   'tencent/Hunyuan-MT-7B',          // ✅ Verified working - dedicated MT model, fast & reliable
-  'deepseek-ai/DeepSeek-V4-Flash',
-  'deepseek-ai/DeepSeek-V4-Pro',
-  'THUDM/GLM-4-9B-0414'
+  'MiniMaxAI/MiniMax-M2.5',
+  'Pro/deepseek-ai/DeepSeek-V3.2',
+  'deepseek-ai/DeepSeek-R1',
+  'deepseek-ai/DeepSeek-V3'
 ];
 
 const SILICONFLOW_MODEL_META = {
-  'tencent/Hunyuan-MT-7B': { pricing: 'free', maxItems: 30, maxChars: 6000, chunkDelay: 300 },
-  'deepseek-ai/DeepSeek-V4-Flash': { pricing: 'paid', maxItems: 18, maxChars: 4200, chunkDelay: 450 },
-  'deepseek-ai/DeepSeek-V4-Pro': { pricing: 'paid', maxItems: 10, maxChars: 3200, chunkDelay: 650 },
-  'THUDM/GLM-4-9B-0414': { pricing: 'free', maxItems: 22, maxChars: 4500, chunkDelay: 350 }
+  'tencent/Hunyuan-MT-7B':        { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
+  'MiniMaxAI/MiniMax-M2.5':       { pricing: 'paid', maxItems: 70, maxChars: 24000, chunkDelay: 60 },
+  'Pro/deepseek-ai/DeepSeek-V3.2': { pricing: 'paid', maxItems: 70, maxChars: 22000, chunkDelay: 60 },
+  'deepseek-ai/DeepSeek-R1':       { pricing: 'paid', maxItems: 55, maxChars: 16000, chunkDelay: 80 },
+  'deepseek-ai/DeepSeek-V3':       { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 }
 };
 
 const translationMemory = new Map();
@@ -726,48 +728,145 @@ function translateBatchWithSiliconFlow(texts, targetLang, sendResponse) {
       })
       .catch(error => {
         const message = error && error.message ? error.message : String(error);
-        console.warn('LingoFlow: SiliconFlow batch failed:', message, '- falling back to Google');
-        translateBatchWithGoogleFallback(list, targetLang).then(fallbackTranslations => {
+        console.warn('LingoFlow: SiliconFlow batch failed:', message, '- falling back to Google batch');
+        translateBatchWithGoogleBatch(list, targetLang).then(fallbackTranslations => {
           sendResponse({ success: true, translations: fallbackTranslations });
         });
       });
   });
 }
 
-async function runSiliconFlowChunkQueue(chunks, context) {
-  const meta = SILICONFLOW_MODEL_META[context.selectedModel] || { chunkDelay: 450 };
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    try {
-      const result = await translateSiliconFlowChunkWithFallbacks(chunk, context.targetLang, context.apiKey, context.fallbackModels);
-      chunk.forEach((item, offset) => {
-        context.translations[item.index] = result[offset] || item.text;
-      });
-    } catch (error) {
-      const message = error && error.message ? error.message : String(error);
-      console.warn(`LingoFlow: SiliconFlow chunk ${i + 1}/${chunks.length} failed:`, message, '- falling back to Google for this chunk');
-      const fallback = await translateBatchWithGoogleFallback(chunk.map(item => item.text), context.targetLang);
-      chunk.forEach((item, offset) => {
-        context.translations[item.index] = fallback[offset] || item.text;
-      });
-    }
+// Model failure tracker: demote models that fail 2+ times consecutively
+const modelFailureTracker = {
+  _data: {},           // { [model]: { failures: number, demotedUntil: number } }
+  _demotionMs: 5 * 60 * 1000,  // demote for 5 minutes
 
-    if (i < chunks.length - 1) {
-      await delay(meta.chunkDelay || 450);
+  recordFailure(model) {
+    const entry = this._data[model] || { failures: 0, demotedUntil: 0 };
+    entry.failures++;
+    if (entry.failures >= 2) {
+      entry.demotedUntil = Date.now() + this._demotionMs;
+      console.warn(`LingoFlow: Model ${model} demoted for 5 min (${entry.failures} consecutive failures)`);
     }
+    this._data[model] = entry;
+  },
+
+  recordSuccess(model) {
+    if (this._data[model]) {
+      this._data[model].failures = 0;
+    }
+  },
+
+  isDemoted(model) {
+    const entry = this._data[model];
+    return entry && entry.demotedUntil > Date.now();
+  },
+
+  getOrderedModels(models) {
+    // Move demoted models to the end
+    const active = models.filter(m => !this.isDemoted(m));
+    const demoted = models.filter(m => this.isDemoted(m));
+    return active.concat(demoted);
   }
+};
+
+async function runSiliconFlowChunkQueue(chunks, context) {
+  const meta = SILICONFLOW_MODEL_META[context.selectedModel] || { chunkDelay: 80 };
+  const CONCURRENCY = Math.min(5, Math.max(3, chunks.length));  // 3-5 concurrent chunk requests
+  let nextIndex = 0;
+  let activeCount = 0;
+  let finishedCount = 0;
+  const total = chunks.length;
+  const results = context.translations;
+
+  return new Promise((resolve) => {
+    function runWorker() {
+      while (activeCount < CONCURRENCY && nextIndex < total) {
+        const i = nextIndex++;
+        const chunk = chunks[i];
+        activeCount++;
+
+        // Stagger chunk starts slightly to avoid rate-limit spikes
+        const staggerMs = (i % CONCURRENCY) * (meta.chunkDelay || 80);
+
+        setTimeout(() => {
+          translateSiliconFlowChunkWithFallbacks(chunk, context.targetLang, context.apiKey, context.fallbackModels)
+            .then(result => {
+              chunk.forEach((item, offset) => {
+                results[item.index] = result[offset] || item.text;
+              });
+            })
+            .catch(error => {
+              const message = error && error.message ? error.message : String(error);
+              console.warn(`LingoFlow: SiliconFlow chunk ${i + 1}/${total} failed:`, message);
+
+              // Retry strategy: split failed chunk into smaller sub-chunks
+              if (chunk.length > 1) {
+                const mid = Math.ceil(chunk.length / 2);
+                const subChunks = [
+                  chunk.slice(0, mid),
+                  chunk.slice(mid)
+                ].filter(cc => cc.length > 0);
+                console.log(`LingoFlow: Retrying chunk ${i + 1} as ${subChunks.length} sub-chunk(s)`);
+                return Promise.all(subChunks.map(sub =>
+                  translateSiliconFlowChunkWithFallbacks(sub, context.targetLang, context.apiKey, context.fallbackModels)
+                    .then(result => {
+                      sub.forEach((item, offset) => {
+                        results[item.index] = result[offset] || item.text;
+                      });
+                    })
+                    .catch(subErr => {
+                      const subMsg = subErr && subErr.message ? subErr.message : String(subErr);
+                      console.warn('LingoFlow: Sub-chunk also failed:', subMsg, '- falling back to Google');
+                      return translateBatchWithGoogleBatch(sub.map(item => item.text), context.targetLang)
+                        .then(fallback => {
+                          sub.forEach((item, offset) => {
+                            results[item.index] = fallback[offset] || item.text;
+                          });
+                        });
+                    })
+                ));
+              }
+
+              // Single-item or retry exhausted: fall back to Google
+              console.warn(`LingoFlow: Falling back to Google for chunk ${i + 1}/${total}`);
+              return translateBatchWithGoogleBatch(chunk.map(item => item.text), context.targetLang)
+                .then(fallback => {
+                  chunk.forEach((item, offset) => {
+                    results[item.index] = fallback[offset] || item.text;
+                  });
+                });
+            }))
+            .finally(() => {
+              activeCount--;
+              finishedCount++;
+              if (finishedCount === total) {
+                resolve();
+              } else {
+                runWorker(); // start next waiting chunk
+              }
+            });
+        }, staggerMs);
+      }
+    }
+    runWorker();
+  });
 }
 
 async function translateSiliconFlowChunkWithFallbacks(chunk, targetLang, apiKey, models) {
+  const orderedModels = modelFailureTracker.getOrderedModels(models);
   let lastError = null;
-  for (let i = 0; i < models.length; i++) {
-    const model = models[i];
+  for (let i = 0; i < orderedModels.length; i++) {
+    const model = orderedModels[i];
     try {
-      return await translateSiliconFlowChunk(chunk, targetLang, apiKey, model, 0, i === 0);
+      const result = await translateSiliconFlowChunk(chunk, targetLang, apiKey, model, 0, i === 0);
+      modelFailureTracker.recordSuccess(model);
+      return result;
     } catch (error) {
       lastError = error;
       const message = error && error.message ? error.message : String(error);
       console.warn(`LingoFlow: SiliconFlow batch model ${model} failed:`, message);
+      modelFailureTracker.recordFailure(model);
     }
   }
   throw lastError || new Error('SiliconFlow batch failed');
@@ -803,7 +902,8 @@ function translateSiliconFlowChunk(chunk, targetLang, apiKey, model, attempt, is
   console.log('LingoFlow: SiliconFlow batch chunk translating', chunk.length, 'items with', model);
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), isPrimary ? 28000 : 16000);
+  // Timeout: primary gets 30s, fallbacks get 15s (increased for larger chunks)
+  const timeoutId = setTimeout(() => controller.abort(), isPrimary ? 30000 : 15000);
 
   return fetch(url, {
     method: 'POST',
@@ -849,7 +949,7 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
   const tl = getSiliconFlowTargetName(targetLang);
 
   // Overall safety timeout: force fallback to Google after this
-  const overallTimeoutMs = 30000; // 30 seconds total max
+  const overallTimeoutMs = 18000; // 18 seconds total max (was 30s)
   let overallTimer = setTimeout(() => {
     console.warn('LingoFlow: SiliconFlow overall timeout, falling back to Google');
     translateWithGoogle(text, targetLang, sendResponse);
@@ -920,8 +1020,8 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
       console.log(`LingoFlow: SiliconFlow trying ${label}`);
 
       const controller = new AbortController();
-      // Primary model gets more time (15s), backup models get less (6s)
-      const timeoutMs = isPrimary ? 15000 : 6000;
+      // Primary model gets more time (8s), backup models get less (3s)
+      const timeoutMs = isPrimary ? 8000 : 3000;
       const timeoutId = setTimeout(() => {
         controller.abort();
       }, timeoutMs);
@@ -1093,8 +1193,8 @@ function translateBatchWithGemini(texts, targetLang, sendResponse) {
       })
       .catch(error => {
         const message = error && error.message ? error.message : String(error);
-        console.warn('LingoFlow: Gemini batch failed:', message, '- falling back to Google');
-        translateBatchWithGoogleFallback(list, targetLang).then(fallbackTranslations => {
+        console.warn('LingoFlow: Gemini batch failed:', message, '- falling back to Google batch');
+        translateBatchWithGoogleBatch(list, targetLang).then(fallbackTranslations => {
           sendResponse({ success: true, translations: fallbackTranslations });
         });
       });
@@ -1135,7 +1235,7 @@ async function runGeminiChunkQueue(chunks, context) {
     } catch (error) {
       const message = error && error.message ? error.message : String(error);
       console.warn(`LingoFlow: Gemini chunk ${i + 1}/${chunks.length} failed:`, message, '- falling back to Google for this chunk');
-      const fallback = await translateBatchWithGoogleFallback(chunk.map(item => item.text), context.targetLang);
+      const fallback = await translateBatchWithGoogleBatch(chunk.map(item => item.text), context.targetLang);
       chunk.forEach((item, offset) => {
         context.translations[item.index] = fallback[offset] || item.text;
       });
@@ -1233,9 +1333,20 @@ function parseGeminiTranslationArray(text, expectedLength) {
     .replace(/^```(?:json)?/i, '')
     .replace(/```$/i, '')
     .trim();
-  let parsed = JSON.parse(cleaned);
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch (e) {
+    // Try to extract array from markdown-wrapped or partial JSON
+    const arrMatch = cleaned.match(/\[[\s\S]*\]/);
+    if (arrMatch) {
+      try { parsed = JSON.parse(arrMatch[0]); } catch (_) {}
+    }
+    if (!Array.isArray(parsed)) throw new Error('Cannot parse translation response as array');
+  }
   if (!Array.isArray(parsed)) {
     if (parsed && Array.isArray(parsed.translations)) parsed = parsed.translations;
+    else if (parsed && Array.isArray(parsed.data)) parsed = parsed.data;
     else throw new Error('Gemini batch response is not an array');
   }
 
@@ -1246,27 +1357,109 @@ function parseGeminiTranslationArray(text, expectedLength) {
     return '';
   });
 
-  if (translations.length !== expectedLength) {
-    throw new Error(`Gemini batch response length mismatch: ${translations.length}/${expectedLength}`);
+  // Tolerance: pad with empty strings or truncate instead of throwing
+  if (translations.length < expectedLength) {
+    console.warn(`LingoFlow: Translation array short ${translations.length}/${expectedLength}, padding`);
+    while (translations.length < expectedLength) translations.push('');
+  } else if (translations.length > expectedLength) {
+    console.warn(`LingoFlow: Translation array long ${translations.length}/${expectedLength}, truncating`);
+    translations.length = expectedLength;
   }
   return translations;
 }
 
-function translateBatchWithGoogleFallback(texts, targetLang) {
-  const list = Array.isArray(texts) ? texts : [];
-  const translations = new Array(list.length);
-  let chain = Promise.resolve();
+// Google Batch Translation — uses Google Translate's multi-q parameter for true bulk translation
+// Much faster than sequential single-item calls (1 request vs N requests)
+// Free endpoint limit: ~5000 chars per request, we split at 4000 for safety
+function translateBatchWithGoogleBatch(texts, targetLang) {
+  const list = Array.isArray(texts) ? texts.filter(t => typeof t === 'string' && t.trim()) : [];
+  if (!list.length) return Promise.resolve([]);
+
+  const tl = targetLang === 'zh' ? 'zh-CN' :
+             targetLang === 'en' ? 'en' : 'zh-CN';
+
+  // Split into batches of ~4000 chars each (Google free endpoint soft limit)
+  const batches = [];
+  let current = [];
+  let currentChars = 0;
+  const maxBatchChars = 4000;
 
   list.forEach((text, index) => {
+    const value = text.length > 2000 ? text.substring(0, 2000) : text;
+    if (current.length && currentChars + value.length > maxBatchChars) {
+      batches.push({ indexes: current.map(i => i), texts: current.map(i => list[i]) });
+      current = [];
+      currentChars = 0;
+    }
+    current.push(index);
+    currentChars += value.length;
+  });
+
+  if (current.length) {
+    batches.push({ indexes: current, texts: current.map(i => list[i]) });
+  }
+
+  console.log(`LingoFlow: Google batch translating ${list.length} items in ${batches.length} bulk request(s)`);
+
+  const results = new Array(list.length);
+  let chain = Promise.resolve();
+
+  batches.forEach(batch => {
     chain = chain.then(() => new Promise(resolve => {
-      translateWithGoogle(text, targetLang, response => {
-        translations[index] = response && response.success && response.translation ? response.translation : text;
-        resolve();
-      });
+      // Build URL with multiple q params
+      const qParams = batch.texts.map(t => encodeURIComponent(t)).join('&q=');
+      const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${tl}&dt=t&q=${qParams}`;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      fetch(url, { signal: controller.signal })
+        .then(response => {
+          clearTimeout(timeoutId);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
+        })
+        .then(data => {
+          clearTimeout(timeoutId);
+          if (data && data[0] && Array.isArray(data[0])) {
+            // Google returns flat array of [text, ...][src_text, ...][...]
+            // Every odd index (0,2,4...) is a translated segment
+            const segments = data[0];
+            batch.indexes.forEach((origIndex, batchOffset) => {
+              if (segments[batchOffset] && segments[batchOffset][0]) {
+                results[origIndex] = segments[batchOffset][0];
+              } else {
+                results[origIndex] = list[origIndex];
+              }
+            });
+          } else {
+            // Fallback: fill with original text
+            batch.indexes.forEach(origIndex => { results[origIndex] = list[origIndex]; });
+          }
+        })
+        .catch(error => {
+          clearTimeout(timeoutId);
+          const message = error && error.message ? error.message : String(error);
+          console.warn('LingoFlow: Google batch request failed:', message, '- falling back to sequential');
+          // Last resort: sequential fallback for this batch
+          return Promise.all(batch.texts.map(text =>
+            new Promise(r => translateWithGoogle(text, targetLang, resp => {
+              r(resp && resp.success && resp.translation ? resp.translation : text);
+            }))
+          )).then(seqs => {
+            batch.indexes.forEach((origIndex, offset) => { results[origIndex] = seqs[offset]; });
+          });
+        })
+        .then(() => resolve());
     }));
   });
 
-  return chain.then(() => translations);
+  return chain.then(() => results);
+}
+
+// Legacy sequential fallback (only used as last resort inside Google batch)
+function translateBatchWithGoogleFallback(texts, targetLang) {
+  return translateBatchWithGoogleBatch(texts, targetLang);
 }
 
 function delay(ms) {

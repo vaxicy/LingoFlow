@@ -446,5 +446,13 @@
   "display_mode": {
     "message": "显示方式",
     "description": "弹出窗口模式分组标签"
+  },
+  "free_models": {
+    "message": "免费模型",
+    "description": "模型选择分组标题（免费模型）"
+  },
+  "paid_models": {
+    "message": "付费模型",
+    "description": "模型选择分组标题（付费模型）"
   }
 }

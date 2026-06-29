@@ -446,5 +446,13 @@
   "display_mode": {
     "message": "Display Mode",
     "description": "Popup mode section label"
+  },
+  "free_models": {
+    "message": "Free Models",
+    "description": "Model selection group header for free models"
+  },
+  "paid_models": {
+    "message": "Paid Models",
+    "description": "Model selection group header for paid models"
   }
 }
