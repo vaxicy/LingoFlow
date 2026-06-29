@@ -335,6 +335,10 @@
     "message": "硅基流动 AI（免费）",
     "description": "硅基流动翻译引擎选项"
   },
+  "engine_gemini": {
+    "message": "Gemini AI",
+    "description": "Gemini AI 翻译引擎选项"
+  },
   "engine_microsoft": {
     "message": "Microsoft Translator",
     "description": "Microsoft Translator 翻译引擎选项"
@@ -354,6 +358,22 @@
   "microsoft_region_desc": {
     "message": "Azure Translator 资源所在区域",
     "description": "Microsoft 区域描述"
+  },
+  "gemini_api_key_label": {
+    "message": "Gemini API Key",
+    "description": "Gemini API Key 标签"
+  },
+  "gemini_api_key_desc": {
+    "message": "Google AI Studio API 密钥",
+    "description": "Gemini API Key 描述"
+  },
+  "gemini_model_label": {
+    "message": "Gemini 模型",
+    "description": "Gemini 模型选择标签"
+  },
+  "gemini_model_desc": {
+    "message": "选择用于 AI 翻译的 Gemini 模型",
+    "description": "Gemini 模型选择描述"
   },
   "api_key_label": {
     "message": "API Key",

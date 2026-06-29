@@ -33,6 +33,8 @@ chrome.runtime.onInstalled.addListener(() => {
           siliconflowApiKey: '',
           siliconflowModel: 'tencent/Hunyuan-MT-7B',
           microsoftApiKey: '',
+          geminiApiKey: '',
+          geminiModel: 'gemini-3.1-flash-lite',
           targetLanguage: 'zh',
           uiLanguage: 'auto',
           theme: 'light',
@@ -271,6 +273,10 @@ function updateSettings(settings, sendResponse) {
     });
 
     chrome.storage.local.set({ lingoflow_settings: merged }, () => {
+      console.log('LingoFlow: Settings updated', {
+        translationEngine: merged.translationEngine,
+        geminiModel: merged.geminiModel
+      });
       sendResponse({ success: true });
     });
   });
@@ -279,6 +285,8 @@ function updateSettings(settings, sendResponse) {
 function getDefaultSettings(overrides = {}) {
   return {
     translationEngine: 'google',
+    geminiApiKey: '',
+    geminiModel: 'gemini-3.1-flash-lite',
     targetLanguage: 'zh',
     uiLanguage: 'auto',
     theme: 'light',
@@ -465,10 +473,13 @@ function translateText(text, targetLang, sendResponse) {
   // Read engine preference from settings
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
+    console.log('LingoFlow: Selected translation engine:', engine);
     if (engine === 'siliconflow') {
       translateWithSiliconFlow(text, targetLang, sendResponse);
     } else if (engine === 'microsoft') {
       translateWithMicrosoft(text, targetLang, sendResponse);
+    } else if (engine === 'gemini') {
+      translateWithGemini(text, targetLang, sendResponse);
     } else if (engine === 'mymemory') {
       translateWithMyMemory(text, targetLang, sendResponse);
     } else {
@@ -486,6 +497,13 @@ function translateBatch(texts, targetLang, sendResponse) {
 
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
+    console.log('LingoFlow: Selected batch translation engine:', engine, `(${list.length} items)`);
+
+    if (engine === 'gemini') {
+      translateBatchWithGemini(list, targetLang, sendResponse);
+      return;
+    }
+
     const translations = new Array(list.length);
     const concurrency = 3;
     let cursor = 0;
@@ -538,6 +556,8 @@ function translateOneForBatch(text, targetLang, engine) {
       translateWithSiliconFlow(text, targetLang, respond);
     } else if (engine === 'microsoft') {
       translateWithMicrosoft(text, targetLang, respond);
+    } else if (engine === 'gemini') {
+      translateWithGemini(text, targetLang, respond);
     } else if (engine === 'mymemory') {
       translateWithMyMemory(text, targetLang, respond);
     } else {
@@ -671,6 +691,310 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
         });
     }
   });
+}
+
+// Gemini AI Translation (Google AI Studio API key required)
+// Docs: https://ai.google.dev/gemini-api/docs/text-generation
+function translateWithGemini(text, targetLang, sendResponse) {
+  const target = targetLang === 'zh' ? 'Simplified Chinese' :
+                 targetLang === 'en' ? 'English' : 'Simplified Chinese';
+
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const settings = result.lingoflow_settings || {};
+    const apiKey = (settings.geminiApiKey || '').trim();
+    const model = settings.geminiModel || 'gemini-3.1-flash-lite';
+
+    if (!apiKey) {
+      console.warn('LingoFlow: Gemini API key not set, falling back to Google');
+      translateWithGoogle(text, targetLang, sendResponse);
+      return;
+    }
+
+    const maxLen = 6000;
+    const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const body = {
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            {
+              text: `Translate the following text to ${target}. Only output the translated text. Do not add explanations, notes, quotation marks, or markdown.\n\n${truncated}`
+            }
+          ]
+        }
+      ],
+      generationConfig: {
+        temperature: 0.1,
+        topP: 0.9,
+        maxOutputTokens: Math.min(Math.max(truncated.length * 2, 256), 4096)
+      }
+    };
+
+    console.log('LingoFlow: Gemini translating', truncated.length, 'chars with', model);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.warn('LingoFlow: Gemini request timed out after 15s');
+      controller.abort();
+    }, 15000);
+
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    })
+      .then(response => {
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        const parts = data &&
+          data.candidates &&
+          data.candidates[0] &&
+          data.candidates[0].content &&
+          Array.isArray(data.candidates[0].content.parts)
+            ? data.candidates[0].content.parts
+            : [];
+        const translatedText = parts
+          .map(part => part && part.text ? part.text : '')
+          .join('')
+          .trim();
+
+        if (translatedText) {
+          console.log('LingoFlow: Gemini succeeded, result length:', translatedText.length);
+          sendResponse({ success: true, translation: translatedText });
+          return;
+        }
+
+        console.warn('LingoFlow: Gemini returned empty translation, falling back to Google');
+        translateWithGoogle(text, targetLang, sendResponse);
+      })
+      .catch(error => {
+        clearTimeout(timeoutId);
+        const message = error && error.message ? error.message : String(error);
+        console.warn('LingoFlow: Gemini error:', message, '- falling back to Google');
+        translateWithGoogle(text, targetLang, sendResponse);
+      });
+  });
+}
+
+function translateBatchWithGemini(texts, targetLang, sendResponse) {
+  const list = Array.isArray(texts) ? texts : [];
+  if (!list.length) {
+    sendResponse({ success: true, translations: [] });
+    return;
+  }
+
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const settings = result.lingoflow_settings || {};
+    const apiKey = (settings.geminiApiKey || '').trim();
+    const model = settings.geminiModel || 'gemini-3.1-flash-lite';
+
+    if (!apiKey) {
+      console.warn('LingoFlow: Gemini API key not set for batch, falling back to Google');
+      translateBatchWithGoogleFallback(list, targetLang).then(translations => {
+        sendResponse({ success: true, translations });
+      });
+      return;
+    }
+
+    const chunks = createGeminiTextChunks(list);
+    const translations = new Array(list.length);
+    console.log('LingoFlow: Gemini batch translating', list.length, 'items in', chunks.length, 'request(s) with', model);
+
+    runGeminiChunkQueue(chunks, {
+      apiKey,
+      model,
+      targetLang,
+      translations,
+      attempt: 0
+    })
+      .then(() => {
+        sendResponse({ success: true, translations: translations.map((item, index) => item || list[index]) });
+      })
+      .catch(error => {
+        const message = error && error.message ? error.message : String(error);
+        console.warn('LingoFlow: Gemini batch failed:', message, '- falling back to Google');
+        translateBatchWithGoogleFallback(list, targetLang).then(fallbackTranslations => {
+          sendResponse({ success: true, translations: fallbackTranslations });
+        });
+      });
+  });
+}
+
+function createGeminiTextChunks(texts) {
+  const chunks = [];
+  let current = [];
+  let currentChars = 0;
+  const maxItems = 24;
+  const maxChars = 6000;
+
+  texts.forEach((text, index) => {
+    const value = String(text || '');
+    const itemChars = value.length;
+    if (current.length && (current.length >= maxItems || currentChars + itemChars > maxChars)) {
+      chunks.push(current);
+      current = [];
+      currentChars = 0;
+    }
+    current.push({ index, text: value });
+    currentChars += itemChars;
+  });
+
+  if (current.length) chunks.push(current);
+  return chunks;
+}
+
+async function runGeminiChunkQueue(chunks, context) {
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    try {
+      const result = await translateGeminiChunk(chunk, context.targetLang, context.apiKey, context.model, 0);
+      chunk.forEach((item, offset) => {
+        context.translations[item.index] = result[offset] || item.text;
+      });
+    } catch (error) {
+      const message = error && error.message ? error.message : String(error);
+      console.warn(`LingoFlow: Gemini chunk ${i + 1}/${chunks.length} failed:`, message, '- falling back to Google for this chunk');
+      const fallback = await translateBatchWithGoogleFallback(chunk.map(item => item.text), context.targetLang);
+      chunk.forEach((item, offset) => {
+        context.translations[item.index] = fallback[offset] || item.text;
+      });
+    }
+
+    if (i < chunks.length - 1) {
+      await delay(700);
+    }
+  }
+}
+
+function translateGeminiChunk(chunk, targetLang, apiKey, model, attempt) {
+  const target = targetLang === 'zh' || targetLang === 'zh-CN' ? 'Simplified Chinese' :
+                 targetLang === 'en' ? 'English' : 'Simplified Chinese';
+  const payload = chunk.map((item, offset) => ({
+    id: offset,
+    text: item.text
+  }));
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const body = {
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            text: [
+              `Translate each "text" value to ${target}.`,
+              'Return ONLY a valid JSON array. No markdown. No explanations.',
+              'The output array must have the same length and order as the input array.',
+              'Each output item must be a string translation.',
+              '',
+              JSON.stringify(payload)
+            ].join('\n')
+          }
+        ]
+      }
+    ],
+    generationConfig: {
+      temperature: 0.1,
+      topP: 0.9,
+      responseMimeType: 'application/json',
+      maxOutputTokens: 8192
+    }
+  };
+
+  console.log('LingoFlow: Gemini batch chunk translating', chunk.length, 'items with', model);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+  return fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal: controller.signal
+  })
+    .then(response => {
+      clearTimeout(timeoutId);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      const text = extractGeminiText(data);
+      const translations = parseGeminiTranslationArray(text, chunk.length);
+      console.log('LingoFlow: Gemini batch chunk succeeded, items:', translations.length);
+      return translations;
+    })
+    .catch(error => {
+      clearTimeout(timeoutId);
+      const message = error && error.message ? error.message : String(error);
+      if (attempt < 1 && /HTTP (429|500|502|503|504)|abort/i.test(message)) {
+        console.warn('LingoFlow: Gemini batch chunk retrying after:', message);
+        return delay(1600).then(() => translateGeminiChunk(chunk, targetLang, apiKey, model, attempt + 1));
+      }
+      throw error;
+    });
+}
+
+function extractGeminiText(data) {
+  const parts = data &&
+    data.candidates &&
+    data.candidates[0] &&
+    data.candidates[0].content &&
+    Array.isArray(data.candidates[0].content.parts)
+      ? data.candidates[0].content.parts
+      : [];
+  return parts
+    .map(part => part && part.text ? part.text : '')
+    .join('')
+    .trim();
+}
+
+function parseGeminiTranslationArray(text, expectedLength) {
+  const cleaned = String(text || '')
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/i, '')
+    .trim();
+  let parsed = JSON.parse(cleaned);
+  if (!Array.isArray(parsed)) {
+    if (parsed && Array.isArray(parsed.translations)) parsed = parsed.translations;
+    else throw new Error('Gemini batch response is not an array');
+  }
+
+  const translations = parsed.map(item => {
+    if (typeof item === 'string') return item.trim();
+    if (item && typeof item.translation === 'string') return item.translation.trim();
+    if (item && typeof item.text === 'string') return item.text.trim();
+    return '';
+  });
+
+  if (translations.length !== expectedLength) {
+    throw new Error(`Gemini batch response length mismatch: ${translations.length}/${expectedLength}`);
+  }
+  return translations;
+}
+
+function translateBatchWithGoogleFallback(texts, targetLang) {
+  const list = Array.isArray(texts) ? texts : [];
+  const translations = new Array(list.length);
+  let chain = Promise.resolve();
+
+  list.forEach((text, index) => {
+    chain = chain.then(() => new Promise(resolve => {
+      translateWithGoogle(text, targetLang, response => {
+        translations[index] = response && response.success && response.translation ? response.translation : text;
+        resolve();
+      });
+    }));
+  });
+
+  return chain.then(() => translations);
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // MyMemory Translation (free, no API key required)

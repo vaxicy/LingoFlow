@@ -25,6 +25,8 @@ const panelState = {
   settingsDirty: false
 };
 
+let settingsAutoSaveTimer = null;
+
 // ======================== Mode Switches ========================
 
 function initModeSwitches() {
@@ -268,12 +270,22 @@ const SILICONFLOW_MODELS = [
   { id: 'THUDM/GLM-4-9B-0414',          name: 'GLM-4-9B' }
 ];
 
+const GEMINI_MODELS = [
+  { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite（推荐·500次/天）' },
+  { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash（备用）' },
+  { id: 'gemini-3-flash', name: 'Gemini 3 Flash（备用）' },
+  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite（低成本）' },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash（质量备用）' }
+];
+
 function initSettingsPanel() {
   const controls = [
     'popup-translation-engine',
     'popup-siliconflow-key',
     'popup-siliconflow-model',
     'popup-microsoft-key',
+    'popup-gemini-key',
+    'popup-gemini-model',
     'popup-translate-to',
     'popup-ui-language',
     'popup-bilingual-mode',
@@ -290,15 +302,19 @@ function initSettingsPanel() {
       if (id === 'popup-translation-engine') {
         const isSF = control.value === 'siliconflow';
         const isMS = control.value === 'microsoft';
+        const isGemini = control.value === 'gemini';
         toggleApiKeyRow(isSF);
         toggleModelRow(isSF);
         toggleMicrosoftRow(isMS);
+        toggleGeminiRows(isGemini);
         syncEngineSelect(control.value);
       }
       if (id === 'popup-ui-language' && typeof setLanguage === 'function') {
         setLanguage(control.value || 'auto');
         syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+        syncPanelCustomSelects();
       }
+      scheduleSettingsAutoSave();
     });
   });
 
@@ -307,15 +323,30 @@ function initSettingsPanel() {
   // Also listen on input events for the API key fields
   const apiKeyInput = document.getElementById('popup-siliconflow-key');
   if (apiKeyInput) {
-    apiKeyInput.addEventListener('input', () => { setSettingsDirty(true); });
+    apiKeyInput.addEventListener('input', () => {
+      setSettingsDirty(true);
+      scheduleSettingsAutoSave();
+    });
   }
   const microsoftKeyInput = document.getElementById('popup-microsoft-key');
   if (microsoftKeyInput) {
-    microsoftKeyInput.addEventListener('input', () => { setSettingsDirty(true); });
+    microsoftKeyInput.addEventListener('input', () => {
+      setSettingsDirty(true);
+      scheduleSettingsAutoSave();
+    });
+  }
+  const geminiKeyInput = document.getElementById('popup-gemini-key');
+  if (geminiKeyInput) {
+    geminiKeyInput.addEventListener('input', () => {
+      setSettingsDirty(true);
+      scheduleSettingsAutoSave();
+    });
   }
 
   // Populate model selector options
   populateModelSelect('popup-siliconflow-model');
+  populateGeminiModelSelect('popup-gemini-model');
+  initPanelCustomSelects();
 
   document.querySelectorAll('[data-popup-theme]').forEach(button => {
     button.addEventListener('click', () => {
@@ -344,10 +375,27 @@ function initSettingsPanel() {
   }
 }
 
+function scheduleSettingsAutoSave() {
+  clearTimeout(settingsAutoSaveTimer);
+  settingsAutoSaveTimer = setTimeout(() => {
+    const settings = getPopupSettingsFromUI();
+    chrome.runtime.sendMessage({ action: 'update_settings', settings }, (response) => {
+      if (!response || !response.success) return;
+      panelState.savedSettings = cloneSettings(settings);
+      setSettingsDirty(false);
+      console.log('LingoFlow: Settings auto-saved', {
+        translationEngine: settings.translationEngine,
+        geminiModel: settings.geminiModel
+      });
+    });
+  }, 350);
+}
+
 const ENGINE_SELECT_META = {
   google: { label: 'Google 翻译', description: '快速通用' },
   microsoft: { label: 'Microsoft Translator', description: '稳定专业' },
   siliconflow: { label: '硅基流动 AI（免费）', description: 'AI 翻译' },
+  gemini: { label: 'Gemini AI', description: '便宜快速' },
   mymemory: { label: 'MyMemory（免费）', description: '免费备用' }
 };
 
@@ -392,6 +440,7 @@ function setEngineSelectOpen(open) {
   const menu = document.getElementById('engine-select-menu');
   if (!customSelect || !trigger || !menu) return;
 
+  if (open) closePanelCustomSelects();
   customSelect.classList.toggle('open', open);
   trigger.setAttribute('aria-expanded', String(open));
   menu.hidden = !open;
@@ -426,11 +475,157 @@ function syncEngineSelect(value) {
   });
 }
 
+function initPanelCustomSelects() {
+  document.querySelectorAll('select.panel-select').forEach(select => {
+    if (select.id === 'popup-translation-engine') return;
+    if (select.dataset.customSelectReady === 'true') return;
+
+    select.dataset.customSelectReady = 'true';
+    select.classList.add('native-select-hidden');
+
+    const customSelect = document.createElement('div');
+    customSelect.className = 'panel-custom-select';
+    customSelect.dataset.selectFor = select.id || '';
+
+    const trigger = document.createElement('button');
+    trigger.className = 'panel-custom-select-trigger';
+    trigger.type = 'button';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+
+    const label = document.createElement('span');
+    label.className = 'panel-custom-select-label';
+
+    const chevron = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    chevron.setAttribute('class', 'panel-custom-select-chevron');
+    chevron.setAttribute('width', '16');
+    chevron.setAttribute('height', '16');
+    chevron.setAttribute('viewBox', '0 0 24 24');
+    chevron.setAttribute('fill', 'none');
+    chevron.setAttribute('stroke', 'currentColor');
+    chevron.setAttribute('stroke-width', '2');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'm6 9 6 6 6-6');
+    chevron.appendChild(path);
+
+    trigger.append(label, chevron);
+
+    const menu = document.createElement('div');
+    menu.className = 'panel-custom-select-menu';
+    menu.setAttribute('role', 'listbox');
+    menu.hidden = true;
+
+    customSelect.append(trigger, menu);
+    select.insertAdjacentElement('afterend', customSelect);
+
+    trigger.addEventListener('click', () => {
+      setPanelCustomSelectOpen(customSelect, !customSelect.classList.contains('open'));
+    });
+
+    select.addEventListener('change', () => {
+      refreshPanelCustomSelect(select);
+    });
+
+    refreshPanelCustomSelect(select);
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.panel-custom-select') && !event.target.closest('.engine-select')) {
+      closePanelCustomSelects();
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') closePanelCustomSelects();
+  });
+}
+
+function getPanelCustomSelect(select) {
+  if (!select) return null;
+  return select.nextElementSibling && select.nextElementSibling.classList.contains('panel-custom-select')
+    ? select.nextElementSibling
+    : null;
+}
+
+function refreshPanelCustomSelect(select) {
+  const customSelect = getPanelCustomSelect(select);
+  if (!select || !customSelect) return;
+
+  const trigger = customSelect.querySelector('.panel-custom-select-trigger');
+  const label = customSelect.querySelector('.panel-custom-select-label');
+  const menu = customSelect.querySelector('.panel-custom-select-menu');
+  if (!trigger || !label || !menu) return;
+
+  const selectedOption = select.selectedOptions && select.selectedOptions[0];
+  label.textContent = selectedOption ? selectedOption.textContent.trim() : '';
+  menu.textContent = '';
+
+  Array.from(select.options).forEach(option => {
+    const item = document.createElement('button');
+    item.className = 'panel-custom-select-option';
+    item.type = 'button';
+    item.setAttribute('role', 'option');
+    item.setAttribute('aria-selected', String(option.value === select.value));
+    item.textContent = option.textContent.trim();
+    item.addEventListener('click', () => {
+      select.value = option.value;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      setPanelCustomSelectOpen(customSelect, false);
+    });
+    menu.appendChild(item);
+  });
+
+  trigger.setAttribute('aria-expanded', String(customSelect.classList.contains('open')));
+}
+
+function setPanelCustomSelectOpen(customSelect, open) {
+  if (!customSelect) return;
+  if (open) setEngineSelectOpen(false);
+  closePanelCustomSelects(customSelect);
+
+  const trigger = customSelect.querySelector('.panel-custom-select-trigger');
+  const menu = customSelect.querySelector('.panel-custom-select-menu');
+  if (!trigger || !menu) return;
+
+  customSelect.classList.toggle('open', open);
+  trigger.setAttribute('aria-expanded', String(open));
+  menu.hidden = !open;
+}
+
+function closePanelCustomSelects(except = null) {
+  document.querySelectorAll('.panel-custom-select.open').forEach(customSelect => {
+    if (customSelect === except) return;
+    const trigger = customSelect.querySelector('.panel-custom-select-trigger');
+    const menu = customSelect.querySelector('.panel-custom-select-menu');
+    customSelect.classList.remove('open');
+    if (trigger) trigger.setAttribute('aria-expanded', 'false');
+    if (menu) menu.hidden = true;
+  });
+}
+
+function syncPanelCustomSelects() {
+  document.querySelectorAll('select.panel-select[data-custom-select-ready="true"]').forEach(select => {
+    refreshPanelCustomSelect(select);
+  });
+}
+
 function populateModelSelect(selectId) {
   const select = document.getElementById(selectId);
   if (!select) return;
   select.textContent = '';
   SILICONFLOW_MODELS.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.name;
+    select.appendChild(opt);
+  });
+}
+
+function populateGeminiModelSelect(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  select.textContent = '';
+  GEMINI_MODELS.forEach(m => {
     const opt = document.createElement('option');
     opt.value = m.id;
     opt.textContent = m.name;
@@ -453,11 +648,20 @@ function toggleMicrosoftRow(show) {
   if (keyRow) keyRow.hidden = !show;
 }
 
+function toggleGeminiRows(show) {
+  const keyRow = document.getElementById('popup-gemini-key-row');
+  const modelRow = document.getElementById('popup-gemini-model-row');
+  if (keyRow) keyRow.hidden = !show;
+  if (modelRow) modelRow.hidden = !show;
+}
+
 function applyPopupSettings(settings) {
   const translationEngine = document.getElementById('popup-translation-engine');
   const apiKeyInput = document.getElementById('popup-siliconflow-key');
   const modelSelect = document.getElementById('popup-siliconflow-model');
   const microsoftKeyInput = document.getElementById('popup-microsoft-key');
+  const geminiKeyInput = document.getElementById('popup-gemini-key');
+  const geminiModelSelect = document.getElementById('popup-gemini-model');
   const translateTo = document.getElementById('popup-translate-to');
   const uiLanguage = document.getElementById('popup-ui-language');
   const bilingualMode = document.getElementById('popup-bilingual-mode');
@@ -470,14 +674,21 @@ function applyPopupSettings(settings) {
     translationEngine.value = settings.translationEngine || 'google';
     const isSF = translationEngine.value === 'siliconflow';
     const isMS = translationEngine.value === 'microsoft';
+    const isGemini = translationEngine.value === 'gemini';
     toggleApiKeyRow(isSF);
     toggleModelRow(isSF);
     toggleMicrosoftRow(isMS);
+    toggleGeminiRows(isGemini);
     syncEngineSelect(translationEngine.value);
   }
   if (apiKeyInput) apiKeyInput.value = settings.siliconflowApiKey || '';
   if (modelSelect) modelSelect.value = settings.siliconflowModel || 'tencent/Hunyuan-MT-7B';
   if (microsoftKeyInput) microsoftKeyInput.value = settings.microsoftApiKey || '';
+  if (geminiKeyInput) geminiKeyInput.value = settings.geminiApiKey || '';
+  if (geminiModelSelect) {
+    geminiModelSelect.value = settings.geminiModel || 'gemini-3.1-flash-lite';
+    if (!geminiModelSelect.value) geminiModelSelect.value = 'gemini-3.1-flash-lite';
+  }
   if (translateTo) translateTo.value = settings.targetLanguage || 'zh';
   if (uiLanguage) uiLanguage.value = settings.uiLanguage || 'auto';
   if (bilingualMode) bilingualMode.checked = !!settings.bilingualMode;
@@ -488,6 +699,7 @@ function applyPopupSettings(settings) {
   document.querySelectorAll('[data-popup-theme]').forEach(button => {
     button.classList.toggle('active', button.getAttribute('data-popup-theme') === theme);
   });
+  syncPanelCustomSelects();
 }
 
 function getPopupSettingsFromUI() {
@@ -496,6 +708,8 @@ function getPopupSettingsFromUI() {
     siliconflowApiKey: document.getElementById('popup-siliconflow-key')?.value || '',
     siliconflowModel: document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B',
     microsoftApiKey: document.getElementById('popup-microsoft-key')?.value || '',
+    geminiApiKey: document.getElementById('popup-gemini-key')?.value || '',
+    geminiModel: document.getElementById('popup-gemini-model')?.value || 'gemini-3.1-flash-lite',
     targetLanguage: document.getElementById('popup-translate-to')?.value || 'zh',
     uiLanguage: document.getElementById('popup-ui-language')?.value || 'auto',
     theme: document.querySelector('[data-popup-theme].active')?.getAttribute('data-popup-theme') || 'light',
@@ -543,6 +757,8 @@ function getDefaultSettings() {
     siliconflowApiKey: '',
     siliconflowModel: 'tencent/Hunyuan-MT-7B',
     microsoftApiKey: '',
+    geminiApiKey: '',
+    geminiModel: 'gemini-3.1-flash-lite',
     targetLanguage: 'zh',
     uiLanguage: 'auto',
     theme: 'light',

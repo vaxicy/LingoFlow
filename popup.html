@@ -190,6 +190,7 @@
             <option value="google" data-i18n="engine_google">Google Translate</option>
             <option value="mymemory" data-i18n="engine_mymemory">MyMemory (Free)</option>
             <option value="siliconflow" data-i18n="engine_siliconflow">硅基流动 AI（免费）</option>
+            <option value="gemini" data-i18n="engine_gemini">Gemini AI</option>
             <option value="microsoft" data-i18n="engine_microsoft">Microsoft Translator</option>
           </select>
           <div class="engine-select" id="engine-select">
@@ -225,6 +226,15 @@
                 <span>
                   <strong>硅基流动 AI（免费）</strong>
                   <small>AI 翻译</small>
+                </span>
+                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </button>
+              <button class="engine-select-option" type="button" role="option" data-engine-value="gemini" aria-selected="false">
+                <span>
+                  <strong>Gemini AI</strong>
+                  <small>便宜快速</small>
                 </span>
                 <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                   <path d="M20 6 9 17l-5-5"/>
@@ -267,6 +277,24 @@
             <span data-i18n="microsoft_api_key_desc">Azure Translator 密钥</span>
           </div>
           <input type="password" class="panel-input" id="popup-microsoft-key" placeholder="Azure Translator Key" autocomplete="off">
+        </div>
+
+        <div class="settings-row settings-row-stack" id="popup-gemini-key-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="gemini_api_key_label">Gemini API Key</strong>
+            <span data-i18n="gemini_api_key_desc">Google AI Studio API key</span>
+          </div>
+          <input type="password" class="panel-input" id="popup-gemini-key" placeholder="Gemini API Key" autocomplete="off">
+        </div>
+
+        <div class="settings-row settings-row-stack" id="popup-gemini-model-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="gemini_model_label">Gemini Model</strong>
+            <span data-i18n="gemini_model_desc">Choose a Gemini model for AI translation</span>
+          </div>
+          <select class="panel-select" id="popup-gemini-model">
+            <!-- Options populated by JS -->
+          </select>
         </div>
 
         <!-- Microsoft Region: hidden, default eastasia -->

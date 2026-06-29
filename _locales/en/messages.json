@@ -335,6 +335,10 @@
     "message": "SiliconFlow AI (Free)",
     "description": "SiliconFlow translation engine option"
   },
+  "engine_gemini": {
+    "message": "Gemini AI",
+    "description": "Gemini AI translation engine option"
+  },
   "engine_microsoft": {
     "message": "Microsoft Translator",
     "description": "Microsoft Translator engine option"
@@ -354,6 +358,22 @@
   "microsoft_region_desc": {
     "message": "Azure Translator resource region",
     "description": "Microsoft region description"
+  },
+  "gemini_api_key_label": {
+    "message": "Gemini API Key",
+    "description": "Gemini API Key label"
+  },
+  "gemini_api_key_desc": {
+    "message": "Google AI Studio API key",
+    "description": "Gemini API Key description"
+  },
+  "gemini_model_label": {
+    "message": "Gemini Model",
+    "description": "Gemini model selector label"
+  },
+  "gemini_model_desc": {
+    "message": "Choose a Gemini model for AI translation",
+    "description": "Gemini model selector description"
   },
   "api_key_label": {
     "message": "API Key",
