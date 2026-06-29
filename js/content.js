@@ -32,6 +32,7 @@
     isTranslated: false,       // whether page currently has active translation
     hoverEnabled: true,
     uiLanguage: 'auto',
+    targetLanguage: 'zh',
     existingBilingualStrategy: 'skip',
     activeTranslationMode: null,
     mutationObserver: null,
@@ -280,6 +281,99 @@
     }
   };
 
+  const SelectionLookup = {
+    cache: new Map(),
+
+    isSingleEnglishWord(text) {
+      return /^[A-Za-z][A-Za-z'-]*$/.test(String(text || '').trim());
+    },
+
+    getType(text) {
+      return this.isSingleEnglishWord(text) ? 'word' : 'sentence';
+    },
+
+    getCacheKey(text) {
+      return `${this.getType(text)}:${state.targetLanguage}:${String(text || '').trim().toLowerCase()}`;
+    },
+
+    async resolve(text) {
+      const normalized = String(text || '').trim();
+      const cacheKey = this.getCacheKey(normalized);
+      if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
+
+      const result = this.isSingleEnglishWord(normalized)
+        ? await this.lookupWord(normalized)
+        : await this.translateText(normalized);
+
+      this.cache.set(cacheKey, result);
+      return result;
+    },
+
+    lookupWord(word) {
+      return new Promise((resolve) => {
+        try {
+          chrome.runtime.sendMessage(
+            {
+              action: 'lookup_dictionary',
+              text: word,
+              targetLang: state.targetLanguage || 'zh'
+            },
+            (response) => {
+              if (chrome.runtime.lastError || !response || !response.success || !response.result) {
+                this.translateText(word).then(resolve);
+                return;
+              }
+              resolve({
+                mode: 'word',
+                text: word,
+                translation: response.result.translation || word,
+                dictionary: response.result
+              });
+            }
+          );
+        } catch (_) {
+          this.translateText(word).then(resolve);
+        }
+      });
+    },
+
+    async translateText(text) {
+      const translation = await TranslationEngine.translate(text, state.targetLanguage || 'zh');
+      if (isFallbackText(translation)) {
+        return {
+          mode: this.getType(text),
+          text,
+          translation: '',
+          error: true
+        };
+      }
+      return {
+        mode: this.getType(text),
+        text,
+        translation,
+        dictionary: null
+      };
+    },
+
+    getCopyText(result) {
+      if (!result) return '';
+      if (result.mode === 'word' && result.dictionary) {
+        return result.dictionary.translation || result.translation || result.text || '';
+      }
+      return result.translation || result.text || '';
+    },
+
+    getSavePayload(result) {
+      return {
+        text: result.text || '',
+        translation: result.translation || '',
+        dictionary: result.dictionary || null,
+        type: result.mode === 'word' ? 'word' : 'sentence',
+        sourceUrl: window.location.href
+      };
+    }
+  };
+
   // DOM Processor - Handle DOM manipulation
   const DOMProcessor = {
     // Tags to skip
@@ -348,6 +442,7 @@
   // UI Components
   const UI = {
     selectionContext: null,
+    currentResult: null,
 
     // Create floating toolbar
     createFloatingToolbar(selectionContext) {
@@ -389,26 +484,45 @@
         </div>
       `;
 
-      // Add event listeners
-      toolbar.querySelector('.lingoflow-translate-btn').addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.handleTranslate(selectedText, selectionContext);
-      });
+      const handleToolbarAction = (e) => {
+        const button = e.target && e.target.closest ? e.target.closest('.lingoflow-btn') : null;
+        if (!button || !toolbar.contains(button) || button.disabled) return;
+        if (toolbar.dataset.lfActionLock === 'true') return;
+        toolbar.dataset.lfActionLock = 'true';
+        setTimeout(() => {
+          if (toolbar && toolbar.dataset) delete toolbar.dataset.lfActionLock;
+        }, 250);
 
-      toolbar.querySelector('.lingoflow-copy-btn').addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        this.handleCopy(selectedText);
-        this.removeFloatingToolbar();
-      });
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
 
-      toolbar.querySelector('.lingoflow-save-btn').addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.handleSave(selectedText);
-        this.removeFloatingToolbar();
-      });
+        const action = button.getAttribute('data-action');
+        if (action === 'translate') {
+          this.handleTranslate(selectedText, selectionContext);
+          return;
+        }
+
+        if (action === 'copy') {
+          this.handleCopy(selectedText);
+          this.removeFloatingToolbar();
+          return;
+        }
+
+        if (action === 'save') {
+          this.handleSave(selectedText);
+        }
+      };
+
+      toolbar.addEventListener('pointerdown', handleToolbarAction, true);
+      toolbar.addEventListener('mousedown', handleToolbarAction, true);
+      toolbar.addEventListener('click', (e) => {
+        if (e.target && e.target.closest && e.target.closest('.lingoflow-btn')) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        }
+      }, true);
 
       document.body.appendChild(toolbar);
 
@@ -454,19 +568,51 @@
     },
 
     // Show translation result
-    showTranslationResult(selectionContext, originalText, translation) {
+    showTranslationResult(selectionContext, resultData) {
       this.removeFloatingToolbar();
+      this.currentResult = resultData;
+
+      const originalText = resultData.text || '';
+      const translation = resultData.translation || '';
+      const dictionary = resultData.dictionary || null;
+      const isWord = resultData.mode === 'word';
+      const meanings = dictionary && Array.isArray(dictionary.meanings) ? dictionary.meanings : [];
+      const examples = dictionary && Array.isArray(dictionary.examples) ? dictionary.examples : [];
 
       const result = document.createElement('div');
       result.id = 'lingoflow-translation-result';
       result.className = 'lingoflow-ui';
 
-      result.innerHTML = `
-        <div class="lingoflow-result-content">
+      const body = isWord
+        ? `
+          <div class="lingoflow-word-head">
+            <div>
+              <div class="lingoflow-word-text">${this.escapeHtml(originalText)}</div>
+              ${dictionary && dictionary.phonetic ? `<div class="lingoflow-word-phonetic">${this.escapeHtml(dictionary.phonetic)}</div>` : ''}
+            </div>
+            <span class="lingoflow-word-badge">Word</span>
+          </div>
+          <div class="lingoflow-result-translation">${this.escapeHtml(translation)}</div>
+          ${meanings.length ? `<div class="lingoflow-meaning-list">${meanings.map(item => `
+            <div class="lingoflow-meaning-item">
+              ${item.partOfSpeech ? `<span class="lingoflow-pos">${this.escapeHtml(item.partOfSpeech)}</span>` : ''}
+              <span>${this.escapeHtml(item.definition || '')}</span>
+            </div>
+          `).join('')}</div>` : ''}
+          ${examples.length ? `<div class="lingoflow-example-list">${examples.map(example => `
+            <div class="lingoflow-example">"${this.escapeHtml(example)}"</div>
+          `).join('')}</div>` : ''}
+        `
+        : `
           <div class="lingoflow-result-label">Original</div>
           <div class="lingoflow-result-original">${this.escapeHtml(originalText)}</div>
           <div class="lingoflow-result-label">Translation</div>
           <div class="lingoflow-result-translation">${this.escapeHtml(translation)}</div>
+        `;
+
+      result.innerHTML = `
+        <div class="lingoflow-result-content">
+          ${body}
           <div class="lingoflow-result-actions">
             <button class="lingoflow-result-btn" type="button" data-result-action="copy">${this.escapeHtml(getMessage('copy') || 'Copy')}</button>
             <button class="lingoflow-result-btn" type="button" data-result-action="save">${this.escapeHtml(getMessage('save') || 'Save')}</button>
@@ -481,23 +627,46 @@
         offset: 10
       });
 
-      result.querySelector('[data-result-action="copy"]').addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.handleCopy(translation);
-      });
+      const handleResultAction = (e) => {
+        const actionButton = e.target && e.target.closest
+          ? e.target.closest('[data-result-action], .lingoflow-result-close')
+          : null;
+        if (!actionButton || !result.contains(actionButton)) return;
+        if (result.dataset.lfActionLock === 'true') return;
+        result.dataset.lfActionLock = 'true';
+        setTimeout(() => {
+          if (result && result.dataset) delete result.dataset.lfActionLock;
+        }, 250);
 
-      result.querySelector('[data-result-action="save"]').addEventListener('click', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        this.handleSave(originalText, translation);
-      });
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
 
-      result.querySelector('.lingoflow-result-close').addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.removeTranslationResult();
-      });
+        const action = actionButton.getAttribute('data-result-action');
+        if (action === 'copy') {
+          this.handleCopy(SelectionLookup.getCopyText(resultData));
+          return;
+        }
+
+        if (action === 'save') {
+          this.saveResolvedResult(resultData);
+          return;
+        }
+
+        if (actionButton.classList.contains('lingoflow-result-close')) {
+          this.removeTranslationResult();
+        }
+      };
+
+      result.addEventListener('pointerdown', handleResultAction, true);
+      result.addEventListener('mousedown', handleResultAction, true);
+      result.addEventListener('click', (e) => {
+        if (e.target && e.target.closest && e.target.closest('[data-result-action], .lingoflow-result-close')) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        }
+      }, true);
 
       setTimeout(() => this.removeTranslationResult(), 12000);
     },
@@ -506,6 +675,7 @@
     removeTranslationResult() {
       const result = document.getElementById('lingoflow-translation-result');
       if (result) result.remove();
+      this.currentResult = null;
     },
 
     // Show hover definition card
@@ -573,11 +743,11 @@
       }
 
       this.setToolbarLoading(true);
-      const translation = await TranslationEngine.translate(text);
+      const result = await SelectionLookup.resolve(text);
       this.setToolbarLoading(false);
 
       // If translation failed (fallback text), show notification instead of result
-      if (isFallbackText(translation)) {
+      if (!result || result.error || !result.translation) {
         this.showNotification(statusText('translationFailed'));
         return;
       }
@@ -587,16 +757,16 @@
         action: 'add_to_history',
         data: {
           text: text,
-          translation: translation,
+          translation: result.translation,
           sourceUrl: window.location.href
         }
       });
 
       // Show result
       if (selectionContext && selectionContext.rect) {
-        this.showTranslationResult(selectionContext, text, translation);
+        this.showTranslationResult(selectionContext, result);
       } else {
-        this.showNotification(translation);
+        this.showNotification(result.translation);
       }
     },
 
@@ -608,15 +778,31 @@
     },
 
     // Handle save action
-    handleSave(text, translation) {
+    async handleSave(text, translation) {
+      if (!translation) {
+        this.setToolbarLoading(true);
+        const result = await SelectionLookup.resolve(text);
+        this.setToolbarLoading(false);
+        if (!result || result.error || !result.translation) {
+          this.showNotification(statusText('translationFailed'));
+          return;
+        }
+        this.saveResolvedResult(result);
+        return;
+      }
+
+      this.saveResolvedResult({
+        mode: SelectionLookup.getType(text),
+        text,
+        translation,
+        dictionary: null
+      });
+    },
+
+    saveResolvedResult(result) {
       chrome.runtime.sendMessage({
         action: 'save_to_vocabulary',
-        data: {
-          text: text,
-          translation: translation || '',
-          type: text.split(' ').length > 1 ? 'sentence' : 'word',
-          sourceUrl: window.location.href
-        }
+        data: SelectionLookup.getSavePayload(result)
       }, (response) => {
         this.showNotification(getMessage('saved'));
       });
@@ -1484,6 +1670,7 @@
         if (result.lingoflow_settings) {
           state.hoverEnabled = result.lingoflow_settings.hoverTranslation !== false;
           state.uiLanguage = result.lingoflow_settings.uiLanguage || 'auto';
+          state.targetLanguage = result.lingoflow_settings.targetLanguage || 'zh';
           state.existingBilingualStrategy = result.lingoflow_settings.existingBilingualStrategy || 'skip';
           TranslationEngine.activeEngine = result.lingoflow_settings.translationEngine || 'google';
         }
@@ -1515,7 +1702,9 @@
           const settings = changes.lingoflow_settings.newValue;
           state.hoverEnabled = settings.hoverTranslation !== false;
           state.uiLanguage = settings.uiLanguage || 'auto';
+          state.targetLanguage = settings.targetLanguage || 'zh';
           state.existingBilingualStrategy = settings.existingBilingualStrategy || 'skip';
+          TranslationEngine.activeEngine = settings.translationEngine || 'google';
         }
       });
 

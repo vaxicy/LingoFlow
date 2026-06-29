@@ -617,7 +617,7 @@ function createPanelItem(item, options) {
 
   const translation = document.createElement('div');
   translation.className = 'panel-item-translation';
-  translation.textContent = item.translation || '';
+  translation.textContent = getPanelTranslationText(item);
 
   const meta = document.createElement('div');
   meta.className = 'panel-item-meta';
@@ -650,14 +650,27 @@ function createPanelItem(item, options) {
 
   meta.appendChild(actions);
   row.appendChild(top);
-  if (item.translation) row.appendChild(translation);
+  if (translation.textContent) row.appendChild(translation);
   row.appendChild(meta);
   return row;
 }
 
+function getPanelTranslationText(item) {
+  if (item.dictionary && Array.isArray(item.dictionary.meanings) && item.dictionary.meanings.length) {
+    const first = item.dictionary.meanings[0];
+    const pos = first.partOfSpeech ? `${first.partOfSpeech}. ` : '';
+    return `${pos}${first.definition || item.dictionary.translation || item.translation || ''}`.trim();
+  }
+  if (item.dictionary && item.dictionary.translation) return item.dictionary.translation;
+  return item.translation || '';
+}
+
 function matchesPanelQuery(item, query) {
   if (!query) return true;
-  const text = `${item.text || ''} ${item.translation || ''} ${item.sourceUrl || ''}`.toLowerCase();
+  const dictionaryText = item.dictionary
+    ? `${item.dictionary.translation || ''} ${(item.dictionary.meanings || []).map(item => item.definition || '').join(' ')}`
+    : '';
+  const text = `${item.text || ''} ${item.translation || ''} ${dictionaryText} ${item.sourceUrl || ''}`.toLowerCase();
   return text.includes(query);
 }
 

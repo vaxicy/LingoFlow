@@ -96,6 +96,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       translateBatch(request.texts, request.targetLang, sendResponse);
       return true;
 
+    case 'lookup_dictionary':
+      lookupDictionary(request.text, request.targetLang, sendResponse);
+      return true;
+
     case 'save_to_vocabulary':
       saveToVocabulary(request.data);
       break;
@@ -151,6 +155,7 @@ function saveToVocabulary(data) {
       id: generateId(),
       text: data.text,
       translation: data.translation || '',
+      dictionary: data.dictionary || null,
       type: data.type || 'word',
       sourceUrl: data.sourceUrl || '',
       createdAt: Date.now()
@@ -292,6 +297,107 @@ function generateId() {
 }
 
 // Translation dispatcher — routes to the selected engine
+function lookupDictionary(text, targetLang, sendResponse) {
+  const word = String(text || '').trim().replace(/^[^A-Za-z]+|[^A-Za-z'-]+$/g, '');
+  if (!/^[A-Za-z][A-Za-z'-]*$/.test(word)) {
+    translateText(text, targetLang || 'zh', (response) => {
+      sendResponse({
+        success: !!(response && response.success),
+        result: {
+          mode: 'sentence',
+          translation: response && response.translation ? response.translation : ''
+        },
+        error: response && response.error
+      });
+    });
+    return;
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.toLowerCase())}`;
+
+  fetch(url, { signal: controller.signal })
+    .then(response => {
+      clearTimeout(timeoutId);
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      const result = normalizeDictionaryResult(word, data);
+      if (result && result.translation) {
+        translateText(word, targetLang || 'zh', (translationResponse) => {
+          if (translationResponse && translationResponse.success && translationResponse.translation) {
+            result.translation = translationResponse.translation;
+          }
+          sendResponse({ success: true, result });
+        });
+        return;
+      }
+      fallbackDictionaryTranslation(word, targetLang, sendResponse);
+    })
+    .catch(error => {
+      clearTimeout(timeoutId);
+      console.warn('LingoFlow: Dictionary lookup failed:', error && error.message ? error.message : String(error));
+      fallbackDictionaryTranslation(word, targetLang, sendResponse);
+    });
+}
+
+function normalizeDictionaryResult(word, data) {
+  const entry = Array.isArray(data) && data.length ? data[0] : null;
+  if (!entry) return null;
+
+  const phonetic = entry.phonetic ||
+    ((entry.phonetics || []).find(item => item && item.text) || {}).text ||
+    '';
+
+  const meanings = [];
+  (entry.meanings || []).forEach(meaning => {
+    const partOfSpeech = meaning.partOfSpeech || '';
+    (meaning.definitions || []).slice(0, 2).forEach(definition => {
+      if (!definition || !definition.definition) return;
+      meanings.push({
+        partOfSpeech,
+        definition: definition.definition,
+        synonyms: Array.isArray(definition.synonyms) ? definition.synonyms.slice(0, 4) : []
+      });
+    });
+  });
+
+  const examples = [];
+  (entry.meanings || []).forEach(meaning => {
+    (meaning.definitions || []).forEach(definition => {
+      if (definition && definition.example && examples.length < 2) examples.push(definition.example);
+    });
+  });
+
+  const firstDefinition = meanings[0] && meanings[0].definition ? meanings[0].definition : word;
+  return {
+    mode: 'word',
+    translation: firstDefinition,
+    phonetic,
+    meanings: meanings.slice(0, 4),
+    examples
+  };
+}
+
+function fallbackDictionaryTranslation(word, targetLang, sendResponse) {
+  translateText(word, targetLang || 'zh', (response) => {
+    const translation = response && response.translation ? response.translation : word;
+    sendResponse({
+      success: !!(response && response.success),
+      result: {
+        mode: 'word',
+        translation,
+        phonetic: '',
+        meanings: translation ? [{ partOfSpeech: '', definition: translation, synonyms: [] }] : [],
+        examples: []
+      },
+      error: response && response.error
+    });
+  });
+}
+
 function translateText(text, targetLang, sendResponse) {
   // Read engine preference from settings
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
