@@ -335,6 +335,26 @@
     "message": "SiliconFlow AI (Free)",
     "description": "SiliconFlow translation engine option"
   },
+  "engine_microsoft": {
+    "message": "Microsoft Translator",
+    "description": "Microsoft Translator engine option"
+  },
+  "microsoft_api_key_label": {
+    "message": "Microsoft API Key",
+    "description": "Microsoft API Key label"
+  },
+  "microsoft_api_key_desc": {
+    "message": "Azure Translator key (2M chars/month free)",
+    "description": "Microsoft API Key description"
+  },
+  "microsoft_region_label": {
+    "message": "Region",
+    "description": "Microsoft region label"
+  },
+  "microsoft_region_desc": {
+    "message": "Azure Translator resource region",
+    "description": "Microsoft region description"
+  },
   "api_key_label": {
     "message": "API Key",
     "description": "API Key label"

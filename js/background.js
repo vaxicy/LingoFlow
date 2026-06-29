@@ -32,6 +32,7 @@ chrome.runtime.onInstalled.addListener(() => {
           translationEngine: 'google',
           siliconflowApiKey: '',
           siliconflowModel: 'tencent/Hunyuan-MT-7B',
+          microsoftApiKey: '',
           targetLanguage: 'zh',
           uiLanguage: 'auto',
           theme: 'light',
@@ -297,6 +298,8 @@ function translateText(text, targetLang, sendResponse) {
     const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
     if (engine === 'siliconflow') {
       translateWithSiliconFlow(text, targetLang, sendResponse);
+    } else if (engine === 'microsoft') {
+      translateWithMicrosoft(text, targetLang, sendResponse);
     } else if (engine === 'mymemory') {
       translateWithMyMemory(text, targetLang, sendResponse);
     } else {
@@ -364,6 +367,8 @@ function translateOneForBatch(text, targetLang, engine) {
 
     if (engine === 'siliconflow') {
       translateWithSiliconFlow(text, targetLang, respond);
+    } else if (engine === 'microsoft') {
+      translateWithMicrosoft(text, targetLang, respond);
     } else if (engine === 'mymemory') {
       translateWithMyMemory(text, targetLang, respond);
     } else {
@@ -547,6 +552,65 @@ function translateWithMyMemory(text, targetLang, sendResponse) {
       console.log('LingoFlow: Falling back to Google Translate');
       translateWithGoogle(text, targetLang, sendResponse);
     });
+}
+
+// Microsoft Translator (Azure AI Translator - free tier: 2M chars/month)
+// Docs: https://learn.microsoft.com/azure/ai-services/translator/
+function translateWithMicrosoft(text, targetLang, sendResponse) {
+  const target = targetLang === 'zh' ? 'zh-Hans' :
+                 targetLang === 'en' ? 'en' : 'zh-Hans';
+
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const settings = result.lingoflow_settings || {};
+    const apiKey = settings.microsoftApiKey || '';
+    const region = 'eastasia'; // Fixed region, no UI input needed
+
+    if (!apiKey) {
+      console.warn('LingoFlow: Microsoft API key not set, falling back to Google');
+      translateWithGoogle(text, targetLang, sendResponse);
+      return;
+    }
+
+    const maxLen = 50000; // Microsoft supports up to 50K chars per request
+    const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
+
+    const url = `https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=${encodeURIComponent(target)}`;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => { controller.abort(); }, 10000);
+
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Ocp-Apim-Subscription-Key': apiKey,
+        'Ocp-Apim-Subscription-Region': region
+      },
+      body: JSON.stringify([{ Text: truncated }]),
+      signal: controller.signal
+    })
+      .then(response => {
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        if (data && data[0] && data[0].translations && data[0].translations[0]) {
+          const translatedText = data[0].translations[0].text;
+          console.log('LingoFlow: Microsoft Translator succeeded, result length:', translatedText.length);
+          sendResponse({ success: true, translation: translatedText });
+        } else {
+          console.warn('LingoFlow: Microsoft Translator invalid response, falling back to Google');
+          translateWithGoogle(text, targetLang, sendResponse);
+        }
+      })
+      .catch(error => {
+        clearTimeout(timeoutId);
+        const message = error && error.message ? error.message : String(error);
+        console.warn('LingoFlow: Microsoft Translator error:', message, '– falling back to Google');
+        translateWithGoogle(text, targetLang, sendResponse);
+      });
+  });
 }
 
 // Google Translate (non-official free endpoint)

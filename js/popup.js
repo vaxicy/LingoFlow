@@ -224,6 +224,7 @@ function initSettingsPanel() {
     'popup-translation-engine',
     'popup-siliconflow-key',
     'popup-siliconflow-model',
+    'popup-microsoft-key',
     'popup-translate-to',
     'popup-ui-language',
     'popup-bilingual-mode',
@@ -239,8 +240,10 @@ function initSettingsPanel() {
       setSettingsDirty(true);
       if (id === 'popup-translation-engine') {
         const isSF = control.value === 'siliconflow';
+        const isMS = control.value === 'microsoft';
         toggleApiKeyRow(isSF);
         toggleModelRow(isSF);
+        toggleMicrosoftRow(isMS);
       }
       if (id === 'popup-ui-language' && typeof setLanguage === 'function') {
         setLanguage(control.value || 'auto');
@@ -248,10 +251,14 @@ function initSettingsPanel() {
     });
   });
 
-  // Also listen on input events for the API key field
+  // Also listen on input events for the API key fields
   const apiKeyInput = document.getElementById('popup-siliconflow-key');
   if (apiKeyInput) {
     apiKeyInput.addEventListener('input', () => { setSettingsDirty(true); });
+  }
+  const microsoftKeyInput = document.getElementById('popup-microsoft-key');
+  if (microsoftKeyInput) {
+    microsoftKeyInput.addEventListener('input', () => { setSettingsDirty(true); });
   }
 
   // Populate model selector options
@@ -303,10 +310,16 @@ function toggleModelRow(show) {
   if (row) row.hidden = !show;
 }
 
+function toggleMicrosoftRow(show) {
+  const keyRow = document.getElementById('popup-microsoft-key-row');
+  if (keyRow) keyRow.hidden = !show;
+}
+
 function applyPopupSettings(settings) {
   const translationEngine = document.getElementById('popup-translation-engine');
   const apiKeyInput = document.getElementById('popup-siliconflow-key');
   const modelSelect = document.getElementById('popup-siliconflow-model');
+  const microsoftKeyInput = document.getElementById('popup-microsoft-key');
   const translateTo = document.getElementById('popup-translate-to');
   const uiLanguage = document.getElementById('popup-ui-language');
   const bilingualMode = document.getElementById('popup-bilingual-mode');
@@ -318,11 +331,14 @@ function applyPopupSettings(settings) {
   if (translationEngine) {
     translationEngine.value = settings.translationEngine || 'google';
     const isSF = translationEngine.value === 'siliconflow';
+    const isMS = translationEngine.value === 'microsoft';
     toggleApiKeyRow(isSF);
     toggleModelRow(isSF);
+    toggleMicrosoftRow(isMS);
   }
   if (apiKeyInput) apiKeyInput.value = settings.siliconflowApiKey || '';
   if (modelSelect) modelSelect.value = settings.siliconflowModel || 'tencent/Hunyuan-MT-7B';
+  if (microsoftKeyInput) microsoftKeyInput.value = settings.microsoftApiKey || '';
   if (translateTo) translateTo.value = settings.targetLanguage || 'zh';
   if (uiLanguage) uiLanguage.value = settings.uiLanguage || 'auto';
   if (bilingualMode) bilingualMode.checked = !!settings.bilingualMode;
@@ -340,6 +356,7 @@ function getPopupSettingsFromUI() {
     translationEngine: document.getElementById('popup-translation-engine')?.value || 'google',
     siliconflowApiKey: document.getElementById('popup-siliconflow-key')?.value || '',
     siliconflowModel: document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B',
+    microsoftApiKey: document.getElementById('popup-microsoft-key')?.value || '',
     targetLanguage: document.getElementById('popup-translate-to')?.value || 'zh',
     uiLanguage: document.getElementById('popup-ui-language')?.value || 'auto',
     theme: document.querySelector('[data-popup-theme].active')?.getAttribute('data-popup-theme') || 'light',
@@ -381,6 +398,9 @@ function cloneSettings(settings) {
 function getDefaultSettings() {
   return {
     translationEngine: 'google',
+    siliconflowApiKey: '',
+    siliconflowModel: 'tencent/Hunyuan-MT-7B',
+    microsoftApiKey: '',
     targetLanguage: 'zh',
     uiLanguage: 'auto',
     theme: 'light',

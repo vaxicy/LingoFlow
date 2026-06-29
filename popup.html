@@ -177,6 +177,7 @@
             <option value="google" data-i18n="engine_google">Google Translate</option>
             <option value="mymemory" data-i18n="engine_mymemory">MyMemory (Free)</option>
             <option value="siliconflow" data-i18n="engine_siliconflow">硅基流动 AI（免费）</option>
+            <option value="microsoft" data-i18n="engine_microsoft">Microsoft Translator</option>
           </select>
         </div>
 
@@ -197,6 +198,16 @@
             <!-- Options populated by JS -->
           </select>
         </div>
+
+        <div class="settings-row" id="popup-microsoft-key-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="microsoft_api_key_label">Microsoft API Key</strong>
+            <span data-i18n="microsoft_api_key_desc">Azure Translator 密钥（免费 200 万字符/月）</span>
+          </div>
+          <input type="password" class="panel-input" id="popup-microsoft-key" placeholder="输入 Azure Translator 密钥" autocomplete="off">
+        </div>
+
+        <!-- Microsoft Region: hidden, default eastasia -->
 
         <div class="settings-row">
           <div class="settings-row-copy">

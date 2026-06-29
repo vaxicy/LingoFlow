@@ -335,6 +335,26 @@
     "message": "硅基流动 AI（免费）",
     "description": "硅基流动翻译引擎选项"
   },
+  "engine_microsoft": {
+    "message": "Microsoft Translator",
+    "description": "Microsoft Translator 翻译引擎选项"
+  },
+  "microsoft_api_key_label": {
+    "message": "Microsoft API Key",
+    "description": "Microsoft API Key 标签"
+  },
+  "microsoft_api_key_desc": {
+    "message": "Azure Translator 密钥（免费 200 万字符/月）",
+    "description": "Microsoft API Key 描述"
+  },
+  "microsoft_region_label": {
+    "message": "区域",
+    "description": "Microsoft 区域标签"
+  },
+  "microsoft_region_desc": {
+    "message": "Azure Translator 资源所在区域",
+    "description": "Microsoft 区域描述"
+  },
   "api_key_label": {
     "message": "API Key",
     "description": "API Key 标签"
