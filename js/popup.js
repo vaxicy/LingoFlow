@@ -291,18 +291,17 @@ const SILICONFLOW_MODELS = [
   },
   // 付费模型 - DeepSeek
   {
-    id: 'Pro/deepseek-ai/DeepSeek-V3.2',
+    id: 'deepseek-ai/DeepSeek-V4-Flash',
+    name: 'DeepSeek-V4-Flash',
+    badge: 'paid',
+    descZh: '极速 · 高性价比',
+    descEn: 'Fast · Cost-effective'
+  },
+  {
     name: 'DeepSeek-V3.2',
     badge: 'paid',
     descZh: '最新 · 高性能',
     descEn: 'Latest · High performance'
-  },
-  {
-    id: 'deepseek-ai/DeepSeek-R1',
-    name: 'DeepSeek-R1',
-    badge: 'paid',
-    descZh: '推理增强 · 精准',
-    descEn: 'Reasoning · Accurate'
   },
   {
     id: 'deepseek-ai/DeepSeek-V3',

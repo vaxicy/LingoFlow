@@ -576,16 +576,16 @@ function translateOneForBatch(text, targetLang, engine) {
 const SILICONFLOW_FALLBACK_MODELS = [
   'tencent/Hunyuan-MT-7B',          // ✅ Verified working - dedicated MT model, fast & reliable
   'MiniMaxAI/MiniMax-M2.5',
+  'deepseek-ai/DeepSeek-V4-Flash',   // ✅ Fast, cheap, good quality
   'Pro/deepseek-ai/DeepSeek-V3.2',
-  'deepseek-ai/DeepSeek-R1',
   'deepseek-ai/DeepSeek-V3'
 ];
 
 const SILICONFLOW_MODEL_META = {
   'tencent/Hunyuan-MT-7B':        { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'MiniMaxAI/MiniMax-M2.5':       { pricing: 'paid', maxItems: 70, maxChars: 24000, chunkDelay: 60 },
+  'deepseek-ai/DeepSeek-V4-Flash': { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 40 },
   'Pro/deepseek-ai/DeepSeek-V3.2': { pricing: 'paid', maxItems: 70, maxChars: 22000, chunkDelay: 60 },
-  'deepseek-ai/DeepSeek-R1':       { pricing: 'paid', maxItems: 55, maxChars: 16000, chunkDelay: 80 },
   'deepseek-ai/DeepSeek-V3':       { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 }
 };
 
