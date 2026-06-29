@@ -159,14 +159,6 @@
     "message": "Dark",
     "description": "Theme option"
   },
-  "bilingual_mode_setting": {
-    "message": "Bilingual Mode",
-    "description": "Settings label"
-  },
-  "bilingual_mode_desc": {
-    "message": "Show translation below original text",
-    "description": "Settings description"
-  },
   "hover_translation": {
     "message": "Hover Translation",
     "description": "Settings label"
@@ -319,6 +311,14 @@
     "message": "Done",
     "description": "Done button"
   },
+  "free": {
+    "message": "Free",
+    "description": "Free pricing badge"
+  },
+  "paid": {
+    "message": "Paid",
+    "description": "Paid pricing badge"
+  },
   "settings_canceled": {
     "message": "Canceled",
     "description": "Settings canceled notification"
@@ -360,7 +360,7 @@
     "description": "MyMemory translation engine option"
   },
   "engine_siliconflow": {
-    "message": "SiliconFlow AI (Free)",
+    "message": "SiliconFlow AI",
     "description": "SiliconFlow translation engine option"
   },
   "engine_gemini": {
@@ -420,7 +420,7 @@
     "description": "Model selector label"
   },
   "model_desc": {
-    "message": "Select a free AI model for translation",
+    "message": "Select an AI model for translation",
     "description": "Model selector description"
   },
   "translate_page_desc": {

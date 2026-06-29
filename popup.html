@@ -189,7 +189,7 @@
           <select class="panel-select native-select-hidden" id="popup-translation-engine" aria-hidden="true" tabindex="-1">
             <option value="google" data-i18n="engine_google">Google Translate</option>
             <option value="mymemory" data-i18n="engine_mymemory">MyMemory (Free)</option>
-            <option value="siliconflow" data-i18n="engine_siliconflow">硅基流动 AI（免费）</option>
+            <option value="siliconflow" data-i18n="engine_siliconflow">硅基流动 AI</option>
             <option value="gemini" data-i18n="engine_gemini">Gemini AI</option>
             <option value="microsoft" data-i18n="engine_microsoft">Microsoft Translator</option>
           </select>
@@ -224,7 +224,7 @@
               </button>
               <button class="engine-select-option" type="button" role="option" data-engine-value="siliconflow" aria-selected="false">
                 <span>
-                  <strong>硅基流动 AI（免费）</strong>
+                  <strong>硅基流动 AI</strong>
                   <small>AI 翻译</small>
                 </span>
                 <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
@@ -266,9 +266,24 @@
             <strong data-i18n="model_label">AI 模型</strong>
             <span data-i18n="model_desc">选择用于翻译的免费 AI 模型</span>
           </div>
-          <select class="panel-select" id="popup-siliconflow-model">
+          <select class="panel-select native-select-hidden" id="popup-siliconflow-model" aria-hidden="true" tabindex="-1">
             <!-- Options populated by JS -->
           </select>
+          <div class="model-select" id="siliconflow-model-select">
+            <button class="model-select-trigger" id="siliconflow-model-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="model-select-text">
+                <span class="model-select-title-row">
+                  <strong id="siliconflow-model-label">Hunyuan-MT-7B</strong>
+                  <span class="model-select-badge model-select-badge-free" id="siliconflow-model-badge">Free</span>
+                </span>
+                <small id="siliconflow-model-desc">Translation model</small>
+              </span>
+              <svg class="model-select-chevron" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </button>
+            <div class="model-select-menu" id="siliconflow-model-menu" role="listbox" aria-label="SiliconFlow model" hidden></div>
+          </div>
         </div>
 
         <div class="settings-row settings-row-stack" id="popup-microsoft-key-row" hidden>
@@ -329,17 +344,6 @@
             <button class="panel-segment-btn active" type="button" data-popup-theme="light" data-i18n="light">Light</button>
             <button class="panel-segment-btn" type="button" data-popup-theme="dark" data-i18n="dark">Dark</button>
           </div>
-        </div>
-
-        <div class="settings-row settings-row-inline">
-          <div class="settings-row-copy">
-            <strong data-i18n="bilingual_mode_setting">Bilingual Mode</strong>
-            <span data-i18n="bilingual_mode_desc">Show translation below original text</span>
-          </div>
-          <label class="panel-switch">
-            <input type="checkbox" id="popup-bilingual-mode">
-            <span></span>
-          </label>
         </div>
 
         <div class="settings-row settings-row-inline">

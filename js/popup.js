@@ -271,10 +271,36 @@ function openSettingsPanel() {
   });
 }
 
-// SiliconFlow free models list (must match background.js)
+// SiliconFlow models list (must match background.js)
 const SILICONFLOW_MODELS = [
-  { id: 'tencent/Hunyuan-MT-7B',       name: 'Hunyuan-MT-7B（推荐·翻译专用）' },
-  { id: 'THUDM/GLM-4-9B-0414',          name: 'GLM-4-9B' }
+  {
+    id: 'tencent/Hunyuan-MT-7B',
+    name: 'Hunyuan-MT-7B',
+    badge: 'free',
+    descZh: '翻译专用 · 默认推荐',
+    descEn: 'Translation · Default'
+  },
+  {
+    id: 'deepseek-ai/DeepSeek-V4-Flash',
+    name: 'DeepSeek-V4-Flash',
+    badge: 'paid',
+    descZh: '快速 · 高性价比',
+    descEn: 'Fast · Cost-effective'
+  },
+  {
+    id: 'deepseek-ai/DeepSeek-V4-Pro',
+    name: 'DeepSeek-V4-Pro',
+    badge: 'paid',
+    descZh: '高质量 · 长文精翻',
+    descEn: 'High quality · Long text'
+  },
+  {
+    id: 'THUDM/GLM-4-9B-0414',
+    name: 'GLM-4-9B',
+    badge: 'free',
+    descZh: '备用 · 通用',
+    descEn: 'Backup · General'
+  }
 ];
 
 const GEMINI_MODELS = [
@@ -295,7 +321,6 @@ function initSettingsPanel() {
     'popup-gemini-model',
     'popup-translate-to',
     'popup-ui-language',
-    'popup-bilingual-mode',
     'popup-hover-translation',
     'popup-auto-save-settings',
     'popup-existing-bilingual-strategy',
@@ -319,6 +344,7 @@ function initSettingsPanel() {
       if (id === 'popup-ui-language' && typeof setLanguage === 'function') {
         Promise.resolve(setLanguage(control.value || 'auto')).then(() => {
           syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+          syncSiliconFlowModelSelect(document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B');
           syncPanelCustomSelects();
           updateSettingsFooter();
         });
@@ -352,6 +378,7 @@ function initSettingsPanel() {
   // Populate model selector options
   populateModelSelect('popup-siliconflow-model');
   populateGeminiModelSelect('popup-gemini-model');
+  initSiliconFlowModelSelect();
   initPanelCustomSelects();
 
   document.querySelectorAll('[data-popup-theme]').forEach(button => {
@@ -421,7 +448,7 @@ function scheduleSettingsAutoSave() {
 const ENGINE_SELECT_META = {
   google: { label: 'Google 翻译', description: '快速通用' },
   microsoft: { label: 'Microsoft Translator', description: '稳定专业' },
-  siliconflow: { label: '硅基流动 AI（免费）', description: 'AI 翻译' },
+  siliconflow: { label: '硅基流动 AI', description: 'AI 翻译' },
   gemini: { label: 'Gemini AI', description: '便宜快速' },
   mymemory: { label: 'MyMemory（免费）', description: '免费备用' }
 };
@@ -467,7 +494,10 @@ function setEngineSelectOpen(open) {
   const menu = document.getElementById('engine-select-menu');
   if (!customSelect || !trigger || !menu) return;
 
-  if (open) closePanelCustomSelects();
+  if (open) {
+    closePanelCustomSelects();
+    setSiliconFlowModelSelectOpen(false);
+  }
   customSelect.classList.toggle('open', open);
   trigger.setAttribute('aria-expanded', String(open));
   menu.hidden = !open;
@@ -505,6 +535,7 @@ function syncEngineSelect(value) {
 function initPanelCustomSelects() {
   document.querySelectorAll('select.panel-select').forEach(select => {
     if (select.id === 'popup-translation-engine') return;
+    if (select.id === 'popup-siliconflow-model') return;
     if (select.dataset.customSelectReady === 'true') return;
 
     select.dataset.customSelectReady = 'true';
@@ -557,7 +588,7 @@ function initPanelCustomSelects() {
   });
 
   document.addEventListener('click', (event) => {
-    if (!event.target.closest('.panel-custom-select') && !event.target.closest('.engine-select')) {
+    if (!event.target.closest('.panel-custom-select') && !event.target.closest('.engine-select') && !event.target.closest('.model-select')) {
       closePanelCustomSelects();
     }
   });
@@ -608,6 +639,7 @@ function refreshPanelCustomSelect(select) {
 function setPanelCustomSelectOpen(customSelect, open) {
   if (!customSelect) return;
   if (open) setEngineSelectOpen(false);
+  if (open) setSiliconFlowModelSelectOpen(false);
   closePanelCustomSelects(customSelect);
 
   const trigger = customSelect.querySelector('.panel-custom-select-trigger');
@@ -645,6 +677,132 @@ function populateModelSelect(selectId) {
     opt.value = m.id;
     opt.textContent = m.name;
     select.appendChild(opt);
+  });
+}
+
+function getSiliconFlowModelMeta(value) {
+  return SILICONFLOW_MODELS.find(model => model.id === value) || SILICONFLOW_MODELS[0];
+}
+
+function getSiliconFlowModelDescription(model) {
+  const lang = document.getElementById('popup-ui-language')?.value || 'auto';
+  if (lang === 'en') return model.descEn || model.descZh || '';
+  return model.descZh || model.descEn || '';
+}
+
+function getModelBadgeText(type) {
+  return getMessage(type === 'paid' ? 'paid' : 'free');
+}
+
+function initSiliconFlowModelSelect() {
+  const nativeSelect = document.getElementById('popup-siliconflow-model');
+  const customSelect = document.getElementById('siliconflow-model-select');
+  const trigger = document.getElementById('siliconflow-model-trigger');
+  const menu = document.getElementById('siliconflow-model-menu');
+  if (!nativeSelect || !customSelect || !trigger || !menu) return;
+
+  trigger.addEventListener('click', () => {
+    setSiliconFlowModelSelectOpen(!customSelect.classList.contains('open'));
+  });
+
+  nativeSelect.addEventListener('change', () => {
+    syncSiliconFlowModelSelect(nativeSelect.value || 'tencent/Hunyuan-MT-7B');
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!customSelect.contains(event.target)) {
+      setSiliconFlowModelSelectOpen(false);
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      setSiliconFlowModelSelectOpen(false);
+    }
+  });
+
+  syncSiliconFlowModelSelect(nativeSelect.value || 'tencent/Hunyuan-MT-7B');
+}
+
+function setSiliconFlowModelSelectOpen(open) {
+  const customSelect = document.getElementById('siliconflow-model-select');
+  const trigger = document.getElementById('siliconflow-model-trigger');
+  const menu = document.getElementById('siliconflow-model-menu');
+  if (!customSelect || !trigger || !menu) return;
+
+  if (open) {
+    setEngineSelectOpen(false);
+    closePanelCustomSelects();
+  }
+
+  customSelect.classList.toggle('open', open);
+  trigger.setAttribute('aria-expanded', String(open));
+  menu.hidden = !open;
+}
+
+function syncSiliconFlowModelSelect(value) {
+  const nativeSelect = document.getElementById('popup-siliconflow-model');
+  const menu = document.getElementById('siliconflow-model-menu');
+  const label = document.getElementById('siliconflow-model-label');
+  const badge = document.getElementById('siliconflow-model-badge');
+  const desc = document.getElementById('siliconflow-model-desc');
+  if (!nativeSelect || !menu || !label || !badge || !desc) return;
+
+  const currentValue = value || nativeSelect.value || 'tencent/Hunyuan-MT-7B';
+  const currentModel = getSiliconFlowModelMeta(currentValue);
+  label.textContent = currentModel.name;
+  desc.textContent = getSiliconFlowModelDescription(currentModel);
+  badge.textContent = getModelBadgeText(currentModel.badge);
+  badge.className = `model-select-badge model-select-badge-${currentModel.badge === 'paid' ? 'paid' : 'free'}`;
+  menu.textContent = '';
+
+  SILICONFLOW_MODELS.forEach(model => {
+    const option = document.createElement('button');
+    option.className = 'model-select-option';
+    option.type = 'button';
+    option.setAttribute('role', 'option');
+    option.setAttribute('aria-selected', String(model.id === currentValue));
+    option.dataset.modelValue = model.id;
+
+    const text = document.createElement('span');
+    text.className = 'model-select-option-text';
+
+    const top = document.createElement('span');
+    top.className = 'model-select-title-row';
+
+    const title = document.createElement('strong');
+    title.textContent = model.name;
+
+    const optionBadge = document.createElement('span');
+    optionBadge.className = `model-select-badge model-select-badge-${model.badge === 'paid' ? 'paid' : 'free'}`;
+    optionBadge.textContent = getModelBadgeText(model.badge);
+
+    const optionDesc = document.createElement('small');
+    optionDesc.textContent = getSiliconFlowModelDescription(model);
+
+    const check = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    check.setAttribute('class', 'model-select-check');
+    check.setAttribute('width', '16');
+    check.setAttribute('height', '16');
+    check.setAttribute('viewBox', '0 0 24 24');
+    check.setAttribute('fill', 'none');
+    check.setAttribute('stroke', 'currentColor');
+    check.setAttribute('stroke-width', '2.4');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M20 6 9 17l-5-5');
+    check.appendChild(path);
+
+    top.append(title, optionBadge);
+    text.append(top, optionDesc);
+    option.append(text, check);
+
+    option.addEventListener('click', () => {
+      nativeSelect.value = model.id;
+      nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      setSiliconFlowModelSelectOpen(false);
+    });
+
+    menu.appendChild(option);
   });
 }
 
@@ -691,7 +849,6 @@ function applyPopupSettings(settings) {
   const geminiModelSelect = document.getElementById('popup-gemini-model');
   const translateTo = document.getElementById('popup-translate-to');
   const uiLanguage = document.getElementById('popup-ui-language');
-  const bilingualMode = document.getElementById('popup-bilingual-mode');
   const hoverTranslation = document.getElementById('popup-hover-translation');
   const autoSaveSettings = document.getElementById('popup-auto-save-settings');
   const existingBilingualStrategy = document.getElementById('popup-existing-bilingual-strategy');
@@ -710,7 +867,11 @@ function applyPopupSettings(settings) {
     syncEngineSelect(translationEngine.value);
   }
   if (apiKeyInput) apiKeyInput.value = settings.siliconflowApiKey || '';
-  if (modelSelect) modelSelect.value = settings.siliconflowModel || 'tencent/Hunyuan-MT-7B';
+  if (modelSelect) {
+    modelSelect.value = settings.siliconflowModel || 'tencent/Hunyuan-MT-7B';
+    if (!modelSelect.value) modelSelect.value = 'tencent/Hunyuan-MT-7B';
+    syncSiliconFlowModelSelect(modelSelect.value);
+  }
   if (microsoftKeyInput) microsoftKeyInput.value = settings.microsoftApiKey || '';
   if (geminiKeyInput) geminiKeyInput.value = settings.geminiApiKey || '';
   if (geminiModelSelect) {
@@ -719,7 +880,6 @@ function applyPopupSettings(settings) {
   }
   if (translateTo) translateTo.value = settings.targetLanguage || 'zh';
   if (uiLanguage) uiLanguage.value = settings.uiLanguage || 'auto';
-  if (bilingualMode) bilingualMode.checked = !!settings.bilingualMode;
   if (hoverTranslation) hoverTranslation.checked = settings.hoverTranslation !== false;
   if (autoSaveSettings) autoSaveSettings.checked = settings.autoSaveSettings !== false;
   if (existingBilingualStrategy) existingBilingualStrategy.value = settings.existingBilingualStrategy || 'skip';
@@ -729,6 +889,7 @@ function applyPopupSettings(settings) {
     button.classList.toggle('active', button.getAttribute('data-popup-theme') === theme);
   });
   syncPanelCustomSelects();
+  syncSiliconFlowModelSelect(modelSelect?.value || 'tencent/Hunyuan-MT-7B');
   updateSettingsFooter();
 }
 
@@ -743,7 +904,6 @@ function getPopupSettingsFromUI() {
     targetLanguage: document.getElementById('popup-translate-to')?.value || 'zh',
     uiLanguage: document.getElementById('popup-ui-language')?.value || 'auto',
     theme: document.querySelector('[data-popup-theme].active')?.getAttribute('data-popup-theme') || 'light',
-    bilingualMode: document.getElementById('popup-bilingual-mode')?.checked || false,
     hoverTranslation: document.getElementById('popup-hover-translation')?.checked !== false,
     autoSaveSettings: document.getElementById('popup-auto-save-settings')?.checked !== false,
     existingBilingualStrategy: document.getElementById('popup-existing-bilingual-strategy')?.value || 'skip',
@@ -773,6 +933,7 @@ function persistPopupSettings(options = {}) {
     if (typeof setLanguage === 'function') {
       Promise.resolve(setLanguage(settings.uiLanguage || 'auto')).then(() => {
         syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+        syncSiliconFlowModelSelect(document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B');
         syncPanelCustomSelects();
         updateSettingsFooter();
       });
@@ -841,7 +1002,6 @@ function getDefaultSettings() {
     targetLanguage: 'zh',
     uiLanguage: 'auto',
     theme: 'light',
-    bilingualMode: false,
     hoverTranslation: true,
     autoSaveSettings: true,
     existingBilingualStrategy: 'skip',

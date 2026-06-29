@@ -38,7 +38,6 @@ chrome.runtime.onInstalled.addListener(() => {
           targetLanguage: 'zh',
           uiLanguage: 'auto',
           theme: 'light',
-          bilingualMode: false,
           hoverTranslation: true,
           autoSaveSettings: true,
           existingBilingualStrategy: 'skip',
@@ -291,7 +290,6 @@ function getDefaultSettings(overrides = {}) {
     targetLanguage: 'zh',
     uiLanguage: 'auto',
     theme: 'light',
-    bilingualMode: false,
     hoverTranslation: true,
     autoSaveSettings: true,
     existingBilingualStrategy: 'skip',
@@ -568,14 +566,16 @@ function translateOneForBatch(text, targetLang, engine) {
   });
 }
 
-// SiliconFlow free models - auto fallback in order
+// SiliconFlow models - auto fallback in order
 // Priority: verified working models first, then untested ones as backup
-const SILICONFLOW_FREE_MODELS = [
+const SILICONFLOW_FALLBACK_MODELS = [
   'tencent/Hunyuan-MT-7B',          // ✅ Verified working - dedicated MT model, fast & reliable
+  'deepseek-ai/DeepSeek-V4-Flash',
+  'deepseek-ai/DeepSeek-V4-Pro',
   'THUDM/GLM-4-9B-0414'
 ];
 
-// SiliconFlow AI Translation (free tier, requires API key)
+// SiliconFlow AI Translation (requires API key; model pricing depends on the selected model)
 // Tries user-selected model first, then falls back through remaining models, then Google
 function translateWithSiliconFlow(text, targetLang, sendResponse) {
   const tl = targetLang === 'zh' ? '中文' :
@@ -615,7 +615,7 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
 
     // Build fallback list: selected model first, then others (excluding selected)
     const fallbackModels = [selectedModel];
-    SILICONFLOW_FREE_MODELS.forEach(m => { if (m !== selectedModel) fallbackModels.push(m); });
+    SILICONFLOW_FALLBACK_MODELS.forEach(m => { if (m !== selectedModel) fallbackModels.push(m); });
 
     tryNextModel(0);
 
