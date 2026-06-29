@@ -22,7 +22,8 @@ const panelState = {
   vocabularyQuery: '',
   vocabularyFilter: 'all',
   savedSettings: null,
-  settingsDirty: false
+  settingsDirty: false,
+  settingsSaveState: 'saved'
 };
 
 let settingsAutoSaveTimer = null;
@@ -221,6 +222,12 @@ function resetUnsavedSettingsPreview(nextPanelId) {
   if (!settingsPanel || settingsPanel.hidden || nextPanelId === 'settings-panel') return;
   if (!panelState.settingsDirty || !panelState.savedSettings) return;
 
+  if (isSettingsAutoSaveEnabled()) {
+    clearTimeout(settingsAutoSaveTimer);
+    persistPopupSettings({ closeOnSuccess: false, auto: true });
+    return;
+  }
+
   applyPopupSettings(panelState.savedSettings);
   if (typeof setLanguage === 'function') {
     setLanguage(panelState.savedSettings.uiLanguage || 'auto');
@@ -290,6 +297,7 @@ function initSettingsPanel() {
     'popup-ui-language',
     'popup-bilingual-mode',
     'popup-hover-translation',
+    'popup-auto-save-settings',
     'popup-existing-bilingual-strategy',
     'popup-history-limit'
   ];
@@ -298,7 +306,6 @@ function initSettingsPanel() {
     const control = document.getElementById(id);
     if (!control) return;
     control.addEventListener('change', () => {
-      setSettingsDirty(true);
       if (id === 'popup-translation-engine') {
         const isSF = control.value === 'siliconflow';
         const isMS = control.value === 'microsoft';
@@ -310,11 +317,13 @@ function initSettingsPanel() {
         syncEngineSelect(control.value);
       }
       if (id === 'popup-ui-language' && typeof setLanguage === 'function') {
-        setLanguage(control.value || 'auto');
-        syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
-        syncPanelCustomSelects();
+        Promise.resolve(setLanguage(control.value || 'auto')).then(() => {
+          syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+          syncPanelCustomSelects();
+          updateSettingsFooter();
+        });
       }
-      scheduleSettingsAutoSave();
+      markSettingsChanged();
     });
   });
 
@@ -324,22 +333,19 @@ function initSettingsPanel() {
   const apiKeyInput = document.getElementById('popup-siliconflow-key');
   if (apiKeyInput) {
     apiKeyInput.addEventListener('input', () => {
-      setSettingsDirty(true);
-      scheduleSettingsAutoSave();
+      markSettingsChanged();
     });
   }
   const microsoftKeyInput = document.getElementById('popup-microsoft-key');
   if (microsoftKeyInput) {
     microsoftKeyInput.addEventListener('input', () => {
-      setSettingsDirty(true);
-      scheduleSettingsAutoSave();
+      markSettingsChanged();
     });
   }
   const geminiKeyInput = document.getElementById('popup-gemini-key');
   if (geminiKeyInput) {
     geminiKeyInput.addEventListener('input', () => {
-      setSettingsDirty(true);
-      scheduleSettingsAutoSave();
+      markSettingsChanged();
     });
   }
 
@@ -352,7 +358,7 @@ function initSettingsPanel() {
     button.addEventListener('click', () => {
       document.querySelectorAll('[data-popup-theme]').forEach(item => item.classList.remove('active'));
       button.classList.add('active');
-      setSettingsDirty(true);
+      markSettingsChanged();
     });
   });
 
@@ -362,6 +368,16 @@ function initSettingsPanel() {
   const cancelButton = document.getElementById('popup-settings-cancel');
   if (cancelButton) {
     cancelButton.addEventListener('click', () => {
+      if (isSettingsAutoSaveEnabled()) {
+        if (panelState.settingsDirty) {
+          clearTimeout(settingsAutoSaveTimer);
+          persistPopupSettings({ closeOnSuccess: true, auto: true });
+          return;
+        }
+        closePanels();
+        return;
+      }
+
       if (panelState.savedSettings) {
         applyPopupSettings(panelState.savedSettings);
         if (typeof setLanguage === 'function') {
@@ -375,19 +391,30 @@ function initSettingsPanel() {
   }
 }
 
+function markSettingsChanged() {
+  setSettingsDirty(true);
+  if (isSettingsAutoSaveEnabled()) {
+    scheduleSettingsAutoSave();
+  } else {
+    clearTimeout(settingsAutoSaveTimer);
+    setSettingsSaveState('unsaved');
+  }
+}
+
+function isSettingsAutoSaveEnabled() {
+  const autoSave = document.getElementById('popup-auto-save-settings');
+  return autoSave ? autoSave.checked !== false : true;
+}
+
 function scheduleSettingsAutoSave() {
   clearTimeout(settingsAutoSaveTimer);
+  if (!isSettingsAutoSaveEnabled()) {
+    setSettingsSaveState(panelState.settingsDirty ? 'unsaved' : 'saved');
+    return;
+  }
+  setSettingsSaveState('saving');
   settingsAutoSaveTimer = setTimeout(() => {
-    const settings = getPopupSettingsFromUI();
-    chrome.runtime.sendMessage({ action: 'update_settings', settings }, (response) => {
-      if (!response || !response.success) return;
-      panelState.savedSettings = cloneSettings(settings);
-      setSettingsDirty(false);
-      console.log('LingoFlow: Settings auto-saved', {
-        translationEngine: settings.translationEngine,
-        geminiModel: settings.geminiModel
-      });
-    });
+    persistPopupSettings({ closeOnSuccess: false, auto: true });
   }, 350);
 }
 
@@ -666,6 +693,7 @@ function applyPopupSettings(settings) {
   const uiLanguage = document.getElementById('popup-ui-language');
   const bilingualMode = document.getElementById('popup-bilingual-mode');
   const hoverTranslation = document.getElementById('popup-hover-translation');
+  const autoSaveSettings = document.getElementById('popup-auto-save-settings');
   const existingBilingualStrategy = document.getElementById('popup-existing-bilingual-strategy');
   const historyLimit = document.getElementById('popup-history-limit');
   const theme = settings.theme || 'light';
@@ -693,6 +721,7 @@ function applyPopupSettings(settings) {
   if (uiLanguage) uiLanguage.value = settings.uiLanguage || 'auto';
   if (bilingualMode) bilingualMode.checked = !!settings.bilingualMode;
   if (hoverTranslation) hoverTranslation.checked = settings.hoverTranslation !== false;
+  if (autoSaveSettings) autoSaveSettings.checked = settings.autoSaveSettings !== false;
   if (existingBilingualStrategy) existingBilingualStrategy.value = settings.existingBilingualStrategy || 'skip';
   if (historyLimit) historyLimit.value = String(settings.historyLimit || 50);
 
@@ -700,6 +729,7 @@ function applyPopupSettings(settings) {
     button.classList.toggle('active', button.getAttribute('data-popup-theme') === theme);
   });
   syncPanelCustomSelects();
+  updateSettingsFooter();
 }
 
 function getPopupSettingsFromUI() {
@@ -715,36 +745,85 @@ function getPopupSettingsFromUI() {
     theme: document.querySelector('[data-popup-theme].active')?.getAttribute('data-popup-theme') || 'light',
     bilingualMode: document.getElementById('popup-bilingual-mode')?.checked || false,
     hoverTranslation: document.getElementById('popup-hover-translation')?.checked !== false,
+    autoSaveSettings: document.getElementById('popup-auto-save-settings')?.checked !== false,
     existingBilingualStrategy: document.getElementById('popup-existing-bilingual-strategy')?.value || 'skip',
     historyLimit: parseInt(document.getElementById('popup-history-limit')?.value, 10) || 50
   };
 }
 
 function savePopupSettings() {
+  persistPopupSettings({ closeOnSuccess: true, auto: false });
+}
+
+function persistPopupSettings(options = {}) {
+  const closeOnSuccess = options.closeOnSuccess !== false;
+  const isAuto = !!options.auto;
   const settings = getPopupSettingsFromUI();
+  setSettingsSaveState('saving');
   chrome.runtime.sendMessage({ action: 'update_settings', settings }, (response) => {
     if (!response || !response.success) {
+      setSettingsSaveState('failed');
       showStatus(getMessage('error_cannot_access'), 'error');
       return;
     }
 
     panelState.savedSettings = cloneSettings(settings);
     setSettingsDirty(false);
+    setSettingsSaveState('saved');
     if (typeof setLanguage === 'function') {
-      setLanguage(settings.uiLanguage || 'auto');
-      syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+      Promise.resolve(setLanguage(settings.uiLanguage || 'auto')).then(() => {
+        syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+        syncPanelCustomSelects();
+        updateSettingsFooter();
+      });
     }
-    showStatus(getMessage('settings_saved'), 'success');
-    closePanels();
+    showStatus(getMessage(isAuto ? 'settings_auto_saved' : 'settings_saved'), 'success');
+    if (closeOnSuccess) closePanels();
   });
 }
 
 function setSettingsDirty(isDirty) {
   panelState.settingsDirty = isDirty;
+  updateSettingsFooter();
+}
+
+function setSettingsSaveState(state) {
+  panelState.settingsSaveState = state || 'saved';
+  updateSettingsFooter();
+}
+
+function updateSettingsFooter() {
+  const footer = document.querySelector('.settings-panel-footer');
   const saveButton = document.getElementById('popup-settings-save');
   const cancelButton = document.getElementById('popup-settings-cancel');
-  if (saveButton) saveButton.disabled = !isDirty;
-  if (cancelButton) cancelButton.disabled = !panelState.savedSettings && !isDirty;
+  const status = document.getElementById('popup-settings-save-status');
+  const autoSave = isSettingsAutoSaveEnabled();
+
+  if (footer) footer.classList.toggle('settings-footer-auto', autoSave);
+
+  if (saveButton) {
+    saveButton.hidden = autoSave;
+    saveButton.disabled = !panelState.settingsDirty || panelState.settingsSaveState === 'saving';
+    saveButton.textContent = getMessage('save_settings');
+  }
+
+  if (cancelButton) {
+    cancelButton.disabled = false;
+    cancelButton.textContent = getMessage(autoSave ? 'done' : 'cancel');
+  }
+
+  if (status) {
+    status.hidden = !autoSave;
+    status.textContent = getSettingsSaveStatusText();
+    status.dataset.state = panelState.settingsSaveState || 'saved';
+  }
+}
+
+function getSettingsSaveStatusText() {
+  if (panelState.settingsSaveState === 'saving') return getMessage('settings_saving');
+  if (panelState.settingsSaveState === 'failed') return getMessage('settings_save_failed');
+  if (panelState.settingsDirty) return getMessage('settings_unsaved');
+  return getMessage('settings_auto_saved');
 }
 
 function cloneSettings(settings) {
@@ -764,6 +843,7 @@ function getDefaultSettings() {
     theme: 'light',
     bilingualMode: false,
     hoverTranslation: true,
+    autoSaveSettings: true,
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
     activeMode: null

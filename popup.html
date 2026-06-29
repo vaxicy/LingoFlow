@@ -353,6 +353,17 @@
           </label>
         </div>
 
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
+            <strong data-i18n="auto_save_settings">Auto-save Settings</strong>
+            <span data-i18n="auto_save_settings_desc">Save changes immediately</span>
+          </div>
+          <label class="panel-switch">
+            <input type="checkbox" id="popup-auto-save-settings">
+            <span></span>
+          </label>
+        </div>
+
         <div class="settings-row settings-row-stack">
           <div class="settings-row-copy">
             <strong data-i18n="existing_bilingual_content">Existing bilingual content</strong>
@@ -378,6 +389,7 @@
       </div>
 
       <div class="settings-panel-footer">
+        <span class="settings-save-status" id="popup-settings-save-status" data-i18n="settings_auto_saved">Auto-saved</span>
         <button class="panel-footer-btn muted" type="button" id="popup-settings-cancel" data-i18n="cancel">Cancel</button>
         <button class="panel-footer-btn primary" type="button" id="popup-settings-save" data-i18n="save_settings">Save Changes</button>
       </div>

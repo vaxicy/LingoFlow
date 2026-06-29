@@ -291,6 +291,34 @@
     "message": "设置已保存",
     "description": "设置保存成功通知"
   },
+  "settings_auto_saved": {
+    "message": "已自动保存",
+    "description": "设置自动保存状态"
+  },
+  "settings_saving": {
+    "message": "正在保存...",
+    "description": "设置保存中状态"
+  },
+  "settings_save_failed": {
+    "message": "保存失败",
+    "description": "设置保存失败状态"
+  },
+  "settings_unsaved": {
+    "message": "有未保存更改",
+    "description": "设置未保存状态"
+  },
+  "auto_save_settings": {
+    "message": "自动保存设置",
+    "description": "自动保存设置开关标题"
+  },
+  "auto_save_settings_desc": {
+    "message": "修改后立即保存",
+    "description": "自动保存设置开关描述"
+  },
+  "done": {
+    "message": "完成",
+    "description": "完成按钮"
+  },
   "settings_canceled": {
     "message": "已取消",
     "description": "设置取消通知"

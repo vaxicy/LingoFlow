@@ -40,6 +40,7 @@ chrome.runtime.onInstalled.addListener(() => {
           theme: 'light',
           bilingualMode: false,
           hoverTranslation: true,
+          autoSaveSettings: true,
           existingBilingualStrategy: 'skip',
           historyLimit: 50,
           activeMode: null
@@ -292,6 +293,7 @@ function getDefaultSettings(overrides = {}) {
     theme: 'light',
     bilingualMode: false,
     hoverTranslation: true,
+    autoSaveSettings: true,
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
     activeMode: null,

@@ -291,6 +291,34 @@
     "message": "Settings saved",
     "description": "Settings saved notification"
   },
+  "settings_auto_saved": {
+    "message": "Auto-saved",
+    "description": "Settings auto-saved status"
+  },
+  "settings_saving": {
+    "message": "Saving...",
+    "description": "Settings saving status"
+  },
+  "settings_save_failed": {
+    "message": "Save failed",
+    "description": "Settings save failed status"
+  },
+  "settings_unsaved": {
+    "message": "Unsaved changes",
+    "description": "Settings unsaved status"
+  },
+  "auto_save_settings": {
+    "message": "Auto-save Settings",
+    "description": "Auto-save settings toggle label"
+  },
+  "auto_save_settings_desc": {
+    "message": "Save changes immediately",
+    "description": "Auto-save settings toggle description"
+  },
+  "done": {
+    "message": "Done",
+    "description": "Done button"
+  },
   "settings_canceled": {
     "message": "Canceled",
     "description": "Settings canceled notification"
