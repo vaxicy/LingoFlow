@@ -30,12 +30,20 @@ const panelState = {
 function initModeSwitches() {
   const translateToggle = document.getElementById('mode-translate');
   const bilingualToggle = document.getElementById('mode-bilingual');
+  const restoreButton = document.getElementById('restore-original-btn');
 
   if (translateToggle) {
     translateToggle.addEventListener('change', () => onModeToggle('translate'));
   }
   if (bilingualToggle) {
     bilingualToggle.addEventListener('change', () => onModeToggle('bilingual'));
+  }
+  if (restoreButton) {
+    restoreButton.addEventListener('click', () => {
+      setActiveMode(null);
+      updateModeUI(null);
+      sendMessageToContent({ action: 'restore_original' });
+    });
   }
 
   // Secondary nav buttons (vocabulary / history / settings)
@@ -63,10 +71,12 @@ function onModeToggle(mode) {
       // Activating translate → turn off bilingual
       if (bilingualToggle) bilingualToggle.checked = false;
       setActiveMode('translate');
+      updateModeUI('translate');
       sendMessageToContent({ action: 'translate_page' });
     } else {
       // Deactivating translate → restore original
       setActiveMode(null);
+      updateModeUI(null);
       sendMessageToContent({ action: 'restore_original' });
     }
   }
@@ -76,10 +86,12 @@ function onModeToggle(mode) {
       // Activating bilingual → turn off translate
       if (translateToggle) translateToggle.checked = false;
       setActiveMode('bilingual');
+      updateModeUI('bilingual');
       sendMessageToContent({ action: 'bilingual_mode' });
     } else {
       // Deactivating bilingual → restore original
       setActiveMode(null);
+      updateModeUI(null);
       sendMessageToContent({ action: 'restore_original' });
     }
   }
@@ -93,14 +105,47 @@ function setActiveMode(mode) {
 }
 
 function restoreModeState() {
+  sendMessageToContent({ action: 'get_page_state' }, (response) => {
+    if (response && response.received) {
+      updateModeUI(response.mode || null);
+      setActiveMode(response.mode || null);
+    }
+  }, { silent: true });
+
   chrome.runtime.sendMessage({ action: 'get_settings' }, (response) => {
     const settings = response && response.settings;
     const activeMode = settings && settings.activeMode;
-    const translateToggle = document.getElementById('mode-translate');
-    const bilingualToggle = document.getElementById('mode-bilingual');
-    if (translateToggle) translateToggle.checked = (activeMode === 'translate');
-    if (bilingualToggle) bilingualToggle.checked = (activeMode === 'bilingual');
+    updateModeUI(activeMode || null);
   });
+}
+
+function updateModeUI(mode) {
+  const translateToggle = document.getElementById('mode-translate');
+  const bilingualToggle = document.getElementById('mode-bilingual');
+  const restoreButton = document.getElementById('restore-original-btn');
+  const status = document.getElementById('mode-status');
+  const statusText = status && status.querySelector('.mode-status-text');
+
+  if (translateToggle) translateToggle.checked = mode === 'translate';
+  if (bilingualToggle) bilingualToggle.checked = mode === 'bilingual';
+
+  if (restoreButton) {
+    restoreButton.disabled = !mode;
+    restoreButton.classList.toggle('is-active', !!mode);
+  }
+
+  if (statusText) {
+    const key = mode === 'bilingual'
+      ? 'mode_bilingual'
+      : mode === 'translate'
+        ? 'mode_translation'
+        : 'mode_original';
+    statusText.textContent = getMessage(key);
+  }
+
+  if (status) {
+    status.classList.toggle('is-active', !!mode);
+  }
 }
 
 function initPanels() {
@@ -175,7 +220,10 @@ function resetUnsavedSettingsPreview(nextPanelId) {
   if (!panelState.settingsDirty || !panelState.savedSettings) return;
 
   applyPopupSettings(panelState.savedSettings);
-  if (typeof setLanguage === 'function') setLanguage(panelState.savedSettings.uiLanguage || 'auto');
+  if (typeof setLanguage === 'function') {
+    setLanguage(panelState.savedSettings.uiLanguage || 'auto');
+    syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+  }
   setSettingsDirty(false);
 }
 
@@ -184,6 +232,7 @@ function loadPopupLanguage() {
     const settings = response && response.settings;
     if (settings && typeof setLanguage === 'function') {
       setLanguage(settings.uiLanguage || 'auto');
+      syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
     }
   });
 }
@@ -244,12 +293,16 @@ function initSettingsPanel() {
         toggleApiKeyRow(isSF);
         toggleModelRow(isSF);
         toggleMicrosoftRow(isMS);
+        syncEngineSelect(control.value);
       }
       if (id === 'popup-ui-language' && typeof setLanguage === 'function') {
         setLanguage(control.value || 'auto');
+        syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
       }
     });
   });
+
+  initEngineSelect();
 
   // Also listen on input events for the API key fields
   const apiKeyInput = document.getElementById('popup-siliconflow-key');
@@ -280,12 +333,97 @@ function initSettingsPanel() {
     cancelButton.addEventListener('click', () => {
       if (panelState.savedSettings) {
         applyPopupSettings(panelState.savedSettings);
-        if (typeof setLanguage === 'function') setLanguage(panelState.savedSettings.uiLanguage || 'auto');
+        if (typeof setLanguage === 'function') {
+          setLanguage(panelState.savedSettings.uiLanguage || 'auto');
+          syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+        }
       }
       setSettingsDirty(false);
       closePanels();
     });
   }
+}
+
+const ENGINE_SELECT_META = {
+  google: { label: 'Google 翻译', description: '快速通用' },
+  microsoft: { label: 'Microsoft Translator', description: '稳定专业' },
+  siliconflow: { label: '硅基流动 AI（免费）', description: 'AI 翻译' },
+  mymemory: { label: 'MyMemory（免费）', description: '免费备用' }
+};
+
+function initEngineSelect() {
+  const nativeSelect = document.getElementById('popup-translation-engine');
+  const customSelect = document.getElementById('engine-select');
+  const trigger = document.getElementById('engine-select-trigger');
+  const menu = document.getElementById('engine-select-menu');
+  if (!nativeSelect || !customSelect || !trigger || !menu) return;
+
+  trigger.addEventListener('click', () => {
+    setEngineSelectOpen(!customSelect.classList.contains('open'));
+  });
+
+  menu.querySelectorAll('[data-engine-value]').forEach(option => {
+    option.addEventListener('click', () => {
+      const value = option.getAttribute('data-engine-value') || 'google';
+      nativeSelect.value = value;
+      nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      setEngineSelectOpen(false);
+    });
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!customSelect.contains(event.target)) {
+      setEngineSelectOpen(false);
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      setEngineSelectOpen(false);
+    }
+  });
+
+  syncEngineSelect(nativeSelect.value || 'google');
+}
+
+function setEngineSelectOpen(open) {
+  const customSelect = document.getElementById('engine-select');
+  const trigger = document.getElementById('engine-select-trigger');
+  const menu = document.getElementById('engine-select-menu');
+  if (!customSelect || !trigger || !menu) return;
+
+  customSelect.classList.toggle('open', open);
+  trigger.setAttribute('aria-expanded', String(open));
+  menu.hidden = !open;
+}
+
+function getEngineSelectLabel(value) {
+  const nativeSelect = document.getElementById('popup-translation-engine');
+  const nativeOption = nativeSelect && nativeSelect.querySelector(`option[value="${value}"]`);
+  const meta = ENGINE_SELECT_META[value] || ENGINE_SELECT_META.google;
+  return (nativeOption && nativeOption.textContent.trim()) || meta.label;
+}
+
+function syncEngineSelect(value) {
+  const currentValue = value || 'google';
+  const label = document.getElementById('engine-select-label');
+  const desc = document.getElementById('engine-select-desc');
+  const meta = ENGINE_SELECT_META[currentValue] || ENGINE_SELECT_META.google;
+
+  if (label) label.textContent = getEngineSelectLabel(currentValue);
+  if (desc) desc.textContent = meta.description;
+
+  document.querySelectorAll('[data-engine-value]').forEach(option => {
+    const selected = option.getAttribute('data-engine-value') === currentValue;
+    const optionValue = option.getAttribute('data-engine-value') || 'google';
+    const optionLabel = option.querySelector('strong');
+    const optionDesc = option.querySelector('small');
+    const optionMeta = ENGINE_SELECT_META[optionValue] || ENGINE_SELECT_META.google;
+
+    option.setAttribute('aria-selected', String(selected));
+    if (optionLabel) optionLabel.textContent = getEngineSelectLabel(optionValue);
+    if (optionDesc) optionDesc.textContent = optionMeta.description;
+  });
 }
 
 function populateModelSelect(selectId) {
@@ -335,6 +473,7 @@ function applyPopupSettings(settings) {
     toggleApiKeyRow(isSF);
     toggleModelRow(isSF);
     toggleMicrosoftRow(isMS);
+    syncEngineSelect(translationEngine.value);
   }
   if (apiKeyInput) apiKeyInput.value = settings.siliconflowApiKey || '';
   if (modelSelect) modelSelect.value = settings.siliconflowModel || 'tencent/Hunyuan-MT-7B';
@@ -377,7 +516,10 @@ function savePopupSettings() {
 
     panelState.savedSettings = cloneSettings(settings);
     setSettingsDirty(false);
-    if (typeof setLanguage === 'function') setLanguage(settings.uiLanguage || 'auto');
+    if (typeof setLanguage === 'function') {
+      setLanguage(settings.uiLanguage || 'auto');
+      syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+    }
     showStatus(getMessage('settings_saved'), 'success');
     closePanels();
   });
@@ -605,16 +747,16 @@ function isSupportedUrl(url) {
 }
 
 // Send message to content script (with retry + explicit injection fallback)
-function sendMessageToContent(message, retries = 2) {
+function sendMessageToContent(message, callback, options = {}, retries = 2) {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (!tabs[0] || !tabs[0].id) {
-      showStatus(getMessage('error_cannot_access'), 'error');
+      if (!options.silent) showStatus(getMessage('error_cannot_access'), 'error');
       return;
     }
 
     const url = tabs[0].url;
     if (!isSupportedUrl(url)) {
-      showStatus(getMessage('error_cannot_access'), 'error');
+      if (!options.silent) showStatus(getMessage('error_cannot_access'), 'error');
       return;
     }
 
@@ -626,21 +768,23 @@ function sendMessageToContent(message, retries = 2) {
       if (chrome.runtime.lastError) {
         if (retries > 0) {
           // If we still have normal retries left, first try a quick retry
-          setTimeout(() => sendMessageToContent(message, retries - 1), 600);
+          setTimeout(() => sendMessageToContent(message, callback, options, retries - 1), 600);
           return;
         }
+        if (options.silent) return;
         // All normal retries exhausted; try injecting content script explicitly as last resort.
         console.log('LingoFlow Popup: Attempting explicit content script injection for tab', tabId);
-        injectContentScriptAndSend(tabId, message);
+        injectContentScriptAndSend(tabId, message, callback, options);
         return;
       }
       console.log('LingoFlow Popup: Message sent successfully, response:', response);
+      if (callback) callback(response);
     });
   });
 }
 
 // Fallback: inject content script then send message (with multi-attempt retry)
-function injectContentScriptAndSend(tabId, message) {
+function injectContentScriptAndSend(tabId, message, callback, options = {}) {
   console.log('LingoFlow Popup: Attempting explicit content script injection for tab', tabId);
   chrome.scripting.executeScript({
     target: { tabId },
@@ -659,11 +803,11 @@ function injectContentScriptAndSend(tabId, message) {
       }, (result2) => {
         if (chrome.runtime.lastError) {
           console.error('LingoFlow Popup: Inline injection also failed:', chrome.runtime.lastError.message);
-          showStatus(getMessage('error_cannot_access'), 'error');
+          if (!options.silent) showStatus(getMessage('error_cannot_access'), 'error');
           return;
         }
         console.log('LingoFlow Popup: Inline handler injected successfully');
-        showStatus(getMessage('ready'), 'success');
+        if (!options.silent) showStatus(getMessage('ready'), 'success');
       });
       return;
     }
@@ -671,12 +815,12 @@ function injectContentScriptAndSend(tabId, message) {
     console.log('LingoFlow Popup: Content script injected successfully');
 
     // Try sending message with progressive delays (content script needs init time)
-    attemptSendAfterInjection(tabId, message, 3);
+    attemptSendAfterInjection(tabId, message, 3, callback, options);
   });
 }
 
 // Retry sending message after injection with backoff
-function attemptSendAfterInjection(tabId, message, attemptsLeft) {
+function attemptSendAfterInjection(tabId, message, attemptsLeft, callback, options = {}) {
   const delay = [300, 600, 1000][3 - attemptsLeft] || 1000;
   setTimeout(() => {
     chrome.tabs.sendMessage(tabId, message, (response) => {
@@ -684,15 +828,16 @@ function attemptSendAfterInjection(tabId, message, attemptsLeft) {
         console.warn('LingoFlow Popup: Post-injection send failed, attempts left:', attemptsLeft - 1,
           '-', chrome.runtime.lastError.message);
         if (attemptsLeft > 1) {
-          attemptSendAfterInjection(tabId, message, attemptsLeft - 1);
+          attemptSendAfterInjection(tabId, message, attemptsLeft - 1, callback, options);
           return;
         }
         console.error('LingoFlow Popup: All post-injection attempts exhausted');
-        showStatus(getMessage('error_cannot_access'), 'error');
+        if (!options.silent) showStatus(getMessage('error_cannot_access'), 'error');
         return;
       }
       console.log('LingoFlow Popup: Message sent after injection, response:', response);
-      showStatus(getMessage('ready'), 'success');
+      if (!options.silent) showStatus(getMessage('ready'), 'success');
+      if (callback) callback(response);
     });
   }, delay);
 }
@@ -701,6 +846,7 @@ function attemptSendAfterInjection(tabId, message, attemptsLeft) {
 // This runs inside the page context and handles translate/bilingual actions directly
 function createInlineHandler(initialMessage) {
   var existingBilingualStrategy = 'skip';
+  var activeInlineMode = null;
 
   try {
     chrome.storage.local.get(['lingoflow_settings'], function(result) {
@@ -720,8 +866,12 @@ function createInlineHandler(initialMessage) {
 
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     try {
+      if (request && request.action === 'get_page_state') {
+        sendResponse({ received: true, mode: activeInlineMode });
+        return true;
+      }
       handleActionInline(request);
-      sendResponse({ received: true });
+      sendResponse({ received: true, mode: activeInlineMode });
     } catch (err) {
       sendResponse({ received: false, error: err && err.message });
     }
@@ -1177,9 +1327,18 @@ function createInlineHandler(initialMessage) {
 
   function handleActionInline(msg) {
     if (!msg || !document || !document.body) return;
-    if (msg.action === 'restore_original') restoreOriginal();
-    if (msg.action === 'translate_page') enableTranslationMode();
-    if (msg.action === 'bilingual_mode') enableBilingualMode();
+    if (msg.action === 'restore_original') {
+      restoreOriginal();
+      activeInlineMode = null;
+    }
+    if (msg.action === 'translate_page') {
+      enableTranslationMode();
+      activeInlineMode = 'translate';
+    }
+    if (msg.action === 'bilingual_mode') {
+      enableBilingualMode();
+      activeInlineMode = 'bilingual';
+    }
   }
 }
 // Open vocabulary page

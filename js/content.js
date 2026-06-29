@@ -685,9 +685,27 @@
           sendResponse({ received: true });
           break;
 
+        case 'get_page_state':
+          sendResponse({
+            received: true,
+            mode: this.getPageMode()
+          });
+          break;
+
         default:
           sendResponse({ received: false });
       }
+    }
+,
+
+    getPageMode() {
+      if (state.isBilingualMode || document.querySelector('.lingoflow-block[data-lingoflow="true"]')) {
+        return 'bilingual';
+      }
+      if (state.isTranslated || document.querySelector('.lingoflow-translation-only[data-lingoflow="true"], [data-lingoflow-hidden]')) {
+        return 'translate';
+      }
+      return null;
     }
   };
 

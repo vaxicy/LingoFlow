@@ -382,5 +382,21 @@
   "bilingual_mode_desc_short": {
     "message": "Show translation below original",
     "description": "Bilingual mode short description in popup"
+  },
+  "mode_original": {
+    "message": "Current: Original",
+    "description": "Popup current mode status"
+  },
+  "mode_bilingual": {
+    "message": "Current: Bilingual Mode",
+    "description": "Popup current mode status"
+  },
+  "mode_translation": {
+    "message": "Current: Translation Mode",
+    "description": "Popup current mode status"
+  },
+  "display_mode": {
+    "message": "Display Mode",
+    "description": "Popup mode section label"
   }
 }

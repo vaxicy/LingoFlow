@@ -344,7 +344,7 @@
     "description": "Microsoft API Key 标签"
   },
   "microsoft_api_key_desc": {
-    "message": "Azure Translator 密钥（免费 200 万字符/月）",
+    "message": "Azure Translator 密钥",
     "description": "Microsoft API Key 描述"
   },
   "microsoft_region_label": {
@@ -382,5 +382,21 @@
   "bilingual_mode_desc_short": {
     "message": "在原文下方显示中文翻译",
     "description": "弹出窗口中双语模式的简短描述"
+  },
+  "mode_original": {
+    "message": "当前：原文",
+    "description": "弹出窗口当前模式状态"
+  },
+  "mode_bilingual": {
+    "message": "当前：双语模式",
+    "description": "弹出窗口当前模式状态"
+  },
+  "mode_translation": {
+    "message": "当前：译文模式",
+    "description": "弹出窗口当前模式状态"
+  },
+  "display_mode": {
+    "message": "显示方式",
+    "description": "弹出窗口模式分组标签"
   }
 }
