@@ -2,6 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   console.log('LingoFlow: Popup loaded');
+  applyPopupTheme('light');
 
   // Initialize mode switches + buttons
   initModeSwitches();
@@ -240,6 +241,7 @@ function loadPopupLanguage() {
   chrome.runtime.sendMessage({ action: 'get_settings' }, (response) => {
     const settings = response && response.settings;
     if (settings && typeof setLanguage === 'function') {
+      applyPopupTheme(settings.theme || 'light');
       setLanguage(settings.uiLanguage || 'auto');
       syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
     }
@@ -395,6 +397,7 @@ function initSettingsPanel() {
     button.addEventListener('click', () => {
       document.querySelectorAll('[data-popup-theme]').forEach(item => item.classList.remove('active'));
       button.classList.add('active');
+      applyPopupTheme(button.getAttribute('data-popup-theme') || 'light');
       markSettingsChanged();
     });
   });
@@ -906,6 +909,7 @@ function applyPopupSettings(settings) {
   const existingBilingualStrategy = document.getElementById('popup-existing-bilingual-strategy');
   const historyLimit = document.getElementById('popup-history-limit');
   const theme = settings.theme || 'light';
+  applyPopupTheme(theme);
 
   if (translationEngine) {
     translationEngine.value = settings.translationEngine || 'google';
@@ -949,6 +953,13 @@ function applyPopupSettings(settings) {
   syncPanelCustomSelects();
   syncSiliconFlowModelSelect(modelSelect?.value || 'tencent/Hunyuan-MT-7B');
   updateSettingsFooter();
+}
+
+function applyPopupTheme(theme) {
+  const normalizedTheme = theme === 'dark' ? 'dark' : 'light';
+  if (document.body) {
+    document.body.setAttribute('data-theme', normalizedTheme);
+  }
 }
 
 function getPopupSettingsFromUI() {
@@ -1074,9 +1085,14 @@ function getDefaultSettings() {
 function renderHistoryPanel() {
   const list = document.getElementById('history-list');
   const empty = document.getElementById('history-empty');
+  const clearButton = document.getElementById('history-clear-btn');
   if (!list || !empty) return;
 
   const items = panelState.history.filter(item => matchesPanelQuery(item, panelState.historyQuery));
+  if (clearButton) {
+    clearButton.disabled = panelState.history.length === 0;
+  }
+
   list.textContent = '';
   empty.hidden = items.length > 0;
   list.hidden = items.length === 0;
