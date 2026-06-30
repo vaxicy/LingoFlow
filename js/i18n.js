@@ -59,8 +59,17 @@ function getMessage(key, substitutions = []) {
     }
     return msg;
   }
-  const message = chrome.i18n.getMessage(key, substitutions);
-  return message || key;
+  // Guard: chrome.i18n may be undefined when extension context is invalidated
+  // (e.g., Service Worker terminated and restarted by Chrome).
+  try {
+    if (typeof chrome !== 'undefined' && chrome.i18n && typeof chrome.i18n.getMessage === 'function') {
+      const message = chrome.i18n.getMessage(key, substitutions);
+      return message || key;
+    }
+  } catch (_) {
+    // Silently fall through
+  }
+  return key;
 }
 
 /**

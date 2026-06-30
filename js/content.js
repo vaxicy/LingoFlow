@@ -93,6 +93,36 @@
     }
   }
 
+  // NOTE: getMessage() is already defined in i18n.js (loaded before this file).
+  // Do NOT re-define it here — that would break _manualMessages support and
+  // cause "chrome.i18n is undefined" errors when extension context invalidates.
+
+  // Safe wrapper for chrome.runtime.sendMessage that handles
+  // "Extension context invalidated" errors gracefully (Service Worker terminated).
+  function safeSendMessage(message, callback) {
+    try {
+      if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+        console.warn('LingoFlow: chrome.runtime unavailable, message dropped:', message.action);
+        if (callback) try { callback(); } catch (_) {}
+        return;
+      }
+      chrome.runtime.sendMessage(message, (response) => {
+        // Suppress "Extension context invalidated" and similar errors
+        if (chrome.runtime.lastError) {
+          const msg = (chrome.runtime.lastError && chrome.runtime.lastError.message) || '';
+          if (msg.includes('context invalidated') || msg.includes('not exist')) {
+            console.warn('LingoFlow: Extension context invalidated, message dropped:', message.action);
+            return; // Silent — Service Worker will restart on next user interaction
+          }
+        }
+        if (callback) try { callback(response); } catch (_) {}
+      });
+    } catch (err) {
+      console.warn('LingoFlow: sendMessage error:', err && err.message ? err.message : err);
+      if (callback) try { callback(); } catch (_) {}
+    }
+  }
+
   function statusText(key, ...args) {
     const entry = NotificationText[key];
     if (!entry) return key;
@@ -465,14 +495,14 @@
               <path d="M2 12h20"/>
               <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
             </svg>
-            <span data-i18n="translate">Translate</span>
+            <span data-i18n="translate">${this.escapeHtml(getMessage('translate'))}</span>
           </button>
           <button class="lingoflow-btn lingoflow-copy-btn" data-action="copy" data-text="${this.escapeHtml(selectedText)}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
             </svg>
-            <span data-i18n="copy">Copy</span>
+            <span data-i18n="copy">${this.escapeHtml(getMessage('copy'))}</span>
           </button>
           <button class="lingoflow-btn lingoflow-save-btn" data-action="save" data-text="${this.escapeHtml(selectedText)}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -480,7 +510,7 @@
               <polyline points="17 21 17 13 7 13 7 21"/>
               <polyline points="7 3 7 8 15 8"/>
             </svg>
-            <span data-i18n="save">Save</span>
+            <span data-i18n="save">${this.escapeHtml(getMessage('save'))}</span>
           </button>
         </div>
       `;
@@ -599,7 +629,7 @@
               <div class="lingoflow-word-text">${this.escapeHtml(originalText)}</div>
               ${dictionary && dictionary.phonetic ? `<div class="lingoflow-word-phonetic">${this.escapeHtml(dictionary.phonetic)}</div>` : ''}
             </div>
-            <span class="lingoflow-word-badge">Word</span>
+            <span class="lingoflow-word-badge">${this.escapeHtml(getMessage('word'))}</span>
           </div>
           <div class="lingoflow-result-translation">${this.escapeHtml(translation)}</div>
           ${meanings.length ? `<div class="lingoflow-meaning-list">${meanings.map(item => `
@@ -619,14 +649,14 @@
 
       result.innerHTML = `
         <div class="lingoflow-result-header">
-          <span class="lingoflow-result-title">${this.escapeHtml(isWord ? 'Dictionary' : 'Translation')}</span>
+          <span class="lingoflow-result-title">${this.escapeHtml(isWord ? getMessage('word') : getMessage('translate'))}</span>
           <button class="lingoflow-result-close" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="lingoflow-result-content">
           ${body}
           <div class="lingoflow-result-actions">
-            <button class="lingoflow-result-btn" type="button" data-result-action="copy">${this.escapeHtml(getMessage('copy') || 'Copy')}</button>
-            <button class="lingoflow-result-btn" type="button" data-result-action="save">${this.escapeHtml(getMessage('save') || 'Save')}</button>
+            <button class="lingoflow-result-btn" type="button" data-result-action="copy">${this.escapeHtml(getMessage('copy'))}</button>
+            <button class="lingoflow-result-btn" type="button" data-result-action="save">${this.escapeHtml(getMessage('save'))}</button>
             <button class="lingoflow-result-close" type="button" aria-label="Close">×</button>
           </div>
         </div>
@@ -700,7 +730,7 @@
       });
 
       const label = toolbar.querySelector('.lingoflow-translate-btn span');
-      if (label) label.textContent = isLoading ? 'Translating...' : (getMessage('translate') || 'Translate');
+      if (label) label.textContent = isLoading ? (getMessage('translation_in_progress') || 'Translating...') : (getMessage('translate') || 'Translate');
     },
 
     // Handle translate action
@@ -726,7 +756,7 @@
       }
 
       // Save to history
-      chrome.runtime.sendMessage({
+      safeSendMessage({
         action: 'add_to_history',
         data: {
           text: text,
@@ -781,14 +811,14 @@
 
     async showResultForText(text) {
       const selectionContext = this.getContextSelectionContext(text);
-      this.showNotification('Translating...');
+      this.showNotification(getMessage('translation_in_progress') || 'Translating...');
       const result = await SelectionLookup.resolve(text);
       if (!result || result.error || !result.translation) {
         this.showNotification(statusText('translationFailed'));
         return false;
       }
 
-      chrome.runtime.sendMessage({
+      safeSendMessage({
         action: 'add_to_history',
         data: {
           text,
@@ -802,7 +832,7 @@
     },
 
     async saveTextWithResolvedResult(text) {
-      this.showNotification('Saving...');
+      this.showNotification(getMessage('saving') || 'Saving...');
       const result = await SelectionLookup.resolve(text);
       if (!result || result.error || !result.translation) {
         this.showNotification(statusText('translationFailed'));
@@ -842,7 +872,7 @@
     },
 
     saveResolvedResult(result) {
-      chrome.runtime.sendMessage({
+      safeSendMessage({
         action: 'save_to_vocabulary',
         data: SelectionLookup.getSavePayload(result)
       }, (response) => {

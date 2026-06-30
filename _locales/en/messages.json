@@ -291,6 +291,14 @@
     "message": "Saving...",
     "description": "Settings saving status"
   },
+  "translation_in_progress": {
+    "message": "Translating...",
+    "description": "Translation in progress notice"
+  },
+  "saving": {
+    "message": "Saving...",
+    "description": "Saving in progress notice"
+  },
   "settings_save_failed": {
     "message": "Save failed",
     "description": "Settings save failed status"

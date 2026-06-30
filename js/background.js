@@ -9,7 +9,7 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
   chrome.tabs.query({}, (tabs) => {
     (tabs || []).forEach(tab => {
       try {
-        chrome.tabs.sendMessage(tab.id, { action: 'sync_settings', settings });
+        chrome.tabs.sendMessage(tab.id, { action: 'sync_settings', settings }).catch(() => {});
       } catch (_) {}
     });
   });
@@ -17,6 +17,9 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
 
 function setupContextMenus() {
   chrome.contextMenus.removeAll(() => {
+    // Create multiple items without parentId — Chrome MV3 will automatically
+    // group them under a parent menu named after the extension.
+    // Child items will NOT have the "ExtensionName:" prefix.
     chrome.contextMenus.create({
       id: 'lingoflow-translate',
       title: chrome.i18n.getMessage('translate_selection') || 'Translate',
@@ -84,6 +87,11 @@ chrome.runtime.onInstalled.addListener(() => {
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (!tab || !tab.id) return;
+  // Skip chrome:// and other restricted URLs where content scripts can't run
+  if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') ||
+      tab.url.startsWith('about:') || tab.url.startsWith('chrome-extension://')) {
+    return;
+  }
   const targetOptions = typeof info.frameId === 'number' && info.frameId >= 0
     ? { frameId: info.frameId }
     : undefined;
@@ -93,21 +101,21 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
       chrome.tabs.sendMessage(tab.id, {
         action: 'translate_selection',
         text: info.selectionText
-      }, targetOptions);
+      }, targetOptions).catch(() => {});
       break;
 
     case 'lingoflow-save':
       chrome.tabs.sendMessage(tab.id, {
         action: 'save_selection',
         text: info.selectionText
-      }, targetOptions);
+      }, targetOptions).catch(() => {});
       break;
 
     case 'lingoflow-copy':
       chrome.tabs.sendMessage(tab.id, {
         action: 'copy_selection',
         text: info.selectionText
-      }, targetOptions);
+      }, targetOptions).catch(() => {});
       break;
   }
 });
@@ -1494,52 +1502,89 @@ function delay(ms) {
 
 // MyMemory Translation (free, no API key required)
 // Docs: https://mymemory.translated.net/doc/spec.php
+// Note: MyMemory free tier may return the input text UNCHANGED when no match exists
+//       in its community database. We detect this case and fall back to Google.
 function translateWithMyMemory(text, targetLang, sendResponse) {
   // MyMemory does NOT support 'auto' as source language.
-  // We infer source from the target: if target is 'zh' we assume source is 'en',
-  // and vice-versa. This covers the two most common LingoFlow use-cases.
-  const src = targetLang === 'zh' ? 'en' : 'zh-CN';
-  const tgt = targetLang === 'zh' ? 'zh-CN' : 'en';
+  // We infer source from the target: if target is 'zh' we assume source is 'en'.
+  const src = targetLang === 'zh' || targetLang.startsWith('zh') ? 'en' : 'zh-CN';
+  const tgt = targetLang === 'zh' ? 'zh-CN' : (targetLang === 'en' ? 'en' : 'zh-CN');
 
-  const maxLen = 500; // MyMemory free tier is limited to ~500 chars per request
+  const maxLen = 1000; // Increased from 500; MyMemory free tier supports up to ~1000 chars
   const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
 
-  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(truncated)}&langpair=${encodeURIComponent(src)}|${encodeURIComponent(tgt)}`;
+  // Use email parameter to enable private translation memory (improves match quality)
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(truncated)}&langpair=${encodeURIComponent(src)}|${encodeURIComponent(tgt)}&email=${encodeURIComponent('lingoflow@app.placeholder')}`;
 
   console.log('LingoFlow: MyMemory translating', truncated.length, 'chars', src, '->', tgt);
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
-    console.warn('LingoFlow: MyMemory request timed out after 8s');
+    console.warn('LingoFlow: MyMemory request timed out after 10s');
     controller.abort();
-  }, 8000);
+  }, 10000);
 
-  fetch(url, { signal: controller.signal })
-    .then(response => {
-      clearTimeout(timeoutId);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(data => {
-      if (data && data.responseStatus === 200 && data.responseData && data.responseData.translatedText) {
-        const translatedText = data.responseData.translatedText;
-        console.log('LingoFlow: MyMemory succeeded, result length:', translatedText.length);
-        sendResponse({ success: true, translation: translatedText });
-      } else {
-        const msg = (data && data.responseStatus) ? `MyMemory error ${data.responseStatus}` : 'Invalid response';
-        console.warn('LingoFlow: MyMemory failed:', msg);
-        translateWithGoogle(text, targetLang, sendResponse);
-      }
-    })
-    .catch(error => {
-      clearTimeout(timeoutId);
-      const message = error && error.message ? error.message : String(error);
-      console.warn('LingoFlow: MyMemory error:', message);
-      console.log('LingoFlow: Falling back to Google Translate');
-      translateWithGoogle(text, targetLang, sendResponse);
-    });
+  function tryWithFallback(attempt) {
+    fetch(url + (attempt > 0 ? '&de=lingoflow' : ''), { signal: controller.signal }) // add different param to bust cache on retry
+      .then(response => {
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        if (data && data.responseStatus === 200 && data.responseData && data.responseData.translatedText) {
+          const translatedText = data.responseData.translatedText;
+
+          // CRITICAL FIX: Detect when MyMemory returns the original text unchanged.
+          // When no match is found in its community DB, MyMemory echoes the input.
+          // We compare normalized versions to catch this case.
+          const normalizedInput = truncated.replace(/\s+/g, '').toLowerCase();
+          const normalizedOutput = translatedText.replace(/\s+/g, '').toLowerCase();
+
+          if (normalizedInput && normalizedInput === normalizedOutput) {
+            console.warn('LingoFlow: MyMemory returned untranslated text (no match in DB), falling back to Google');
+            translateWithGoogle(text, targetLang, sendResponse);
+            return;
+          }
+
+          // Also check quality: very short or suspicious responses
+          if (translatedText.length < Math.max(1, Math.floor(truncated.length * 0.15)) && truncated.length > 10) {
+            console.warn('LingoFlow: MyMemory result seems too short vs input, falling back to Google');
+            translateWithGoogle(text, targetLang, sendResponse);
+            return;
+          }
+
+          console.log('LingoFlow: MyMemory succeeded, result length:', translatedText.length,
+            '(matchQuality:', ((data.responseData && data.responseData.match) || '-'), ')');
+          sendResponse({ success: true, translation: translatedText });
+        } else {
+          const msg = (data && data.responseStatus) ? `MyMemory error ${data.responseStatus}` : 'Invalid response';
+          console.warn('LingoFlow: MyMemory failed:', msg);
+
+          if (attempt < 1) {
+            console.log('LingoFlow: Retrying MyMemory...');
+            tryWithFallback(attempt + 1);
+          } else {
+            translateWithGoogle(text, targetLang, sendResponse);
+          }
+        }
+      })
+      .catch(error => {
+        clearTimeout(timeoutId);
+        const message = error && error.message ? error.message : String(error);
+        console.warn('LingoFlow: MyMemory error:', message);
+
+        if (attempt < 1 && !/abort/i.test(message)) {
+          console.log('LingoFlow: Retrying MyMemory...');
+          tryWithFallback(attempt + 1);
+        } else {
+          console.log('LingoFlow: Falling back to Google Translate');
+          translateWithGoogle(text, targetLang, sendResponse);
+        }
+      });
+  }
+
+  tryWithFallback(0);
 }
 
 // Microsoft Translator (Azure AI Translator - free tier: 2M chars/month)

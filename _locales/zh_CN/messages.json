@@ -291,6 +291,14 @@
     "message": "正在保存...",
     "description": "设置保存中状态"
   },
+  "translation_in_progress": {
+    "message": "正在翻译...",
+    "description": "翻译进行中提示"
+  },
+  "saving": {
+    "message": "正在保存...",
+    "description": "保存进行中提示"
+  },
   "settings_save_failed": {
     "message": "保存失败",
     "description": "设置保存失败状态"
