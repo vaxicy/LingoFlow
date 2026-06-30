@@ -47,6 +47,14 @@
     "message": "Restore Original",
     "description": "Popup button"
   },
+  "save_history": {
+    "message": "Save History",
+    "description": "Settings toggle"
+  },
+  "save_history_desc": {
+    "message": "Record translation history",
+    "description": "Settings toggle description"
+  },
   "vocabulary": {
     "message": "Vocabulary",
     "description": "Popup button"
@@ -98,6 +106,14 @@
   "history_hint": {
     "message": "Translation history will appear here",
     "description": "History empty hint"
+  },
+  "history_disabled_title": {
+    "message": "History is off",
+    "description": "History disabled title"
+  },
+  "history_disabled_hint": {
+    "message": "Turn it on in Settings to record new translations",
+    "description": "History disabled hint"
   },
   "delete_confirm": {
     "message": "Are you sure you want to delete?",

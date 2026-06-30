@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 const panelState = {
   history: [],
+  historyEnabled: true,
   vocabulary: [],
   historyQuery: '',
   vocabularyQuery: '',
@@ -253,6 +254,7 @@ function openHistoryPanel() {
   openPanel('history-panel');
   chrome.runtime.sendMessage({ action: 'get_history' }, (response) => {
     panelState.history = (response && response.history) || [];
+    panelState.historyEnabled = !response || response.historyEnabled !== false;
     renderHistoryPanel();
   });
 }
@@ -940,6 +942,8 @@ function applyPopupSettings(settings) {
   if (autoSaveSettings) autoSaveSettings.checked = settings.autoSaveSettings !== false;
   if (existingBilingualStrategy) existingBilingualStrategy.value = settings.existingBilingualStrategy || 'skip';
   if (historyLimit) historyLimit.value = String(settings.historyLimit || 50);
+  const saveHistory = document.getElementById('popup-save-history');
+  if (saveHistory) saveHistory.checked = settings.saveHistory !== false;
 
   document.querySelectorAll('[data-popup-theme]').forEach(button => {
     button.classList.toggle('active', button.getAttribute('data-popup-theme') === theme);
@@ -975,7 +979,8 @@ function getPopupSettingsFromUI() {
     autoSaveSettings: document.getElementById('popup-auto-save-settings')?.checked !== false,
     toolbarPosition: document.querySelector('[data-position].active')?.getAttribute('data-position') || 'above',
     existingBilingualStrategy: document.getElementById('popup-existing-bilingual-strategy')?.value || 'skip',
-    historyLimit: parseInt(document.getElementById('popup-history-limit')?.value, 10) || 50
+    historyLimit: parseInt(document.getElementById('popup-history-limit')?.value, 10) || 50,
+    saveHistory: document.getElementById('popup-save-history')?.checked !== false
   };
 }
 
@@ -1074,6 +1079,7 @@ function getDefaultSettings() {
     toolbarPosition: 'above',
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
+    saveHistory: true,
     activeMode: null
   };
 }
@@ -1086,12 +1092,24 @@ function renderHistoryPanel() {
 
   const items = panelState.history.filter(item => matchesPanelQuery(item, panelState.historyQuery));
   if (clearButton) {
-    clearButton.disabled = panelState.history.length === 0;
+    clearButton.disabled = !panelState.historyEnabled || panelState.history.length === 0;
   }
 
   list.textContent = '';
   empty.hidden = items.length > 0;
   list.hidden = items.length === 0;
+
+  if (!panelState.historyEnabled && items.length === 0) {
+    const title = empty.querySelector('strong');
+    const hint = empty.querySelector('span');
+    if (title) title.textContent = getMessage('history_disabled_title');
+    if (hint) hint.textContent = getMessage('history_disabled_hint');
+  } else if (items.length === 0) {
+    const title = empty.querySelector('strong');
+    const hint = empty.querySelector('span');
+    if (title) title.textContent = getMessage('no_history');
+    if (hint) hint.textContent = getMessage('history_hint');
+  }
 
   items.forEach(item => {
     list.appendChild(createPanelItem(item, {

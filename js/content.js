@@ -41,7 +41,8 @@
     observerStopTimer: null,
     translationRoot: null,      // detected main content area (for incremental translation)
     originalContent: new Map(), // Store original content for restoration
-    translatedNodes: new Set() // Track translated nodes
+    translatedNodes: new Set(), // Track translated nodes
+    translationIdCounter: 0
   };
 
   const NotificationText = {
@@ -515,13 +516,6 @@
             </svg>
             <span data-i18n="translate">${this.escapeHtml(_getMessage('translate', 'Translate'))}</span>
           </button>
-          <button class="lingoflow-btn lingoflow-copy-btn" data-action="copy" data-text="${this.escapeHtml(selectedText)}">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-            <span data-i18n="copy">${this.escapeHtml(_getMessage('copy', 'Copy'))}</span>
-          </button>
           <button class="lingoflow-btn lingoflow-save-btn" data-action="save" data-text="${this.escapeHtml(selectedText)}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
@@ -549,12 +543,6 @@
         const action = button.getAttribute('data-action');
         if (action === 'translate') {
           this.handleTranslate(selectedText, selectionContext);
-          return;
-        }
-
-        if (action === 'copy') {
-          this.handleCopy(selectedText);
-          this.removeFloatingToolbar();
           return;
         }
 
@@ -702,10 +690,6 @@
         if (e.stopImmediatePropagation) e.stopImmediatePropagation();
 
         const action = actionButton.getAttribute('data-result-action');
-        if (action === 'copy') {
-          this.handleCopy(SelectionLookup.getCopyText(resultData));
-          return;
-        }
 
         if (action === 'save') {
           this.saveResolvedResult(resultData);
@@ -1085,12 +1069,27 @@
 ,
 
     getPageMode() {
-      if (state.isBilingualMode || document.querySelector('.lingoflow-block[data-lingoflow="true"]')) {
-        return 'bilingual';
+      const hasBilingualDom = document.querySelector(
+        '.lingoflow-block[data-lingoflow="true"], .lingoflow-inline-translation[data-lingoflow="true"]'
+      );
+      const hasTranslationDom = document.querySelector(
+        '.lingoflow-translation-only[data-lingoflow="true"], [data-lingoflow-hidden]'
+      );
+
+      if (state.isBilingualMode && hasBilingualDom) return 'bilingual';
+      if (state.isTranslated && hasTranslationDom) return 'translate';
+      if (state.isTranslated && hasBilingualDom && !hasTranslationDom) return 'bilingual';
+
+      if (state.isBilingualMode && !hasBilingualDom) {
+        state.isBilingualMode = false;
+        state.isTranslated = !!hasTranslationDom;
       }
-      if (state.isTranslated || document.querySelector('.lingoflow-translation-only[data-lingoflow="true"], [data-lingoflow-hidden]')) {
-        return 'translate';
+      if (state.isTranslated && !hasTranslationDom && !hasBilingualDom) {
+        state.isTranslated = false;
       }
+
+      if (hasBilingualDom && !hasTranslationDom) return 'bilingual';
+      if (hasTranslationDom) return 'translate';
       return null;
     }
   };
@@ -2170,6 +2169,57 @@
       }
     },
 
+    getOrCreateTranslationId(container) {
+      if (!container) return '';
+      if (!container.dataset.lingoflowSourceId) {
+        state.translationIdCounter += 1;
+        container.dataset.lingoflowSourceId = `lf-${Date.now()}-${state.translationIdCounter}`;
+      }
+      return container.dataset.lingoflowSourceId;
+    },
+
+    linkTranslationNode(container, node) {
+      if (!container || !node) return;
+      const id = this.getOrCreateTranslationId(container);
+      node.setAttribute('data-lingoflow-source-id', id);
+      container.setAttribute('data-lingoflow-rendered', 'true');
+    },
+
+    getSourceIdSelector(id) {
+      const escaped = (window.CSS && CSS.escape) ? CSS.escape(id) : String(id).replace(/"/g, '\\"');
+      return `[data-lingoflow-source-id="${escaped}"]`;
+    },
+
+    hasLinkedTranslation(container) {
+      if (!container || !container.dataset) return false;
+      const id = container.dataset.lingoflowSourceId;
+      if (!id) return false;
+      return !!document.querySelector(this.getSourceIdSelector(id));
+    },
+
+    repairTranslationIntegrity() {
+      let repaired = 0;
+
+      document.querySelectorAll('[data-lingoflow-processed="true"][data-lingoflow-rendered="true"]').forEach(container => {
+        if (!container.isConnected || this.hasLinkedTranslation(container)) return;
+        container.removeAttribute('data-lingoflow-processed');
+        container.removeAttribute('data-lingoflow-rendered');
+        container.removeAttribute('data-lingoflow-source-id');
+        repaired++;
+      });
+
+      document.querySelectorAll('[data-lingoflow-source-id][data-lingoflow="true"]').forEach(node => {
+        const id = node.getAttribute('data-lingoflow-source-id');
+        if (!id) return;
+        const owner = document.querySelector(`${this.getSourceIdSelector(id)}[data-lingoflow-rendered="true"]`);
+        if (owner) return;
+        node.remove();
+        repaired++;
+      });
+
+      return repaired;
+    },
+
     createBilingualBlock(translation, mode) {
       const block = document.createElement('div');
       block.className = `lingoflow-block lingoflow-block-${mode}`;
@@ -2448,6 +2498,7 @@
       original.appendChild(container);
       marker.replaceWith(block);
       range.detach();
+      this.linkTranslationNode(container, block);
 
       return true;
     },
@@ -2475,6 +2526,7 @@
 
       original.appendChild(fragment);
       container.insertBefore(block, stopNode);
+      this.linkTranslationNode(container, block);
       return true;
     },
 
@@ -2567,6 +2619,7 @@
         block.style.width = 'auto';
       }
       target.insertAdjacentElement('afterend', block);
+      this.linkTranslationNode(container, block);
       return true;
     },
 
@@ -2583,6 +2636,7 @@
       popup.className = 'lingoflow-tooltip-popup';
       popup.setAttribute('data-lingoflow', 'true');
       popup.textContent = translation;
+      this.linkTranslationNode(container, popup);
 
       container.appendChild(popup);
 
@@ -2711,6 +2765,7 @@
       range.detach();
 
       this.hideOriginalContainer(container);
+      this.linkTranslationNode(container, block);
       return true;
     },
 
@@ -2804,6 +2859,7 @@
     async runIncrementalTranslation(mode, root = null, notify = false) {
       // Use stored translationRoot if available, otherwise fallback to document.body
       const useRoot = root || state.translationRoot || document.body;
+      this.repairTranslationIntegrity();
       const units = this.collectTranslationUnits(useRoot);
       if (!units.length) return { successCount: 0, failCount: 0, stoppedByInvalidContext: false };
       if (notify) UI.showNotification(statusText('found', units.length));
@@ -2841,6 +2897,7 @@
       window.setTimeout(() => {
         if (!state.activeTranslationMode || state.isTranslating) return;
         // Use stored translationRoot (no explicit root = uses state.translationRoot)
+        this.repairTranslationIntegrity();
         this.runIncrementalTranslation(mode, null, false);
       }, 800);
     },
@@ -2851,26 +2908,40 @@
 
       state.mutationObserver = new MutationObserver((mutations) => {
         if (!state.activeTranslationMode || state.isTranslating) return;
+        const hasLingoflowRemoval = mutations.some(mutation => {
+          return Array.from(mutation.removedNodes).some(node => {
+            if (node.nodeType !== Node.ELEMENT_NODE) return false;
+            if (node.hasAttribute && node.hasAttribute('data-lingoflow')) return true;
+            return !!(node.querySelector && node.querySelector('[data-lingoflow]'));
+          });
+        });
+
         const hasNewText = mutations.some(mutation => {
           return Array.from(mutation.addedNodes).some(node => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              if (node.hasAttribute && node.hasAttribute('data-lingoflow')) return false;
+              if (node.querySelector && node.querySelector('[data-lingoflow]')) return false;
+            }
             if (node.nodeType === Node.TEXT_NODE) return this.shouldTranslateText(node.textContent);
             if (node.nodeType === Node.ELEMENT_NODE) return this.shouldTranslateText(node.textContent || '');
             return false;
           });
         });
 
-        if (!hasNewText) return;
+        if (!hasNewText && !hasLingoflowRemoval) return;
 
         clearTimeout(state.mutationTimer);
         state.mutationTimer = window.setTimeout(() => {
           if (!state.activeTranslationMode || state.isTranslating) return;
           // Use stored translationRoot (null = use default)
+          this.repairTranslationIntegrity();
           this.runIncrementalTranslation(mode, null, false);
-        }, 500);
+        }, hasLingoflowRemoval ? 900 : 500);
       });
 
       state.mutationObserver.observe(document.body, { childList: true, subtree: true });
-      state.observerStopTimer = window.setTimeout(() => this.stopDynamicTranslationObserver(), 10000);
+      const observerLifetime = this.isConservativePage() ? 90000 : 10000;
+      state.observerStopTimer = window.setTimeout(() => this.stopDynamicTranslationObserver(), observerLifetime);
     },
 
     stopDynamicTranslationObserver() {
@@ -2947,7 +3018,10 @@
     },
 
     toggleBilingualMode() {
-      if (state.isBilingualMode || document.querySelector('.lingoflow-block[data-lingoflow="true"]')) {
+      const hasBilingualDom = document.querySelector(
+        '.lingoflow-block[data-lingoflow="true"], .lingoflow-inline-translation[data-lingoflow="true"]'
+      );
+      if (state.isBilingualMode && hasBilingualDom) {
         this.restoreOriginal();
       } else {
         this.enableBilingualMode();
@@ -3030,8 +3104,19 @@
 
       document.querySelectorAll('[data-lingoflow-processed]').forEach(el => {
         el.removeAttribute('data-lingoflow-processed');
+        el.removeAttribute('data-lingoflow-rendered');
+        el.removeAttribute('data-lingoflow-source-id');
+        el.removeAttribute('data-lingoflow-tooltip');
         el.classList.remove('lingoflow-translated', 'lingoflow-bilingual');
+        el.classList.remove('lingoflow-tooltip-host', 'lingoflow-tooltip-active');
         delete el.dataset.lfTranslated;
+      });
+
+      document.querySelectorAll('[data-lingoflow-rendered], [data-lingoflow-source-id], [data-lingoflow-tooltip]').forEach(el => {
+        el.removeAttribute('data-lingoflow-rendered');
+        el.removeAttribute('data-lingoflow-source-id');
+        el.removeAttribute('data-lingoflow-tooltip');
+        el.classList.remove('lingoflow-tooltip-host', 'lingoflow-tooltip-active');
       });
 
       state.originalContent.clear();

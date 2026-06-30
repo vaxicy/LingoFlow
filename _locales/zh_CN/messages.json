@@ -47,6 +47,14 @@
     "message": "恢复原文",
     "description": "弹出窗口按钮"
   },
+  "save_history": {
+    "message": "保存历史",
+    "description": "设置开关"
+  },
+  "save_history_desc": {
+    "message": "记录翻译历史",
+    "description": "设置开关描述"
+  },
   "vocabulary": {
     "message": "生词本",
     "description": "弹出窗口按钮"

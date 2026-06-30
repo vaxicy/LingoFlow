@@ -57,6 +57,7 @@ chrome.runtime.onInstalled.addListener(() => {
           theme: 'light',
           autoSaveSettings: true,
           existingBilingualStrategy: 'skip',
+          saveHistory: true,
           historyLimit: 50,
           activeMode: null
         }
@@ -206,8 +207,12 @@ function deleteVocabularyItem(id, sendResponse) {
 // History management
 function addToHistory(data) {
   chrome.storage.local.get(['lingoflow_history', 'lingoflow_settings'], (result) => {
+    const settings = result.lingoflow_settings || {};
+    // Honor saveHistory toggle — when disabled, silently skip recording
+    if (settings.saveHistory === false) return;
+
     const history = result.lingoflow_history || [];
-    const limit = (result.lingoflow_settings && result.lingoflow_settings.historyLimit) || 50;
+    const limit = settings.historyLimit || 50;
 
     history.unshift({
       id: generateId(),
@@ -227,8 +232,12 @@ function addToHistory(data) {
 }
 
 function getHistory(sendResponse) {
-  chrome.storage.local.get(['lingoflow_history'], (result) => {
-    sendResponse({ history: result.lingoflow_history || [] });
+  chrome.storage.local.get(['lingoflow_history', 'lingoflow_settings'], (result) => {
+    const settings = result.lingoflow_settings || {};
+    sendResponse({
+      history: result.lingoflow_history || [],
+      historyEnabled: settings.saveHistory !== false
+    });
   });
 }
 
@@ -313,6 +322,7 @@ function getDefaultSettings(overrides = {}) {
     theme: 'light',
     selectionTranslation: true,
     autoSaveSettings: true,
+    saveHistory: true,
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
     activeMode: null,
