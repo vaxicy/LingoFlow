@@ -15,28 +15,34 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
   });
 });
 
+function setupContextMenus() {
+  chrome.contextMenus.removeAll(() => {
+    chrome.contextMenus.create({
+      id: 'lingoflow-translate',
+      title: chrome.i18n.getMessage('translate_selection') || 'Translate',
+      contexts: ['selection']
+    });
+
+    chrome.contextMenus.create({
+      id: 'lingoflow-save',
+      title: chrome.i18n.getMessage('save_to_vocabulary') || 'Save',
+      contexts: ['selection']
+    });
+
+    chrome.contextMenus.create({
+      id: 'lingoflow-copy',
+      title: chrome.i18n.getMessage('copy_text') || 'Copy',
+      contexts: ['selection']
+    });
+  });
+}
+
+chrome.runtime.onStartup.addListener(setupContextMenus);
+
 // Initialize context menus when extension is installed
 chrome.runtime.onInstalled.addListener(() => {
   console.log('LingoFlow: Extension installed');
-
-  // Create context menu items
-  chrome.contextMenus.create({
-    id: 'lingoflow-translate',
-    title: chrome.i18n.getMessage('translate_selection') || 'Translate Selection',
-    contexts: ['selection']
-  });
-
-  chrome.contextMenus.create({
-    id: 'lingoflow-save',
-    title: chrome.i18n.getMessage('save_to_vocabulary') || 'Save to Vocabulary',
-    contexts: ['selection']
-  });
-
-  chrome.contextMenus.create({
-    id: 'lingoflow-copy',
-    title: chrome.i18n.getMessage('copy_text') || 'Copy Text',
-    contexts: ['selection']
-  });
+  setupContextMenus();
 
   // Initialize default settings
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
@@ -78,24 +84,30 @@ chrome.runtime.onInstalled.addListener(() => {
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   if (!tab || !tab.id) return;
+  const targetOptions = typeof info.frameId === 'number' && info.frameId >= 0
+    ? { frameId: info.frameId }
+    : undefined;
 
   switch (info.menuItemId) {
     case 'lingoflow-translate':
       chrome.tabs.sendMessage(tab.id, {
         action: 'translate_selection',
         text: info.selectionText
-      });
+      }, targetOptions);
       break;
 
     case 'lingoflow-save':
       chrome.tabs.sendMessage(tab.id, {
         action: 'save_selection',
         text: info.selectionText
-      });
+      }, targetOptions);
       break;
 
     case 'lingoflow-copy':
-      // Copy is handled by browser naturally
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'copy_selection',
+        text: info.selectionText
+      }, targetOptions);
       break;
   }
 });

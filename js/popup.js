@@ -1328,7 +1328,7 @@ function sendMessageToContent(message, callback, options = {}, retries = 2) {
 function injectContentScriptAndSend(tabId, message, callback, options = {}) {
   console.log('LingoFlow Popup: Attempting explicit content script injection for tab', tabId);
   chrome.scripting.executeScript({
-    target: { tabId },
+    target: { tabId, allFrames: true },
     files: ['js/i18n.js', 'js/content.js']
   }, () => {
     if (chrome.runtime.lastError) {
@@ -1338,7 +1338,7 @@ function injectContentScriptAndSend(tabId, message, callback, options = {}) {
       // This creates a bare-bones message handler that can respond to our actions
       console.log('LingoFlow Popup: Trying inline injection fallback...');
       chrome.scripting.executeScript({
-        target: { tabId },
+        target: { tabId, allFrames: true },
         func: createInlineHandler,
         args: [message]
       }, (result2) => {

@@ -21,7 +21,9 @@
       "matches": ["<all_urls>"],
       "js": ["js/i18n.js", "js/content.js"],
       "css": ["css/content.css"],
-      "run_at": "document_end"
+      "run_at": "document_end",
+      "all_frames": true,
+      "match_about_blank": true
     }
   ],
   "action": {

@@ -545,17 +545,17 @@
       const offset = options.offset || 8;
       const margin = 10;
       const rect = element.getBoundingClientRect();
-      const anchorLeft = anchorRect.left + window.scrollX;
-      const anchorTop = anchorRect.top + window.scrollY;
-      const anchorBottom = anchorRect.bottom + window.scrollY;
+      const anchorLeft = anchorRect.left;
+      const anchorTop = anchorRect.top;
+      const anchorBottom = anchorRect.bottom;
 
       let left = anchorLeft + (anchorRect.width / 2) - (rect.width / 2);
-      left = Math.max(window.scrollX + margin, Math.min(left, window.scrollX + window.innerWidth - rect.width - margin));
+      left = Math.max(margin, Math.min(left, window.innerWidth - rect.width - margin));
 
       const aboveTop = anchorTop - rect.height - offset;
       const belowTop = anchorBottom + offset;
-      const hasSpaceAbove = aboveTop >= window.scrollY + margin;
-      const hasSpaceBelow = belowTop + rect.height <= window.scrollY + window.innerHeight - margin;
+      const hasSpaceAbove = aboveTop >= margin;
+      const hasSpaceBelow = belowTop + rect.height <= window.innerHeight - margin;
 
       let top;
       if (preferred === 'above') {
@@ -570,7 +570,7 @@
         }
       }
 
-      top = Math.max(window.scrollY + margin, Math.min(top, window.scrollY + window.innerHeight - rect.height - margin));
+      top = Math.max(margin, Math.min(top, window.innerHeight - rect.height - margin));
 
       element.style.left = `${left}px`;
       element.style.top = `${top}px`;
@@ -613,13 +613,15 @@
           `).join('')}</div>` : ''}
         `
         : `
-          <div class="lingoflow-result-label">Original</div>
           <div class="lingoflow-result-original">${this.escapeHtml(originalText)}</div>
-          <div class="lingoflow-result-label">Translation</div>
           <div class="lingoflow-result-translation">${this.escapeHtml(translation)}</div>
         `;
 
       result.innerHTML = `
+        <div class="lingoflow-result-header">
+          <span class="lingoflow-result-title">${this.escapeHtml(isWord ? 'Dictionary' : 'Translation')}</span>
+          <button class="lingoflow-result-close" type="button" aria-label="Close">&times;</button>
+        </div>
         <div class="lingoflow-result-content">
           ${body}
           <div class="lingoflow-result-actions">
@@ -880,17 +882,38 @@
 
   // Event Handlers
   const EventHandlers = {
+    selectionTimer: null,
+    lastSelectionKey: '',
+
     // Handle text selection
-    handleTextSelection(e) {
+    scheduleSelectionToolbar(e, delay = 100) {
       if (!state.selectionTranslationEnabled) return;
       if (e.target && e.target.closest && e.target.closest('.lingoflow-ui')) return;
+      clearTimeout(this.selectionTimer);
+      this.selectionTimer = window.setTimeout(() => this.handleTextSelection(e), delay);
+    },
+
+    handleTextSelection(e) {
+      if (!state.selectionTranslationEnabled) return;
+      if (e && e.target && e.target.closest && e.target.closest('.lingoflow-ui')) return;
 
       const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        this.lastSelectionKey = '';
+        UI.removeFloatingToolbar();
+        return;
+      }
+
       const selectedText = selection.toString().trim();
 
       if (selectedText.length > 0) {
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
+        if (!rect || (rect.width === 0 && rect.height === 0)) return;
+
+        const selectionKey = `${selectedText}|${Math.round(rect.left)}|${Math.round(rect.top)}|${Math.round(rect.width)}|${Math.round(rect.height)}`;
+        if (selectionKey === this.lastSelectionKey && document.getElementById('lingoflow-toolbar')) return;
+        this.lastSelectionKey = selectionKey;
 
         UI.createFloatingToolbar({
           text: selectedText,
@@ -906,6 +929,7 @@
           scrollY: window.scrollY
         });
       } else {
+        this.lastSelectionKey = '';
         UI.removeFloatingToolbar();
       }
     },
@@ -939,6 +963,11 @@
 
         case 'save_selection':
           UI.saveTextWithResolvedResult(request.text);
+          sendResponse({ received: true });
+          break;
+
+        case 'copy_selection':
+          UI.handleCopy(request.text || '');
           sendResponse({ received: true });
           break;
 
@@ -1289,6 +1318,20 @@
       return block;
     },
 
+    isConservativePage() {
+      const href = String(location.href || '');
+      if (/scorm|docebo|skillshop|googleusercontent|static-assets|launcher\.html/i.test(href)) return true;
+      return !!document.querySelector('video, iframe, frame, [class*="transcript" i], [id*="transcript" i]');
+    },
+
+    createInlineTranslationBlock(translation) {
+      const block = document.createElement('div');
+      block.className = 'lingoflow-inline-translation';
+      block.setAttribute('data-lingoflow', 'true');
+      block.textContent = translation;
+      return block;
+    },
+
     copyLayoutMargins(source, block) {
       const style = window.getComputedStyle(source);
       block.style.marginTop = style.marginTop;
@@ -1354,9 +1397,41 @@
     },
 
     renderTranslationUnit(container, translation) {
+      if (this.isConservativePage()) {
+        return this.renderConservativeBilingualUnit(container, translation);
+      }
       return this.shouldRenderInside(container)
         ? this.renderInternal(container, translation)
         : this.renderExternal(container, translation);
+    },
+
+    findConservativeInsertionTarget(container) {
+      let target = container;
+      let parent = target.parentElement;
+
+      for (let depth = 0; parent && parent !== document.body && depth < 4; depth++) {
+        const style = window.getComputedStyle(parent);
+        const clips = /(hidden|clip)/.test(`${style.overflow} ${style.overflowY} ${style.overflowX}`);
+        const fixedHeight = parent.getBoundingClientRect().height > 0 && parent.scrollHeight > parent.clientHeight + 8;
+        if (!clips && !fixedHeight) break;
+        target = parent;
+        parent = target.parentElement;
+      }
+
+      return target;
+    },
+
+    renderConservativeBilingualUnit(container, translation) {
+      if (!container || !container.parentNode) return false;
+      const target = this.findConservativeInsertionTarget(container);
+      if (!target || !target.parentNode) return false;
+
+      const block = this.createInlineTranslationBlock(translation);
+      this.copyLayoutMargins(container, block);
+      block.style.marginTop = '0.25em';
+      block.style.marginBottom = '0.35em';
+      target.insertAdjacentElement('afterend', block);
+      return true;
     },
 
     hideOriginalContainer(container) {
@@ -1475,6 +1550,33 @@
       return this.translateAndRenderUnits(units, mode);
     },
 
+    hasEmbeddedFrames() {
+      return !!document.querySelector('iframe, frame');
+    },
+
+    isTopFrame() {
+      try {
+        return window.top === window;
+      } catch (_) {
+        return true;
+      }
+    },
+
+    async collectInitialTranslationUnits() {
+      let units = this.collectTranslationUnits(document.body);
+      if (units.length) return units;
+
+      const delays = [700, 1400, 2400];
+      for (const delay of delays) {
+        await new Promise(resolve => window.setTimeout(resolve, delay));
+        if (!state.isTranslating) return [];
+        units = this.collectTranslationUnits(document.body);
+        if (units.length) return units;
+      }
+
+      return [];
+    },
+
     scheduleSecondScan(mode) {
       window.setTimeout(() => {
         if (!state.activeTranslationMode || state.isTranslating) return;
@@ -1541,12 +1643,14 @@
 
       UI.showNotification(statusText('scanning'));
 
-      const units = this.collectTranslationUnits(document.body);
+      const units = await this.collectInitialTranslationUnits();
       console.log('LingoFlow: enableTranslationMode found ' + units.length + ' translation units');
 
       if (units.length === 0) {
         state.isTranslating = false;
-        UI.showNotification(statusText('noText'));
+        if (!this.isTopFrame() || !this.hasEmbeddedFrames()) {
+          UI.showNotification(statusText('noText'));
+        }
         return;
       }
 
@@ -1599,12 +1703,14 @@
 
       UI.showNotification(statusText('scanning'));
 
-      const units = this.collectTranslationUnits(document.body);
+      const units = await this.collectInitialTranslationUnits();
       console.log('LingoFlow: enableBilingualMode found ' + units.length + ' translation units');
 
       if (units.length === 0) {
         state.isTranslating = false;
-        UI.showNotification(statusText('noText'));
+        if (!this.isTopFrame() || !this.hasEmbeddedFrames()) {
+          UI.showNotification(statusText('noText'));
+        }
         return;
       }
 
@@ -1683,9 +1789,14 @@
       });
 
       // Event listeners
-      document.addEventListener('mouseup', (e) => EventHandlers.handleTextSelection(e));
+      document.addEventListener('mouseup', (e) => EventHandlers.scheduleSelectionToolbar(e, 80));
+      document.addEventListener('pointerup', (e) => EventHandlers.scheduleSelectionToolbar(e, 80));
+      document.addEventListener('touchend', (e) => EventHandlers.scheduleSelectionToolbar(e, 120), { passive: true });
+      document.addEventListener('selectionchange', () => EventHandlers.scheduleSelectionToolbar({ target: document.activeElement }, 140));
+      document.addEventListener('keyup', (e) => EventHandlers.scheduleSelectionToolbar(e, 80));
       document.addEventListener('mousedown', (e) => {
         if (e.target && e.target.closest && e.target.closest('.lingoflow-ui')) return;
+        EventHandlers.lastSelectionKey = '';
         UI.removeFloatingToolbar();
         UI.removeTranslationResult();
       });
