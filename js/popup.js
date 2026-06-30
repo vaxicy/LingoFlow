@@ -331,6 +331,7 @@ function initSettingsPanel() {
     'popup-translate-to',
     'popup-ui-language',
     'popup-hover-translation',
+    'popup-selection-translation',
     'popup-auto-save-settings',
     'popup-existing-bilingual-strategy',
     'popup-history-limit'
@@ -393,6 +394,14 @@ function initSettingsPanel() {
   document.querySelectorAll('[data-popup-theme]').forEach(button => {
     button.addEventListener('click', () => {
       document.querySelectorAll('[data-popup-theme]').forEach(item => item.classList.remove('active'));
+      button.classList.add('active');
+      markSettingsChanged();
+    });
+  });
+
+  document.querySelectorAll('[data-position]').forEach(button => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('[data-position]').forEach(item => item.classList.remove('active'));
       button.classList.add('active');
       markSettingsChanged();
     });
@@ -904,12 +913,18 @@ function applyPopupSettings(settings) {
   if (translateTo) translateTo.value = settings.targetLanguage || 'zh';
   if (uiLanguage) uiLanguage.value = settings.uiLanguage || 'auto';
   if (hoverTranslation) hoverTranslation.checked = settings.hoverTranslation !== false;
+  const selectionTranslation = document.getElementById('popup-selection-translation');
+  if (selectionTranslation) selectionTranslation.checked = settings.selectionTranslation !== false;
   if (autoSaveSettings) autoSaveSettings.checked = settings.autoSaveSettings !== false;
   if (existingBilingualStrategy) existingBilingualStrategy.value = settings.existingBilingualStrategy || 'skip';
   if (historyLimit) historyLimit.value = String(settings.historyLimit || 50);
 
   document.querySelectorAll('[data-popup-theme]').forEach(button => {
     button.classList.toggle('active', button.getAttribute('data-popup-theme') === theme);
+  });
+  const toolbarPosition = settings.toolbarPosition || 'above';
+  document.querySelectorAll('[data-position]').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-position') === toolbarPosition);
   });
   syncPanelCustomSelects();
   syncSiliconFlowModelSelect(modelSelect?.value || 'tencent/Hunyuan-MT-7B');
@@ -928,7 +943,9 @@ function getPopupSettingsFromUI() {
     uiLanguage: document.getElementById('popup-ui-language')?.value || 'auto',
     theme: document.querySelector('[data-popup-theme].active')?.getAttribute('data-popup-theme') || 'light',
     hoverTranslation: document.getElementById('popup-hover-translation')?.checked !== false,
+    selectionTranslation: document.getElementById('popup-selection-translation')?.checked !== false,
     autoSaveSettings: document.getElementById('popup-auto-save-settings')?.checked !== false,
+    toolbarPosition: document.querySelector('[data-position].active')?.getAttribute('data-position') || 'above',
     existingBilingualStrategy: document.getElementById('popup-existing-bilingual-strategy')?.value || 'skip',
     historyLimit: parseInt(document.getElementById('popup-history-limit')?.value, 10) || 50
   };
@@ -1027,6 +1044,7 @@ function getDefaultSettings() {
     theme: 'light',
     hoverTranslation: true,
     autoSaveSettings: true,
+    toolbarPosition: 'above',
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
     activeMode: null

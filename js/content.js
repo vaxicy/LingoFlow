@@ -31,6 +31,8 @@
     isTranslating: false,
     isTranslated: false,       // whether page currently has active translation
     hoverEnabled: true,
+    selectionTranslationEnabled: true,
+    toolbarPosition: 'above',
     uiLanguage: 'auto',
     targetLanguage: 'zh',
     existingBilingualStrategy: 'skip',
@@ -527,7 +529,7 @@
       document.body.appendChild(toolbar);
 
       this.positionFloatingElement(toolbar, selectionContext.rect, {
-        preferred: 'above',
+        preferred: state.toolbarPosition,
         offset: 10
       });
     },
@@ -555,10 +557,18 @@
       const belowTop = anchorBottom + offset;
       const hasSpaceAbove = aboveTop >= window.scrollY + margin;
       const hasSpaceBelow = belowTop + rect.height <= window.scrollY + window.innerHeight - margin;
-      let top = preferred === 'above' && hasSpaceAbove ? aboveTop : belowTop;
 
-      if (!hasSpaceBelow && hasSpaceAbove) {
-        top = aboveTop;
+      let top;
+      if (preferred === 'above') {
+        top = hasSpaceAbove ? aboveTop : belowTop;
+      } else if (preferred === 'below') {
+        top = hasSpaceBelow ? belowTop : aboveTop;
+      } else {
+        // auto mode: prefer above, fallback intelligently
+        top = hasSpaceAbove ? aboveTop : belowTop;
+        if (!hasSpaceBelow && hasSpaceAbove) {
+          top = aboveTop;
+        }
       }
 
       top = Math.max(window.scrollY + margin, Math.min(top, window.scrollY + window.innerHeight - rect.height - margin));
@@ -623,7 +633,7 @@
 
       document.body.appendChild(result);
       this.positionFloatingElement(result, selectionContext.rect, {
-        preferred: 'above',
+        preferred: state.toolbarPosition,
         offset: 10
       });
 
@@ -911,6 +921,7 @@
   const EventHandlers = {
     // Handle text selection
     handleTextSelection(e) {
+      if (!state.selectionTranslationEnabled) return;
       if (e.target && e.target.closest && e.target.closest('.lingoflow-ui')) return;
 
       const selection = window.getSelection();
@@ -1738,6 +1749,8 @@
       chrome.storage.local.get(['lingoflow_settings'], (result) => {
         if (result.lingoflow_settings) {
           state.hoverEnabled = result.lingoflow_settings.hoverTranslation !== false;
+          state.selectionTranslationEnabled = result.lingoflow_settings.selectionTranslation !== false;
+          state.toolbarPosition = result.lingoflow_settings.toolbarPosition || 'above';
           state.uiLanguage = result.lingoflow_settings.uiLanguage || 'auto';
           state.targetLanguage = result.lingoflow_settings.targetLanguage || 'zh';
           state.existingBilingualStrategy = result.lingoflow_settings.existingBilingualStrategy || 'skip';
@@ -1770,6 +1783,8 @@
         if (namespace === 'local' && changes.lingoflow_settings) {
           const settings = changes.lingoflow_settings.newValue;
           state.hoverEnabled = settings.hoverTranslation !== false;
+          state.selectionTranslationEnabled = settings.selectionTranslation !== false;
+          state.toolbarPosition = settings.toolbarPosition || 'above';
           state.uiLanguage = settings.uiLanguage || 'auto';
           state.targetLanguage = settings.targetLanguage || 'zh';
           state.existingBilingualStrategy = settings.existingBilingualStrategy || 'skip';

@@ -167,6 +167,14 @@
     "message": "Show word definition on hover",
     "description": "Settings description"
   },
+  "selection_translation": {
+    "message": "Selection Translation",
+    "description": "Settings label"
+  },
+  "selection_translation_desc": {
+    "message": "Show translation toolbar when text is selected",
+    "description": "Settings description"
+  },
   "existing_bilingual_content": {
     "message": "Existing bilingual content",
     "description": "Settings label"
@@ -454,5 +462,21 @@
   "paid_models": {
     "message": "Paid Models",
     "description": "Model selection group header for paid models"
+  },
+  "position_above": {
+    "message": "Above",
+    "description": "Toolbar position option (above)"
+  },
+  "position_below": {
+    "message": "Below",
+    "description": "Toolbar position option (below)"
+  },
+  "toolbar_position": {
+    "message": "Toolbar Position",
+    "description": "Toolbar position setting label"
+  },
+  "toolbar_position_desc": {
+    "message": "Where to show the selection toolbar",
+    "description": "Toolbar position setting description"
   }
 }

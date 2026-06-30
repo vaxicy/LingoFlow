@@ -291,6 +291,7 @@ function getDefaultSettings(overrides = {}) {
     uiLanguage: 'auto',
     theme: 'light',
     hoverTranslation: true,
+    selectionTranslation: true,
     autoSaveSettings: true,
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
@@ -836,7 +837,7 @@ async function runSiliconFlowChunkQueue(chunks, context) {
                     results[item.index] = fallback[offset] || item.text;
                   });
                 });
-            }))
+            })
             .finally(() => {
               activeCount--;
               finishedCount++;
