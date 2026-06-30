@@ -30,7 +30,6 @@
     isBilingualMode: false,
     isTranslating: false,
     isTranslated: false,       // whether page currently has active translation
-    hoverEnabled: true,
     selectionTranslationEnabled: true,
     toolbarPosition: 'above',
     uiLanguage: 'auto',
@@ -688,44 +687,6 @@
       this.currentResult = null;
     },
 
-    // Show hover definition card
-    showHoverCard(x, y, word, definition) {
-      this.removeHoverCard();
-
-      const card = document.createElement('div');
-      card.id = 'lingoflow-hover-card';
-      card.className = 'lingoflow-ui';
-
-      card.innerHTML = `
-        <div class="lingoflow-hover-content">
-          <div class="lingoflow-hover-word">${this.escapeHtml(word)}</div>
-          <div class="lingoflow-hover-definition">${this.escapeHtml(definition)}</div>
-        </div>
-      `;
-
-      card.style.left = `${x}px`;
-      card.style.top = `${y + 20}px`;
-
-      document.body.appendChild(card);
-
-      // Adjust position if out of viewport
-      setTimeout(() => {
-        const rect = card.getBoundingClientRect();
-        if (rect.right > window.innerWidth) {
-          card.style.left = `${window.innerWidth - rect.width - 10}px`;
-        }
-        if (rect.bottom > window.innerHeight) {
-          card.style.top = `${y - rect.height - 10}px`;
-        }
-      }, 0);
-    },
-
-    // Remove hover card
-    removeHoverCard() {
-      const card = document.getElementById('lingoflow-hover-card');
-      if (card) card.remove();
-    },
-
     // Handle translate action
     setToolbarLoading(isLoading) {
       const toolbar = document.getElementById('lingoflow-toolbar');
@@ -949,59 +910,6 @@
       }
     },
 
-    // Handle mouse hover for word definition
-    handleMouseHover(e) {
-      if (!state.hoverEnabled) return;
-
-      const target = e.target;
-      if (target.classList.contains('lingoflow-translated')) return;
-
-      // Get word under cursor
-      const range = document.caretRangeFromPoint(e.clientX, e.clientY);
-      if (!range) return;
-
-      const textNode = range.startContainer;
-      if (textNode.nodeType !== Node.TEXT_NODE) return;
-
-      const text = textNode.textContent;
-      const offset = range.startOffset;
-      const word = this.getWordAt(text, offset);
-
-      if (word && word.length > 2) {
-        // Simple dictionary lookup (mock)
-        const definition = this.lookupWord(word);
-        if (definition) {
-          UI.showHoverCard(e.clientX, e.clientY, word, definition);
-        }
-      }
-    },
-
-    // Get word at offset
-    getWordAt(text, offset) {
-      const left = text.lastIndexOf(' ', offset - 1) + 1;
-      const right = text.indexOf(' ', offset);
-      const word = text.substring(left, right === -1 ? text.length : right).trim();
-      return word.replace(/[.,!?;:()"']/g, '');
-    },
-
-    // Simple dictionary lookup
-    lookupWord(word) {
-      // Mock dictionary - in real version, this would use a proper dictionary
-      const dict = {
-        'hello': 'hello',
-        'world': 'world',
-        'computer': 'computer',
-        'programming': 'programming',
-        'language': 'language',
-        'learn': 'learn',
-        'read': 'read',
-        'website': 'website',
-        'translation': 'translation'
-      };
-
-      return dict[word.toLowerCase()] || null;
-    },
-
     // Handle messages from background script (exposed globally for top-level listener)
     handleMessage(request, sender, sendResponse) {
       switch (request.action) {
@@ -1010,7 +918,6 @@
           {
             const s = request.settings || {};
             const wasSelectionEnabled = state.selectionTranslationEnabled;
-            state.hoverEnabled = s.hoverTranslation !== false;
             state.selectionTranslationEnabled = s.selectionTranslation !== false;
             state.toolbarPosition = s.toolbarPosition || 'above';
             state.uiLanguage = s.uiLanguage || 'auto';
@@ -1089,9 +996,7 @@
       '[data-lingoflow]',
       '[data-lingoflow-processed="true"]',
       '.lingoflow-ui',
-      '#lingoflow-toolbar',
-      '#lingoflow-translation-result',
-      '#lingoflow-hover-card'
+      '#lingoflow-translation-result'
     ].join(','),
 
     blockTags: new Set([
@@ -1768,7 +1673,6 @@
       // Load settings
       chrome.storage.local.get(['lingoflow_settings'], (result) => {
         if (result.lingoflow_settings) {
-          state.hoverEnabled = result.lingoflow_settings.hoverTranslation !== false;
           state.selectionTranslationEnabled = result.lingoflow_settings.selectionTranslation !== false;
           state.toolbarPosition = result.lingoflow_settings.toolbarPosition || 'above';
           state.uiLanguage = result.lingoflow_settings.uiLanguage || 'auto';
@@ -1795,15 +1699,11 @@
         UI.removeFloatingToolbar();
         UI.removeTranslationResult();
       }, { passive: true });
-      document.addEventListener('mouseover', (e) => EventHandlers.handleMouseHover(e));
-      document.addEventListener('mouseout', () => UI.removeHoverCard());
-
       // Listen for settings changes
       chrome.storage.onChanged.addListener((changes, namespace) => {
         if (namespace === 'local' && changes.lingoflow_settings) {
           const settings = changes.lingoflow_settings.newValue;
           const wasSelectionEnabled = state.selectionTranslationEnabled;
-          state.hoverEnabled = settings.hoverTranslation !== false;
           state.selectionTranslationEnabled = settings.selectionTranslation !== false;
           state.toolbarPosition = settings.toolbarPosition || 'above';
           state.uiLanguage = settings.uiLanguage || 'auto';

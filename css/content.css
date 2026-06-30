@@ -245,34 +245,6 @@
   background: rgba(124, 108, 255, 0.18);
 }
 
-/* Hover Card */
-#lingoflow-hover-card {
-  position: absolute;
-  z-index: 2147483647;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(196, 181, 253, 0.35);
-  border-radius: 12px;
-  box-shadow: 0 8px 28px rgba(129, 140, 248, 0.12);
-  padding: 14px 18px;
-  max-width: 320px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  font-size: 13px;
-  animation: lingoflow-fade-in 0.15s ease-out;
-}
-
-.lingoflow-hover-word {
-  font-weight: 600;
-  color: #1e1b4b;
-  margin-bottom: 5px;
-}
-
-.lingoflow-hover-definition {
-  color: #7c7a9e;
-  line-height: 1.5;
-}
-
 /* Notification */
 .lingoflow-notification {
   position: fixed;
@@ -410,21 +382,6 @@
 
   .lingoflow-result-translation {
     color: #f0eeff;
-  }
-
-  #lingoflow-hover-card {
-    background: rgba(30, 27, 58, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-color: rgba(93, 79, 150, 0.4);
-  }
-
-  .lingoflow-hover-word {
-    color: #f0eeff;
-  }
-
-  .lingoflow-hover-definition {
-    color: #a29cc8;
   }
 
   .lingoflow-notification {

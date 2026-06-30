@@ -159,14 +159,6 @@
     "message": "深色",
     "description": "主题选项"
   },
-  "hover_translation": {
-    "message": "悬停翻译",
-    "description": "设置标签"
-  },
-  "hover_translation_desc": {
-    "message": "悬停时显示词义",
-    "description": "设置描述"
-  },
   "selection_translation": {
     "message": "划词翻译",
     "description": "设置标签"

@@ -332,7 +332,6 @@ function initSettingsPanel() {
     'popup-gemini-model',
     'popup-translate-to',
     'popup-ui-language',
-    'popup-hover-translation',
     'popup-selection-translation',
     'popup-auto-save-settings',
     'popup-existing-bilingual-strategy',
@@ -904,7 +903,6 @@ function applyPopupSettings(settings) {
   const geminiModelSelect = document.getElementById('popup-gemini-model');
   const translateTo = document.getElementById('popup-translate-to');
   const uiLanguage = document.getElementById('popup-ui-language');
-  const hoverTranslation = document.getElementById('popup-hover-translation');
   const autoSaveSettings = document.getElementById('popup-auto-save-settings');
   const existingBilingualStrategy = document.getElementById('popup-existing-bilingual-strategy');
   const historyLimit = document.getElementById('popup-history-limit');
@@ -936,7 +934,6 @@ function applyPopupSettings(settings) {
   }
   if (translateTo) translateTo.value = settings.targetLanguage || 'zh';
   if (uiLanguage) uiLanguage.value = settings.uiLanguage || 'auto';
-  if (hoverTranslation) hoverTranslation.checked = settings.hoverTranslation !== false;
   const selectionTranslation = document.getElementById('popup-selection-translation');
   if (selectionTranslation) selectionTranslation.checked = settings.selectionTranslation !== false;
   if (autoSaveSettings) autoSaveSettings.checked = settings.autoSaveSettings !== false;
@@ -973,7 +970,6 @@ function getPopupSettingsFromUI() {
     targetLanguage: document.getElementById('popup-translate-to')?.value || 'zh',
     uiLanguage: document.getElementById('popup-ui-language')?.value || 'auto',
     theme: document.querySelector('[data-popup-theme].active')?.getAttribute('data-popup-theme') || 'light',
-    hoverTranslation: document.getElementById('popup-hover-translation')?.checked !== false,
     selectionTranslation: document.getElementById('popup-selection-translation')?.checked !== false,
     autoSaveSettings: document.getElementById('popup-auto-save-settings')?.checked !== false,
     toolbarPosition: document.querySelector('[data-position].active')?.getAttribute('data-position') || 'above',
@@ -1073,7 +1069,6 @@ function getDefaultSettings() {
     targetLanguage: 'zh',
     uiLanguage: 'auto',
     theme: 'light',
-    hoverTranslation: true,
     autoSaveSettings: true,
     toolbarPosition: 'above',
     existingBilingualStrategy: 'skip',

@@ -159,14 +159,6 @@
     "message": "Dark",
     "description": "Theme option"
   },
-  "hover_translation": {
-    "message": "Hover Translation",
-    "description": "Settings label"
-  },
-  "hover_translation_desc": {
-    "message": "Show word definition on hover",
-    "description": "Settings description"
-  },
   "selection_translation": {
     "message": "Selection Translation",
     "description": "Settings label"
