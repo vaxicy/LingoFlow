@@ -1,6 +1,20 @@
 // LingoFlow Background Script
 // Handles context menus, extension initialization, and message passing
 
+// Broadcast settings changes to all content scripts (handles direct storage writes too)
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace !== 'local' || !changes.lingoflow_settings) return;
+  const settings = changes.lingoflow_settings.newValue;
+  if (!settings) return;
+  chrome.tabs.query({}, (tabs) => {
+    (tabs || []).forEach(tab => {
+      try {
+        chrome.tabs.sendMessage(tab.id, { action: 'sync_settings', settings });
+      } catch (_) {}
+    });
+  });
+});
+
 // Initialize context menus when extension is installed
 chrome.runtime.onInstalled.addListener(() => {
   console.log('LingoFlow: Extension installed');
@@ -277,6 +291,7 @@ function updateSettings(settings, sendResponse) {
         translationEngine: merged.translationEngine,
         geminiModel: merged.geminiModel
       });
+      // Broadcast is handled by storage.onChanged listener above (covers all write paths)
       sendResponse({ success: true });
     });
   });

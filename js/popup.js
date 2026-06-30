@@ -434,6 +434,26 @@ function initSettingsPanel() {
       closePanels();
     });
   }
+
+  // Force-save unsaved settings before popup closes (handles outside-click dismiss)
+  // Chrome destroys popups immediately on outside-click; visibilitychange fires first,
+  // pagehide is the last chance. We save directly to storage (no async round-trip).
+  let forceSaveDone = false;
+  const forceSaveOnClose = () => {
+    if (forceSaveDone || !panelState.settingsDirty) return;
+    forceSaveDone = true;
+    clearTimeout(settingsAutoSaveTimer);
+    const current = getPopupSettingsFromUI();
+    const base = panelState.savedSettings || getDefaultSettings();
+    const merged = getDefaultSettings({ ...base, ...current });
+    chrome.storage.local.set({ lingoflow_settings: merged });
+    panelState.settingsDirty = false;
+  };
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') forceSaveOnClose();
+  });
+  window.addEventListener('pagehide', forceSaveOnClose);
 }
 
 function markSettingsChanged() {

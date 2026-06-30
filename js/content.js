@@ -1005,6 +1005,26 @@
     // Handle messages from background script (exposed globally for top-level listener)
     handleMessage(request, sender, sendResponse) {
       switch (request.action) {
+        case 'sync_settings':
+          // Immediately apply settings pushed from popup (no reload needed)
+          {
+            const s = request.settings || {};
+            const wasSelectionEnabled = state.selectionTranslationEnabled;
+            state.hoverEnabled = s.hoverTranslation !== false;
+            state.selectionTranslationEnabled = s.selectionTranslation !== false;
+            state.toolbarPosition = s.toolbarPosition || 'above';
+            state.uiLanguage = s.uiLanguage || 'auto';
+            state.targetLanguage = s.targetLanguage || 'zh';
+            state.existingBilingualStrategy = s.existingBilingualStrategy || 'skip';
+            TranslationEngine.activeEngine = s.translationEngine || 'google';
+            if (wasSelectionEnabled && !state.selectionTranslationEnabled) {
+              UI.removeFloatingToolbar();
+              UI.removeTranslationResult();
+            }
+          }
+          sendResponse({ received: true });
+          break;
+
         case 'translate_selection':
           UI.showResultForText(request.text);
           sendResponse({ received: true });
@@ -1782,6 +1802,7 @@
       chrome.storage.onChanged.addListener((changes, namespace) => {
         if (namespace === 'local' && changes.lingoflow_settings) {
           const settings = changes.lingoflow_settings.newValue;
+          const wasSelectionEnabled = state.selectionTranslationEnabled;
           state.hoverEnabled = settings.hoverTranslation !== false;
           state.selectionTranslationEnabled = settings.selectionTranslation !== false;
           state.toolbarPosition = settings.toolbarPosition || 'above';
@@ -1789,6 +1810,12 @@
           state.targetLanguage = settings.targetLanguage || 'zh';
           state.existingBilingualStrategy = settings.existingBilingualStrategy || 'skip';
           TranslationEngine.activeEngine = settings.translationEngine || 'google';
+
+          // If selection translation was just turned off, remove any visible toolbar/result
+          if (wasSelectionEnabled && !state.selectionTranslationEnabled) {
+            UI.removeFloatingToolbar();
+            UI.removeTranslationResult();
+          }
         }
       });
 
