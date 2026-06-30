@@ -39,6 +39,7 @@
     mutationObserver: null,
     mutationTimer: null,
     observerStopTimer: null,
+    translationRoot: null,      // detected main content area (for incremental translation)
     originalContent: new Map(), // Store original content for restoration
     translatedNodes: new Set() // Track translated nodes
   };
@@ -92,6 +93,10 @@
       return false;
     }
   }
+
+  // Safety wrapper for getMessage: guard against i18n.js not loaded
+  // or getMessage being undefined (e.g., extension context invalidated).
+  const _getMessage = (typeof getMessage === 'function') ? getMessage : (key, fallback) => fallback || key;
 
   // NOTE: getMessage() is already defined in i18n.js (loaded before this file).
   // Do NOT re-define it here — that would break _manualMessages support and
@@ -217,6 +222,12 @@
           }, 50000); // 50s - must be longer than background.js overall timeout (45s)
 
           try {
+            // Guard: chrome.runtime may be invalidated (Service Worker terminated)
+            if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+              clearTimeout(timeoutId);
+              resolve(`[LingoFlow context invalidated] ${text}`);
+              return;
+            }
             chrome.runtime.sendMessage(
               {
                 action: 'translate',
@@ -228,10 +239,6 @@
 
                 if (chrome.runtime.lastError) {
                   console.warn('LingoFlow: Background translate error:', getErrorMessage(chrome.runtime.lastError));
-                  if (isContextInvalidatedError(chrome.runtime.lastError)) {
-                    resolve(`[LingoFlow context invalidated] ${text}`);
-                    return;
-                  }
                   resolve(`[LingoFlow translation failed] ${text}`);
                   return;
                 }
@@ -280,6 +287,12 @@
         }, 55000);
 
         try {
+          // Guard: chrome.runtime may be invalidated
+          if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+            clearTimeout(timeoutId);
+            Promise.all(list.map(text => this.translate(text, targetLang))).then(resolve);
+            return;
+          }
           chrome.runtime.sendMessage(
             {
               action: 'translate_batch',
@@ -343,6 +356,11 @@
     lookupWord(word) {
       return new Promise((resolve) => {
         try {
+          // Guard: chrome.runtime may be invalidated
+          if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+            this.translateText(word).then(resolve);
+            return;
+          }
           chrome.runtime.sendMessage(
             {
               action: 'lookup_dictionary',
@@ -495,14 +513,14 @@
               <path d="M2 12h20"/>
               <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
             </svg>
-            <span data-i18n="translate">${this.escapeHtml(getMessage('translate'))}</span>
+            <span data-i18n="translate">${this.escapeHtml(_getMessage('translate', 'Translate'))}</span>
           </button>
           <button class="lingoflow-btn lingoflow-copy-btn" data-action="copy" data-text="${this.escapeHtml(selectedText)}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
             </svg>
-            <span data-i18n="copy">${this.escapeHtml(getMessage('copy'))}</span>
+            <span data-i18n="copy">${this.escapeHtml(_getMessage('copy', 'Copy'))}</span>
           </button>
           <button class="lingoflow-btn lingoflow-save-btn" data-action="save" data-text="${this.escapeHtml(selectedText)}">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -510,7 +528,7 @@
               <polyline points="17 21 17 13 7 13 7 21"/>
               <polyline points="7 3 7 8 15 8"/>
             </svg>
-            <span data-i18n="save">${this.escapeHtml(getMessage('save'))}</span>
+            <span data-i18n="save">${this.escapeHtml(_getMessage('save', 'Save'))}</span>
           </button>
         </div>
       `;
@@ -629,7 +647,7 @@
               <div class="lingoflow-word-text">${this.escapeHtml(originalText)}</div>
               ${dictionary && dictionary.phonetic ? `<div class="lingoflow-word-phonetic">${this.escapeHtml(dictionary.phonetic)}</div>` : ''}
             </div>
-            <span class="lingoflow-word-badge">${this.escapeHtml(getMessage('word'))}</span>
+            <span class="lingoflow-word-badge">${this.escapeHtml(_getMessage('word', 'Word'))}</span>
           </div>
           <div class="lingoflow-result-translation">${this.escapeHtml(translation)}</div>
           ${meanings.length ? `<div class="lingoflow-meaning-list">${meanings.map(item => `
@@ -649,14 +667,14 @@
 
       result.innerHTML = `
         <div class="lingoflow-result-header">
-          <span class="lingoflow-result-title">${this.escapeHtml(isWord ? getMessage('word') : getMessage('translate'))}</span>
+          <span class="lingoflow-result-title">${this.escapeHtml(isWord ? _getMessage('word', 'Word') : _getMessage('translate', 'Translate'))}</span>
           <button class="lingoflow-result-close" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="lingoflow-result-content">
           ${body}
           <div class="lingoflow-result-actions">
-            <button class="lingoflow-result-btn" type="button" data-result-action="copy">${this.escapeHtml(getMessage('copy'))}</button>
-            <button class="lingoflow-result-btn" type="button" data-result-action="save">${this.escapeHtml(getMessage('save'))}</button>
+            <button class="lingoflow-result-btn" type="button" data-result-action="copy">${this.escapeHtml(_getMessage('copy', 'Copy'))}</button>
+            <button class="lingoflow-result-btn" type="button" data-result-action="save">${this.escapeHtml(_getMessage('save', 'Save'))}</button>
             <button class="lingoflow-result-close" type="button" aria-label="Close">×</button>
           </div>
         </div>
@@ -730,7 +748,7 @@
       });
 
       const label = toolbar.querySelector('.lingoflow-translate-btn span');
-      if (label) label.textContent = isLoading ? (getMessage('translation_in_progress') || 'Translating...') : (getMessage('translate') || 'Translate');
+      if (label) label.textContent = isLoading ? (_getMessage('translation_in_progress', 'Translating...')) : (_getMessage('translate', 'Translate'));
     },
 
     // Handle translate action
@@ -811,7 +829,7 @@
 
     async showResultForText(text) {
       const selectionContext = this.getContextSelectionContext(text);
-      this.showNotification(getMessage('translation_in_progress') || 'Translating...');
+      this.showNotification(_getMessage('translation_in_progress', 'Translating...'));
       const result = await SelectionLookup.resolve(text);
       if (!result || result.error || !result.translation) {
         this.showNotification(statusText('translationFailed'));
@@ -832,7 +850,7 @@
     },
 
     async saveTextWithResolvedResult(text) {
-      this.showNotification(getMessage('saving') || 'Saving...');
+      this.showNotification(_getMessage('saving', 'Saving...'));
       const result = await SelectionLookup.resolve(text);
       if (!result || result.error || !result.translation) {
         this.showNotification(statusText('translationFailed'));
@@ -845,7 +863,7 @@
     // Handle copy action
     handleCopy(text) {
       navigator.clipboard.writeText(text).then(() => {
-        this.showNotification(getMessage('copied'));
+        this.showNotification(_getMessage('copied', 'Copied!'));
       });
     },
 
@@ -876,30 +894,65 @@
         action: 'save_to_vocabulary',
         data: SelectionLookup.getSavePayload(result)
       }, (response) => {
-        this.showNotification(getMessage('saved'));
+        this.showNotification(_getMessage('saved', 'Saved!'));
       });
     },
 
-    // Show notification (replaces previous notification to avoid stacking)
-    showNotification(message) {
-      // Remove any existing notification first
-      const existing = document.querySelector('.lingoflow-notification');
-      if (existing) existing.remove();
+    // Show notification (singleton: reuse existing element, update text + reset timer)
+    // - persistent=true: notification stays on screen until updated by a non-persistent call
+    // - persistent=false (default): auto-dismiss after delay (random 2300-2800ms)
+    // This design ensures only ONE notification is ever visible per translation session.
+    showNotification(message, persistent = false) {
+      // Reuse existing notification or create new one — never destroy+recreate
+      let notification = document.querySelector('.lingoflow-notification');
 
-      const notification = document.createElement('div');
-      notification.className = 'lingoflow-notification';
-      notification.textContent = message;
-
-      document.body.appendChild(notification);
-
-      setTimeout(() => {
+      if (notification) {
+        // Update text content of existing notification
+        notification.textContent = message;
+        // Ensure it's in visible state (re-apply show class if it was fading out)
+        notification.classList.remove('lingoflow-notification-hiding');
         notification.classList.add('lingoflow-notification-show');
-      }, 10);
 
-      setTimeout(() => {
-        notification.classList.remove('lingoflow-notification-show');
-        setTimeout(() => notification.remove(), 300);
-      }, 2500);
+        // Cancel pending auto-dismiss from previous message
+        if (notification._lfDismissTimer) {
+          clearTimeout(notification._lfDismissTimer);
+          notification._lfDismissTimer = null;
+        }
+        if (notification._lfRemoveTimer) {
+          clearTimeout(notification._lfRemoveTimer);
+          notification._lfRemoveTimer = null;
+        }
+      } else {
+        // First call: create the singleton notification element
+        notification = document.createElement('div');
+        notification.className = 'lingoflow-notification';
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        // Trigger entrance animation on next frame
+        requestAnimationFrame(() => {
+          notification.classList.add('lingoflow-notification-show');
+        });
+      }
+
+      if (!persistent) {
+        // Random jitter: 2300-2800ms so consecutive notifications don't all
+        // dismiss at the exact same moment (visual overlap prevention)
+        const dismissDelay = 2300 + Math.floor(Math.random() * 500);
+
+        // Auto-dismiss after delay
+        notification._lfDismissTimer = setTimeout(() => {
+          notification.classList.remove('lingoflow-notification-show');
+          notification.classList.add('lingoflow-notification-hiding');
+
+          // Remove DOM element after fade-out transition completes
+          notification._lfRemoveTimer = setTimeout(() => {
+            if (notification.parentNode) notification.remove();
+          }, 300);
+        }, dismissDelay);
+      }
+      // If persistent=true: no dismiss timer is set; notification stays until
+      // a subsequent non-persistent call updates it and sets the timer.
     },
 
     // Escape HTML
@@ -1012,6 +1065,8 @@
           break;
 
         case 'restore_original':
+          // Force restore: ignore isTranslating lock, reset state first
+          state.isTranslating = false;
           PageTranslator.restoreOriginal();
           sendResponse({ received: true });
           break;
@@ -1154,6 +1209,56 @@
       return false;
     },
 
+    // Detect data content elements: tables, charts, diagrams, tree structures,
+    // and any structured information display. These should NEVER be UI chrome.
+    isDataContentElement(el) {
+      if (!el || el === document.body || el === document.documentElement) return false;
+
+      const tag = el.tagName;
+      const text = this.getElementText(el);
+
+      // Must have some Latin text to be considered content
+      if (text.length < 8 || !this.hasLatinText(text)) return false;
+
+      // TABLE elements and their parts are always data content
+      if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
+
+      // Check for table-like grid layout (many cells arranged in rows)
+      const clsId = (' ' + (el.className || '') + ' ' + ' ' + (el.id || '') + ' ').toLowerCase();
+      const dataPatterns = [
+        'table', '-table', '_table',
+        'chart', '-chart', ' graph', ' diagram',
+        'tree', '-tree', ' node', ' branch',
+        'grid ', ' grid-', ' grid_',
+        ' snapshot', ' report', ' metric',
+        'data-', 'data_', '-data',
+        ' figure', ' fig-',
+        ' visual', ' visualization',
+        ' hierarchy', ' org',
+        ' flow', '-flow', ' workflow'
+      ];
+      for (const p of dataPatterns) {
+        if (clsId.includes(p)) return true;
+      }
+
+      // Check if element contains table rows or a grid of text-bearing children
+      const children = Array.from(el.children);
+      const hasTableChild = children.some(c =>
+        ['TABLE', 'TBODY', 'THEAD', 'TR', 'TD', 'TH'].includes(c.tagName)
+      );
+      if (hasTableChild && text.length >= 12) return true;
+
+      // Grid detection: many same-level children each with short text
+      // (typical for tree diagrams, org charts, flow charts)
+      const textChildren = children.filter(c => {
+        const ct = this.getElementText(c);
+        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+      });
+      if (textChildren.length >= 3 && text.length >= 20) return true;
+
+      return false;
+    },
+
     hasBilingualDescendants(scope) {
       if (!scope || scope === document.body || scope === document.documentElement) return false;
 
@@ -1176,6 +1281,56 @@
       return false;
     },
 
+    // Detect data content elements: tables, charts, diagrams, tree structures,
+    // and any structured information display. These should NEVER be UI chrome.
+    isDataContentElement(el) {
+      if (!el || el === document.body || el === document.documentElement) return false;
+
+      const tag = el.tagName;
+      const text = this.getElementText(el);
+
+      // Must have some Latin text to be considered content
+      if (text.length < 8 || !this.hasLatinText(text)) return false;
+
+      // TABLE elements and their parts are always data content
+      if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
+
+      // Check for table-like grid layout (many cells arranged in rows)
+      const clsId = (' ' + (el.className || '') + ' ' + ' ' + (el.id || '') + ' ').toLowerCase();
+      const dataPatterns = [
+        'table', '-table', '_table',
+        'chart', '-chart', ' graph', ' diagram',
+        'tree', '-tree', ' node', ' branch',
+        'grid ', ' grid-', ' grid_',
+        ' snapshot', ' report', ' metric',
+        'data-', 'data_', '-data',
+        ' figure', ' fig-',
+        ' visual', ' visualization',
+        ' hierarchy', ' org',
+        ' flow', '-flow', ' workflow'
+      ];
+      for (const p of dataPatterns) {
+        if (clsId.includes(p)) return true;
+      }
+
+      // Check if element contains table rows or a grid of text-bearing children
+      const children = Array.from(el.children);
+      const hasTableChild = children.some(c =>
+        ['TABLE', 'TBODY', 'THEAD', 'TR', 'TD', 'TH'].includes(c.tagName)
+      );
+      if (hasTableChild && text.length >= 12) return true;
+
+      // Grid detection: many same-level children each with short text
+      // (typical for tree diagrams, org charts, flow charts)
+      const textChildren = children.filter(c => {
+        const ct = this.getElementText(c);
+        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+      });
+      if (textChildren.length >= 3 && text.length >= 20) return true;
+
+      return false;
+    },
+
     hasBilingualAncestor(container) {
       let scope = container.parentElement;
       for (let depth = 0; scope && depth < 5; depth++, scope = scope.parentElement) {
@@ -1183,6 +1338,106 @@
           return true;
         }
       }
+      return false;
+    },
+
+    // Detect data content elements: tables, charts, diagrams, tree structures,
+    // and any structured information display. These should NEVER be UI chrome.
+    isDataContentElement(el) {
+      if (!el || el === document.body || el === document.documentElement) return false;
+
+      const tag = el.tagName;
+      const text = this.getElementText(el);
+
+      // Must have some Latin text to be considered content
+      if (text.length < 8 || !this.hasLatinText(text)) return false;
+
+      // TABLE elements and their parts are always data content
+      if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
+
+      // Check for table-like grid layout (many cells arranged in rows)
+      const clsId = (' ' + (el.className || '') + ' ' + ' ' + (el.id || '') + ' ').toLowerCase();
+      const dataPatterns = [
+        'table', '-table', '_table',
+        'chart', '-chart', ' graph', ' diagram',
+        'tree', '-tree', ' node', ' branch',
+        'grid ', ' grid-', ' grid_',
+        ' snapshot', ' report', ' metric',
+        'data-', 'data_', '-data',
+        ' figure', ' fig-',
+        ' visual', ' visualization',
+        ' hierarchy', ' org',
+        ' flow', '-flow', ' workflow'
+      ];
+      for (const p of dataPatterns) {
+        if (clsId.includes(p)) return true;
+      }
+
+      // Check if element contains table rows or a grid of text-bearing children
+      const children = Array.from(el.children);
+      const hasTableChild = children.some(c =>
+        ['TABLE', 'TBODY', 'THEAD', 'TR', 'TD', 'TH'].includes(c.tagName)
+      );
+      if (hasTableChild && text.length >= 12) return true;
+
+      // Grid detection: many same-level children each with short text
+      // (typical for tree diagrams, org charts, flow charts)
+      const textChildren = children.filter(c => {
+        const ct = this.getElementText(c);
+        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+      });
+      if (textChildren.length >= 3 && text.length >= 20) return true;
+
+      return false;
+    },
+
+    // Detect data content elements: tables, charts, diagrams, tree structures,
+    // and any structured information display. These should NEVER be UI chrome.
+    isDataContentElement(el) {
+      if (!el || el === document.body || el === document.documentElement) return false;
+
+      const tag = el.tagName;
+      const text = this.getElementText(el);
+
+      // Must have some Latin text to be considered content
+      if (text.length < 8 || !this.hasLatinText(text)) return false;
+
+      // TABLE elements and their parts are always data content
+      if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
+
+      // Check for table-like grid layout (many cells arranged in rows)
+      const clsId = (' ' + (el.className || '') + ' ' + ' ' + (el.id || '') + ' ').toLowerCase();
+      const dataPatterns = [
+        'table', '-table', '_table',
+        'chart', '-chart', ' graph', ' diagram',
+        'tree', '-tree', ' node', ' branch',
+        'grid ', ' grid-', ' grid_',
+        ' snapshot', ' report', ' metric',
+        'data-', 'data_', '-data',
+        ' figure', ' fig-',
+        ' visual', ' visualization',
+        ' hierarchy', ' org',
+        ' flow', '-flow', ' workflow'
+      ];
+      for (const p of dataPatterns) {
+        if (clsId.includes(p)) return true;
+      }
+
+      // Check if element contains table rows or a grid of text-bearing children
+      const children = Array.from(el.children);
+      const hasTableChild = children.some(c =>
+        ['TABLE', 'TBODY', 'THEAD', 'TR', 'TD', 'TH'].includes(c.tagName)
+      );
+      if (hasTableChild && text.length >= 12) return true;
+
+      // Grid detection: many same-level children each with short text
+      // (typical for tree diagrams, org charts, flow charts)
+      const textChildren = children.filter(c => {
+        const ct = this.getElementText(c);
+        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+      });
+      if (textChildren.length >= 3 && text.length >= 20) return true;
+
       return false;
     },
 
@@ -1208,6 +1463,56 @@
       return false;
     },
 
+    // Detect data content elements: tables, charts, diagrams, tree structures,
+    // and any structured information display. These should NEVER be UI chrome.
+    isDataContentElement(el) {
+      if (!el || el === document.body || el === document.documentElement) return false;
+
+      const tag = el.tagName;
+      const text = this.getElementText(el);
+
+      // Must have some Latin text to be considered content
+      if (text.length < 8 || !this.hasLatinText(text)) return false;
+
+      // TABLE elements and their parts are always data content
+      if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
+
+      // Check for table-like grid layout (many cells arranged in rows)
+      const clsId = (' ' + (el.className || '') + ' ' + ' ' + (el.id || '') + ' ').toLowerCase();
+      const dataPatterns = [
+        'table', '-table', '_table',
+        'chart', '-chart', ' graph', ' diagram',
+        'tree', '-tree', ' node', ' branch',
+        'grid ', ' grid-', ' grid_',
+        ' snapshot', ' report', ' metric',
+        'data-', 'data_', '-data',
+        ' figure', ' fig-',
+        ' visual', ' visualization',
+        ' hierarchy', ' org',
+        ' flow', '-flow', ' workflow'
+      ];
+      for (const p of dataPatterns) {
+        if (clsId.includes(p)) return true;
+      }
+
+      // Check if element contains table rows or a grid of text-bearing children
+      const children = Array.from(el.children);
+      const hasTableChild = children.some(c =>
+        ['TABLE', 'TBODY', 'THEAD', 'TR', 'TD', 'TH'].includes(c.tagName)
+      );
+      if (hasTableChild && text.length >= 12) return true;
+
+      // Grid detection: many same-level children each with short text
+      // (typical for tree diagrams, org charts, flow charts)
+      const textChildren = children.filter(c => {
+        const ct = this.getElementText(c);
+        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+      });
+      if (textChildren.length >= 3 && text.length >= 20) return true;
+
+      return false;
+    },
+
     hasExistingTranslation(container) {
       if (state.existingBilingualStrategy === 'translate_english') return false;
 
@@ -1228,10 +1533,506 @@
         if (element.isContentEditable) return true;
         // Skip elements hidden by a previous translation (not yet fully restored)
         if (element.hasAttribute && element.hasAttribute('data-lingoflow-hidden')) return true;
+
+        // === NEW: Skip text nodes inside UI chrome elements (nav, sidebar, header) ===
+        // Check the ancestor chain for UI patterns, so even deeply nested text
+        // nodes in navbars/sidebars are caught early.
+        if (this._isUiChromeElement(element)) return true;
+
         element = element.parentElement;
       }
 
       return !this.shouldTranslateText(node.textContent);
+    },
+
+    // Detect elements that look like content cards (e.g., course module cards,
+    // feature cards, info cards). These should NEVER be treated as UI chrome.
+    isCardLikeElement(el) {
+      if (!el || el === document.body || el === document.documentElement) return false;
+
+      const tag = el.tagName;
+      // Cards are typically DIVs, SECTIONs, ARTICLEs, LIs, or TABLEs
+      if (!['DIV', 'SECTION', 'ARTICLE', 'LI', 'TABLE', 'TBODY', 'THEAD'].includes(tag)) return false;
+
+      const text = this.getElementText(el);
+
+      // Must have some Latin text content (but can be short — cards are concise)
+      if (text.length < 10 || !this.hasLatinText(text)) return false;
+
+      // === TABLE fast-path: any table with Latin text is content ===
+      if (tag === 'TABLE') return true;
+      if (tag === 'TBODY' || tag === 'THEAD') return true;
+
+      // Check for card structural patterns:
+      const children = Array.from(el.children);
+
+      // Pattern 1: Has at least one heading (H1-H6) + one paragraph/block child
+      const hasHeading = children.some(c => /^H[1-6]$/.test(c.tagName));
+      const hasBlock = children.some(c => ['P', 'DIV', 'SPAN', 'SECTION', 'ARTICLE'].includes(c.tagName));
+      if (hasHeading && hasBlock && text.length >= 20) return true;
+
+      // Pattern 2: Class/id contains card-like tokens
+      const clsId = (' ' + (el.className || '') + ' ' + ' ' + (el.id || '') + ' ').toLowerCase();
+      const cardPatterns = [
+        // Card / tile patterns
+        'card ', ' card-', ' card_', ' cards ', '-card', '_card',
+        'tile ', ' tile-', ' tile_',
+        // Content module patterns
+        'module ', ' module-', ' module_',
+        'item ', ' item-', ' item_',
+        'feature ', ' feature-',
+        'course ', ' course-', ' course_',
+        'lesson ', ' lesson-', ' lesson_',
+        'unit ', ' unit-', ' unit_',
+        'topic ', ' topic-', ' topic_',
+        'step ', ' step-', ' step_',
+        'block ', ' block-', ' block_',
+        // Table / data patterns (NEW)
+        'table', '-table', '_table',
+        'data-table', 'datatable', 'data_grid',
+        'chart', '-chart', '_chart', ' graph', ' diagram',
+        'grid ', ' grid-', ' grid_',
+        'row ', '-row', ' row_', ' cell', ' column',
+        'snapshot', '-snapshot',
+        // Tree / hierarchy patterns (NEW)
+        'tree', '-tree', '_tree', ' node', ' branch',
+        'hierarchy', ' org-chart',
+        // Info box / panel patterns (NEW)
+        'info ', ' info-', ' info_',
+        'panel ', ' panel-', ' panel_', ' sheet',
+        'container', ' wrapper', ' box', ' frame'
+      ];
+      for (const p of cardPatterns) {
+        if (clsId.includes(p)) return true;
+      }
+
+      // Pattern 2b: Contains table rows or cells as direct/indirect children → it's a data table
+      const hasTableChild = children.some(c =>
+        ['TABLE', 'TBODY', 'THEAD', 'TR'].includes(c.tagName)
+      );
+      if (hasTableChild && text.length >= 15) return true;
+
+      // Pattern 2c: Contains many small text blocks arranged in a grid-like structure
+      // (common for tree diagrams, flow charts, organizational charts)
+      const leafDivs = children.filter(c =>
+        c.tagName === 'DIV' &&
+        this.getElementText(c).length >= 3 &&
+        c.children.length <= 4
+      );
+      if (leafDivs.length >= 3 && text.length >= 20) return true;
+
+      // Pattern 3: Element has visible border/background + substantial text
+      // (common for styled card components)
+      try {
+        const style = window.getComputedStyle(el);
+        const hasBorder = style.borderWidth !== '0px' && style.borderStyle !== 'none';
+        const hasBg = style.backgroundColor !== 'rgba(0, 0, 0, 0)' &&
+                      style.backgroundColor !== 'transparent';
+        const hasBorderRadius = parseInt(style.borderRadius, 10) > 2;
+        if ((hasBorder || hasBg) && hasBorderRadius && text.length >= 20) {
+          return true;
+        }
+      } catch (_) {}
+
+      // Pattern 4: Content section with structured heading pattern
+      // (e.g., "1. Data-driven attribution", "2. Paid and organic last click")
+      const headingTextMatch = this.getElementText(el).match(
+        /^\s*\d+[\.\)]\s+[A-Z]/m
+      );
+      if (headingTextMatch && text.length >= 15 && this.hasLatinText(text)) {
+        // Has a numbered heading + body text → it's a content section/card
+        const childCount = el.children.length;
+        if (childCount >= 1) return true;
+      }
+
+      // Pattern 5: Element contains bold/strong headings followed by paragraphs
+      // (typical for info cards, explanation boxes, feature descriptions)
+      const boldChildren = children.filter(c => {
+        if (!c.querySelector) return false;
+        const strongOrBold = c.querySelector('strong, b, [style*="font-weight"]');
+        if (!strongOrBold) return false;
+        const ct = this.getElementText(c);
+        return ct.length >= 5 && this.hasLatinText(ct);
+      });
+      if (boldChildren.length >= 1 && text.length >= 30) return true;
+
+      return false;
+    },
+
+    // Detect data content elements: tables, charts, diagrams, tree structures,
+    // and any structured information display. These should NEVER be UI chrome.
+    isDataContentElement(el) {
+      if (!el || el === document.body || el === document.documentElement) return false;
+
+      const tag = el.tagName;
+      const text = this.getElementText(el);
+
+      // Must have some Latin text to be considered content
+      if (text.length < 8 || !this.hasLatinText(text)) return false;
+
+      // TABLE elements and their parts are always data content
+      if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
+
+      // Check for table-like grid layout (many cells arranged in rows)
+      const clsId = (' ' + (el.className || '') + ' ' + ' ' + (el.id || '') + ' ').toLowerCase();
+      const dataPatterns = [
+        'table', '-table', '_table',
+        'chart', '-chart', ' graph', ' diagram',
+        'tree', '-tree', ' node', ' branch',
+        'grid ', ' grid-', ' grid_',
+        ' snapshot', ' report', ' metric',
+        'data-', 'data_', '-data',
+        ' figure', ' fig-',
+        ' visual', ' visualization',
+        ' hierarchy', ' org',
+        ' flow', '-flow', ' workflow'
+      ];
+      for (const p of dataPatterns) {
+        if (clsId.includes(p)) return true;
+      }
+
+      // Check if element contains table rows or a grid of text-bearing children
+      const children = Array.from(el.children);
+      const hasTableChild = children.some(c =>
+        ['TABLE', 'TBODY', 'THEAD', 'TR', 'TD', 'TH'].includes(c.tagName)
+      );
+      if (hasTableChild && text.length >= 12) return true;
+
+      // Grid detection: many same-level children each with short text
+      // (typical for tree diagrams, org charts, flow charts)
+      const textChildren = children.filter(c => {
+        const ct = this.getElementText(c);
+        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+      });
+      if (textChildren.length >= 3 && text.length >= 20) return true;
+
+      return false;
+    },
+
+    // Internal helper: detect UI chrome by walking up from a given element.
+    _isUiChromeElement(el) {
+      if (!el) return false;
+      const tag = el.tagName;
+
+      // === CARD GUARD: Content cards are NEVER UI chrome ===
+      // Detect card-like elements (course cards, feature cards, module cards)
+      // and immediately return false — these are always real content.
+      if (this.isCardLikeElement(el)) return false;
+
+      // === DATA CONTENT GUARD: Tables, charts, diagrams, trees are NEVER UI chrome ===
+      if (this.isDataContentElement(el)) return false;
+
+      // Semantic HTML — unambiguous chrome
+      if (['NAV', 'ASIDE', 'HEADER', 'FOOTER'].includes(tag)) return true;
+
+      // ARIA roles — unambiguous chrome
+      const role = (el.getAttribute('role') || '').toLowerCase();
+      if (['navigation', 'banner', 'contentinfo', 'complementary', 'toolbar',
+            'search', 'menu', 'menubar', 'tablist'].includes(role)) return true;
+
+      // Class/id pattern match (fast path)
+      const clsId = (' ' + (el.className || '') + ' ' +
+                     ' ' + (el.id || '') + ' ').toLowerCase();
+
+      // === GUARD: Check if this element has substantial text content ===
+      // If it does, it's likely real content even if its class name matches
+      // some UI patterns (e.g., "analytics-course" on a GA course page).
+      const elText = this.getElementText(el);
+      const hasRealContent = elText.length > 35 && this.hasLatinText(elText);
+
+      const uiPatterns = [
+        // Navigation (high confidence)
+        'nav ', ' nav-', ' nav_', 'navbar ', 'nav-bar ', 'navitem ', 'nav-item ',
+        'gnav ', 'gnav-', 'gb_', 'gb-',
+        // Menu (high confidence)
+        'menu ', ' menu-', ' menu_', 'menubar ', 'menu-item ', 'menu_item ',
+        // Sidebar (high confidence)
+        'sidebar ', 'side-bar ', 'side-nav ', 'side_nav ', 'sidepanel ',
+        // Header / Footer (high confidence)
+        'header ', ' header-', ' header_', 'masthead ', 'topbar ', 'top-bar ', 'toolbar ',
+        'footer ', ' footer-', ' footer_', 'foot ', 'foot-', 'foot_',
+        // Breadcrumb (medium confidence)
+        ' breadcrumb', ' bread-crumb',
+        // Drawer / Panel / Overlay (medium-high confidence)
+        'drawer ', ' panel', ' panel-', ' panel_', ' overlay', ' modal', ' dialog',
+        // Cookie / Consent / Banner (medium-high confidence)
+        ' skip-link ', 'skip_to ', ' cookie', ' consent', ' banner- ', ' banner_',
+        ' advert', ' ad-', ' sponsor', ' sponsor-',
+        // Google-specific Material Design (MEDIUM confidence — may appear in content)
+        ' mat-', 'mdc-',
+        // Common CMS/framework patterns (MEDIUM confidence)
+        ' wp-', 'wp_', ' elementor-', ' shopify-',
+        ' ant-', ' mui-', ' chakra-', ' bootstrap-',
+        // Generic UI widgets (MEDIUM confidence)
+        ' widget-', ' widget_', ' component-', ' component_',
+        ' icon-', ' icon_', ' btn-', ' btn_', ' button-', ' button_',
+        ' tab-', ' tab_', 'tabs ', 'tablist ', 'tab-list ',
+        ' badge-', ' badge_', ' tag-', ' tag_',
+        ' pill-', ' pill_', ' chip-', ' chip_'
+      ];
+
+      // LOW-CONFIDENCE patterns (often appear in legitimate content pages):
+      // These are ONLY checked when the element does NOT have substantial content.
+      const lowConfidencePatterns = [
+        'google', ' google-', ' goog-', ' goog_',
+        'google-', ' material', ' material-', ' material_',
+        ' toolbar-', ' toolbar_', ' action-bar', ' action_bar',
+        ' control-', ' control_', ' utility-', ' utility_',
+        ' analytics-', ' analytics_', ' skillshop-', ' skillshop_',
+        ' coursera-', ' coursera_'
+      ];
+
+      // Check high-confidence patterns always
+      for (const p of uiPatterns) {
+        if (clsId.includes(p)) return true;
+      }
+
+      // Check low-confidence patterns ONLY when element lacks real content
+      if (!hasRealContent) {
+        for (const p of lowConfidencePatterns) {
+          if (clsId.includes(p)) return true;
+        }
+      }
+
+      // CSS: fixed/sticky positioning → likely chrome
+      try {
+        const s = window.getComputedStyle(el);
+        if (s.position === 'fixed' || s.position === 'sticky') return true;
+      } catch (_) {}
+
+      // Geometry: wide+short strip or narrow+tall sidebar
+      try {
+        const r = el.getBoundingClientRect();
+        if (r.width > window.innerWidth * 0.5 && r.height > 0 && r.height < 80) return true;
+        if (r.width > 0 && r.width < 280 && r.height > window.innerHeight * 0.3) return true;
+      } catch (_) {}
+
+      return false;
+    },
+
+    // Detect data content elements: tables, charts, diagrams, tree structures,
+    // and any structured information display. These should NEVER be UI chrome.
+    isDataContentElement(el) {
+      if (!el || el === document.body || el === document.documentElement) return false;
+
+      const tag = el.tagName;
+      const text = this.getElementText(el);
+
+      // Must have some Latin text to be considered content
+      if (text.length < 8 || !this.hasLatinText(text)) return false;
+
+      // TABLE elements and their parts are always data content
+      if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
+
+      // Check for table-like grid layout (many cells arranged in rows)
+      const clsId = (' ' + (el.className || '') + ' ' + ' ' + (el.id || '') + ' ').toLowerCase();
+      const dataPatterns = [
+        'table', '-table', '_table',
+        'chart', '-chart', ' graph', ' diagram',
+        'tree', '-tree', ' node', ' branch',
+        'grid ', ' grid-', ' grid_',
+        ' snapshot', ' report', ' metric',
+        'data-', 'data_', '-data',
+        ' figure', ' fig-',
+        ' visual', ' visualization',
+        ' hierarchy', ' org',
+        ' flow', '-flow', ' workflow'
+      ];
+      for (const p of dataPatterns) {
+        if (clsId.includes(p)) return true;
+      }
+
+      // Check if element contains table rows or a grid of text-bearing children
+      const children = Array.from(el.children);
+      const hasTableChild = children.some(c =>
+        ['TABLE', 'TBODY', 'THEAD', 'TR', 'TD', 'TH'].includes(c.tagName)
+      );
+      if (hasTableChild && text.length >= 12) return true;
+
+      // Grid detection: many same-level children each with short text
+      // (typical for tree diagrams, org charts, flow charts)
+      const textChildren = children.filter(c => {
+        const ct = this.getElementText(c);
+        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+      });
+      if (textChildren.length >= 3 && text.length >= 20) return true;
+
+      return false;
+    },
+
+    // Detect containers that are UI chrome (nav, sidebar, header, toolbar, etc.)
+    // and should NOT be translated in bilingual mode.
+    shouldSkipContainer(container) {
+      if (!container) return false;
+
+      const tag = container.tagName;
+
+      // 0. NEVER skip heading elements (H1-H6) — they are always content
+      if (/^H[1-6]$/.test(tag)) return false;
+
+      // 0a. NEVER skip card-like elements (course cards, feature cards, etc.)
+      if (this.isCardLikeElement(container)) return false;
+
+      // 0a2. NEVER skip data content (tables, charts, diagrams, trees)
+      if (this.isDataContentElement(container)) return false;
+
+      // 0b. STRONG GUARD: Elements with substantial Latin text content are REAL CONTENT,
+      //     not UI chrome. Skip ONLY for unambiguous structural chrome (NAV/HEADER/FOOTER).
+      const containerText = this.getElementText(container);
+      if (containerText.length > 35 && this.hasLatinText(containerText)) {
+        // Has real content → only skip if it's a pure structural chrome element
+        if (!['NAV', 'ASIDE', 'HEADER', 'FOOTER'].includes(tag)) {
+          const role = (container.getAttribute('role') || '').toLowerCase();
+          if (!['navigation', 'banner', 'contentinfo', 'complementary'].includes(role)) {
+            return false; // ← REAL CONTENT, never skip
+          }
+        }
+      }
+
+      // 1. Semantic HTML elements → skip
+      if (['NAV', 'ASIDE', 'HEADER', 'FOOTER'].includes(tag)) return true;
+
+      // 2. ARIA roles → skip
+      const role = (container.getAttribute('role') || '').toLowerCase();
+      const skipRoles = ['navigation', 'banner', 'contentinfo', 'complementary', 'toolbar', 'search', 'menu', 'menubar', 'tablist'];
+      if (skipRoles.includes(role)) return true;
+
+      // 3. Class/id patterns for UI chrome (case-insensitive)
+      // NOTE: We require the pattern to appear as a separate class/id token,
+      // to avoid false positives like "information" matching "nav" inside it.
+      const cls = ' ' + (container.className || '') + ' ';
+      const id = ' ' + (container.id || '') + ' ';
+      const merged = (cls + id).toLowerCase();
+
+      // HIGH-confidence patterns (almost always indicate UI chrome)
+      const highConfidencePatterns = [
+        // Navigation
+        'nav ', ' nav-', ' nav_', ' navbar', ' nav-bar', ' navitem', ' nav-item',
+        ' gnav', ' gnav-', ' gnav_', ' gb_', ' gb-',
+        // Menu
+        ' menu', ' menu-', ' menu_', ' menubar', ' menu-item', ' menu_item',
+        // Sidebar
+        ' sidebar', ' side-bar', ' side_nav', ' side-nav', ' sidepanel', ' side-panel',
+        // Header / Footer
+        ' header', ' header-', ' header_', ' masthead', ' topbar', ' top-bar', ' toolbar',
+        ' footer', ' footer-', ' footer_', ' foot', ' foot-', ' foot_',
+        // Breadcrumb
+        ' breadcrumb', ' bread-crumb',
+        // Drawer / Panel / Overlay
+        ' drawer', ' panel', ' panel-', ' panel_', ' overlay', ' modal', ' dialog',
+        // Cookie / Consent / Banner
+        ' skip-link', ' skip_to',
+        ' cookie', ' consent',
+        ' advert', ' ad-', ' ad_', ' sponsor', ' sponsor-', ' sponsor_',
+        // Material Design base (high confidence)
+        ' mat-', 'mdc-',
+        // Common frameworks
+        ' wp-', 'wp_', ' elementor-', ' elementor_',
+        ' shopify-', ' shopify_',
+        ' ant-', ' mui-', ' chakra-', ' bootstrap-',
+        // Generic UI widgets
+        ' widget-', ' widget_', ' component-', ' component_',
+        ' icon-', ' icon_',
+        ' tablist', ' tab-list', ' tab_list'
+      ];
+      for (const pat of highConfidencePatterns) {
+        if (merged.includes(pat)) return true;
+      }
+
+      // LOW-confidence patterns (often appear in legitimate content pages)
+      // Only applied to elements that lack substantial text content
+      const containerTextForCheck = this.getElementText(container);
+      if (!(containerTextForCheck.length > 35 && this.hasLatinText(containerTextForCheck))) {
+        const lowConfidencePatterns = [
+          ' skip', ' skip-', ' skip_', ' banner', ' banner-', ' banner_',
+          ' google', ' google-', ' goog-', ' goog_',
+          ' material', ' material-', ' material_',
+          ' toolbar-', ' toolbar_', ' action-bar', ' action_bar',
+          ' control-', ' control_', ' utility-', ' utility_',
+          ' analytics-', ' analytics_', ' skillshop-', ' skillshop_',
+          ' coursera-', ' coursera_',
+          ' btn-', ' btn_', ' button-', ' button_',
+          ' tab-', ' tab_', ' tabs ',
+          ' badge-', ' badge_', ' tag-', ' tag_',
+          ' pill-', ' pill_', ' chip-', ' chip_'
+        ];
+        for (const pat of lowConfidencePatterns) {
+          if (merged.includes(pat)) return true;
+        }
+      }
+
+      // 4. CSS: position:sticky/fixed → likely a sticky nav/toolbar
+      const style = window.getComputedStyle(container);
+      if (style.position === 'fixed' || style.position === 'sticky') return true;
+
+      // 5. Geometry: very narrow + tall (sidebar) or very wide + short (top bar)
+      const rect = container.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        // Very wide + short → top navigation bar
+        if (rect.width > window.innerWidth * 0.6 && rect.height < 80) return true;
+        // Very narrow + tall → sidebar
+        if (rect.width < 280 && rect.height > window.innerHeight * 0.4) return true;
+        // Very short + sticky/fixed ancestor → skip
+        if (rect.height < 50) {
+          let el = container.parentElement;
+          for (let i = 0; el && i < 4; i++, el = el.parentElement) {
+            const s = window.getComputedStyle(el);
+            if (s.position === 'fixed' || s.position === 'sticky') return true;
+          }
+        }
+      }
+
+      return false;
+    },
+
+    // Detect data content elements: tables, charts, diagrams, tree structures,
+    // and any structured information display. These should NEVER be UI chrome.
+    isDataContentElement(el) {
+      if (!el || el === document.body || el === document.documentElement) return false;
+
+      const tag = el.tagName;
+      const text = this.getElementText(el);
+
+      // Must have some Latin text to be considered content
+      if (text.length < 8 || !this.hasLatinText(text)) return false;
+
+      // TABLE elements and their parts are always data content
+      if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
+
+      // Check for table-like grid layout (many cells arranged in rows)
+      const clsId = (' ' + (el.className || '') + ' ' + ' ' + (el.id || '') + ' ').toLowerCase();
+      const dataPatterns = [
+        'table', '-table', '_table',
+        'chart', '-chart', ' graph', ' diagram',
+        'tree', '-tree', ' node', ' branch',
+        'grid ', ' grid-', ' grid_',
+        ' snapshot', ' report', ' metric',
+        'data-', 'data_', '-data',
+        ' figure', ' fig-',
+        ' visual', ' visualization',
+        ' hierarchy', ' org',
+        ' flow', '-flow', ' workflow'
+      ];
+      for (const p of dataPatterns) {
+        if (clsId.includes(p)) return true;
+      }
+
+      // Check if element contains table rows or a grid of text-bearing children
+      const children = Array.from(el.children);
+      const hasTableChild = children.some(c =>
+        ['TABLE', 'TBODY', 'THEAD', 'TR', 'TD', 'TH'].includes(c.tagName)
+      );
+      if (hasTableChild && text.length >= 12) return true;
+
+      // Grid detection: many same-level children each with short text
+      // (typical for tree diagrams, org charts, flow charts)
+      const textChildren = children.filter(c => {
+        const ct = this.getElementText(c);
+        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+      });
+      if (textChildren.length >= 3 && text.length >= 20) return true;
+
+      return false;
     },
 
     isLeafDiv(element) {
@@ -1268,6 +2069,56 @@
       return false;
     },
 
+    // Detect data content elements: tables, charts, diagrams, tree structures,
+    // and any structured information display. These should NEVER be UI chrome.
+    isDataContentElement(el) {
+      if (!el || el === document.body || el === document.documentElement) return false;
+
+      const tag = el.tagName;
+      const text = this.getElementText(el);
+
+      // Must have some Latin text to be considered content
+      if (text.length < 8 || !this.hasLatinText(text)) return false;
+
+      // TABLE elements and their parts are always data content
+      if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
+
+      // Check for table-like grid layout (many cells arranged in rows)
+      const clsId = (' ' + (el.className || '') + ' ' + ' ' + (el.id || '') + ' ').toLowerCase();
+      const dataPatterns = [
+        'table', '-table', '_table',
+        'chart', '-chart', ' graph', ' diagram',
+        'tree', '-tree', ' node', ' branch',
+        'grid ', ' grid-', ' grid_',
+        ' snapshot', ' report', ' metric',
+        'data-', 'data_', '-data',
+        ' figure', ' fig-',
+        ' visual', ' visualization',
+        ' hierarchy', ' org',
+        ' flow', '-flow', ' workflow'
+      ];
+      for (const p of dataPatterns) {
+        if (clsId.includes(p)) return true;
+      }
+
+      // Check if element contains table rows or a grid of text-bearing children
+      const children = Array.from(el.children);
+      const hasTableChild = children.some(c =>
+        ['TABLE', 'TBODY', 'THEAD', 'TR', 'TD', 'TH'].includes(c.tagName)
+      );
+      if (hasTableChild && text.length >= 12) return true;
+
+      // Grid detection: many same-level children each with short text
+      // (typical for tree diagrams, org charts, flow charts)
+      const textChildren = children.filter(c => {
+        const ct = this.getElementText(c);
+        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+      });
+      if (textChildren.length >= 3 && text.length >= 20) return true;
+
+      return false;
+    },
+
     collectTranslationUnits(root = document.body) {
       const units = new Map();
       const walker = document.createTreeWalker(
@@ -1287,6 +2138,8 @@
         const container = this.findTextContainer(node);
         if (!container || container.dataset.lingoflowProcessed === 'true') continue;
         if (this.isNestedInDifferentContainer(node, container)) continue;
+        // Skip UI chrome elements (nav, sidebar, header, toolbar, etc.)
+        if (this.shouldSkipContainer(container)) continue;
         if (this.hasExistingTranslation(container)) {
           continue;
         }
@@ -1348,6 +2201,128 @@
       return block;
     },
 
+    // =========================================================================
+    // Smart main-content detection (whitelist approach)
+    // Instead of blacklisting every possible UI chrome pattern (impossible to
+    // exhaust), we identify the *real* content area and only translate inside it.
+    // =========================================================================
+
+    // Check if an element has enough Latin text to be a real content container
+    _hasSufficientContent(el) {
+      if (!el) return false;
+      const text = this.getElementText(el);
+      return text.length > 150 && this.hasLatinText(text);
+    },
+
+    // Find the container with the largest amount of Latin text (likely the main article)
+    _findLargestTextContainer() {
+      // Collect candidates: direct children of body, and common wrapper divs
+      const candidates = [];
+
+      // Direct children of body
+      for (const child of document.body.children) {
+        if (child.nodeType !== Node.ELEMENT_NODE) continue;
+        if (this.skipTags.has(child.tagName)) continue;
+        if (['NAV', 'ASIDE', 'HEADER', 'FOOTER', 'SCRIPT', 'STYLE', 'SVG'].includes(child.tagName)) continue;
+        candidates.push(child);
+      }
+
+      // Also check one level deeper for common wrapper patterns
+      for (const child of document.body.children) {
+        if (!child.children) continue;
+        for (const sub of child.children) {
+          if (sub.nodeType !== Node.ELEMENT_NODE) continue;
+          if (this.skipTags.has(sub.tagName)) continue;
+          if (['NAV', 'ASIDE', 'HEADER', 'FOOTER'].includes(sub.tagName)) continue;
+          const r = sub.getBoundingClientRect();
+          // Skip tiny elements (likely UI widgets)
+          if (r.width > 0 && r.height > 0 && (r.width < 200 || r.height < 80)) continue;
+          candidates.push(sub);
+        }
+      }
+
+      let best = null;
+      let bestScore = 0;
+
+      for (const c of candidates) {
+        // Skip elements that are clearly UI chrome
+        if (this._isUiChromeElement(c)) continue;
+        // Skip elements positioned fixed/sticky (overlays, nav bars)
+        try {
+          const s = window.getComputedStyle(c);
+          if (s.position === 'fixed' || s.position === 'sticky') continue;
+        } catch (_) {}
+        const stats = this.getTextStats(this.getElementText(c));
+        // Score = Latin character count (primary metric for "main content")
+        if (stats.latinCount > bestScore && stats.contentLength > 100) {
+          bestScore = stats.latinCount;
+          best = c;
+        }
+      }
+
+      return best || document.body;
+    },
+
+    // Public entry: find the page's main content area
+    findMainContentArea() {
+      // Step 1: Try semantic / well-known selectors first
+      const semanticSelectors = [
+        'main',
+        '[role="main"]',
+        'article',
+        '[role="article"]',
+        '.main-content', '#main-content',
+        '.content-body', '#content-body',
+        '.post-content', '.article-content', '.entry-content',
+        '.page-content', '.main-body', '#main',
+        '.doc-content', '.markdown-body',
+        '.course-content', '.lesson-content', '.module-content',
+        '.unit-content', '.section-content', '.topic-content',
+        '#content', '#bodyContent', '#mw-content-text',
+        '[class*="content"][class*="main"]',
+        '[class*="article"]', '[class*="post-body"]',
+        '#primary', '.primary',
+        // Google Skill Shop / Coursera / edX patterns
+        '.q介ute-content', '.q介ute-body', '.course-body', '.course-main',
+        '.learning-content', '.training-content', '.material-content',
+        '[class*="course"]', '[class*="lesson"]', '[class*="training"]'
+      ];
+      for (const sel of semanticSelectors) {
+        try {
+          const el = document.querySelector(sel);
+          if (el && this._hasSufficientContent(el)) return el;
+        } catch (_) {}
+      }
+
+      // Step 2: Fallback — find the container with the most Latin text
+      const largest = this._findLargestTextContainer();
+      if (largest && largest !== document.body) {
+        // Expand: if the largest container's parent is NOT body and also has
+        // substantial content, use the parent (catches wrappers like .container)
+        const parent = largest.parentElement;
+        const containerText = this.getElementText(largest);
+        if (parent && parent !== document.body && parent !== document.documentElement) {
+          const parentText = this.getElementText(parent);
+          if (parentText.length > containerText.length * 1.2) {
+            return parent;
+          }
+        }
+        return largest;
+      }
+
+      // Step 3: Last resort — body (same as current behavior)
+      // But first, try to use the <body>'s largest child as root
+      const bodyChildren = Array.from(document.body.children).filter(c => {
+        if (c.nodeType !== Node.ELEMENT_NODE) return false;
+        if (this.skipTags.has(c.tagName)) return false;
+        if (['NAV', 'ASIDE', 'HEADER', 'FOOTER'].includes(c.tagName)) return false;
+        return true;
+      });
+      if (bodyChildren.length === 1) return bodyChildren[0];
+
+      return document.body;
+    },
+
     isConservativePage() {
       const href = String(location.href || '');
       if (/scorm|docebo|skillshop|googleusercontent|static-assets|launcher\.html/i.test(href)) return true;
@@ -1364,16 +2339,25 @@
       block.style.textOrientation = 'mixed';
       block.style.whiteSpace = 'normal';
       block.style.wordBreak = 'break-word';
-      block.style.overflowWrap = 'break-word';
+      block.style.overflowWrap = 'anywhere';
+      // Constrain width to parent — NEVER use max-content
+      block.style.maxWidth = '100%';
       return block;
     },
 
     copyLayoutMargins(source, block) {
       const style = window.getComputedStyle(source);
+      // Margins
       block.style.marginTop = style.marginTop;
       block.style.marginRight = style.marginRight;
       block.style.marginBottom = style.marginBottom;
       block.style.marginLeft = style.marginLeft;
+      // Padding (important for width calculation)
+      block.style.paddingTop = style.paddingTop;
+      block.style.paddingRight = style.paddingRight;
+      block.style.paddingBottom = style.paddingBottom;
+      block.style.paddingLeft = style.paddingLeft;
+      // Typography (only copy font styling, NOT whiteSpace/wordBreak which can prevent wrapping)
       block.style.textAlign = style.textAlign;
       block.style.color = style.color;
       block.style.fontFamily = style.fontFamily;
@@ -1382,10 +2366,26 @@
       block.style.fontWeight = style.fontWeight;
       block.style.letterSpacing = style.letterSpacing;
       block.style.lineHeight = style.lineHeight;
+      // Force wrap-safe values — NEVER inherit nowrap or keep-all from source
+      block.style.whiteSpace = 'normal';
+      block.style.wordBreak = 'break-word';
+      block.style.overflowWrap = 'anywhere';
+      // Layout
+      block.style.boxSizing = 'border-box';
+      block.style.width = '100%';
+      block.style.maxWidth = '100%';
+      // Display (use block for inserted translation blocks to avoid flex/grid participation)
+      block.style.display = 'block';
+      // Ensure translation is never clipped by inherited overflow
+      block.style.overflow = 'visible';
+      block.style.maxHeight = 'none';
+      block.style.textOverflow = 'clip';
     },
 
     shouldRenderInside(container) {
-      return ['LI', 'DIV', 'TD', 'TH', 'BLOCKQUOTE', 'DD', 'DT', 'FIGCAPTION'].includes(container.tagName);
+      // H1-H6 can use internal rendering (wrap text inside the heading element)
+      if (/^H[1-6]$/.test(container.tagName)) return true;
+      return ['LI', 'DIV', 'TD', 'TH', 'BLOCKQUOTE', 'DD', 'DT', 'FIGCAPTION', 'SECTION', 'ARTICLE', 'ASIDE', 'MAIN'].includes(container.tagName);
     },
 
     // Detect if a container's parent layout is safe for bilingual injection.
@@ -1440,6 +2440,9 @@
       range.insertNode(marker);
 
       const block = this.createBilingualBlock(translation, 'external');
+      // Constrain block to available width
+      block.style.maxWidth = '100%';
+      block.style.overflow = 'visible';
       const original = block.querySelector(':scope > .lingoflow-original');
       this.copyLayoutMargins(container, block);
       original.appendChild(container);
@@ -1480,10 +2483,42 @@
       if (this.isVeryDangerousLayout(container)) {
         return this.renderTooltipTranslation(container, translation);
       }
-      // For conservative pages or unsafe layouts, use the conservative (after-end) insertion
+
+      // Headings (H1-H6) and role=heading
+      const isHeading = /^H[1-6]$/.test(container.tagName) ||
+                        container.getAttribute('role') === 'heading';
+
+      if (isHeading) {
+        // Headings: prefer internal rendering (wraps heading text in a block inside the heading),
+        // fallback to conservative only if layout is unsafe.
+        if (this.isLayoutSafe(container)) {
+          return this.renderInternal(container, translation);
+        }
+        return this.renderConservativeBilingualUnit(container, translation);
+      }
+
+      // Card / data content elements: FORCE proper rendering even on conservative pages.
+      // These are clearly content (detected by isCardLikeElement or isDataContentElement),
+      // so they should get full bilingual treatment, not the weak conservative rendering.
+      const isCardContent = this.isCardLikeElement(container) || this.isDataContentElement(container);
+      if (isCardContent && this.isLayoutSafe(container)) {
+        return this.shouldRenderInside(container)
+          ? this.renderInternal(container, translation)
+          : this.renderExternal(container, translation);
+      }
+      if (isCardContent) {
+        // Even if layout is "unsafe", card content should still get proper rendering.
+        // Use external rendering as a safe default for cards.
+        return this.shouldRenderInside(container)
+          ? this.renderInternal(container, translation)
+          : this.renderExternal(container, translation);
+      }
+
+      // Non-heading elements: conservative page or unsafe layout → conservative
       if (this.isConservativePage() || !this.isLayoutSafe(container)) {
         return this.renderConservativeBilingualUnit(container, translation);
       }
+
       return this.shouldRenderInside(container)
         ? this.renderInternal(container, translation)
         : this.renderExternal(container, translation);
@@ -1514,18 +2549,22 @@
       this.copyLayoutMargins(container, block);
       block.style.marginTop = '0.25em';
       block.style.marginBottom = '0.35em';
-      // Prevent vertical text in narrow containers:
-      // Force the translation block to be wide enough for horizontal text
+      // Ensure translation respects parent width — no max-content forcing
       const targetRect = target.getBoundingClientRect();
       if (targetRect.width > 0 && targetRect.width < 200) {
-        block.style.minWidth = '160px';
-        block.style.width = 'max-content';
+        // Very narrow container: still allow wrapping but don't force expand
+        block.style.minWidth = '0';
+        block.style.width = '100%';
         block.style.whiteSpace = 'normal';
         block.style.wordBreak = 'break-word';
-        block.style.overflowWrap = 'break-word';
+        block.style.overflowWrap = 'anywhere';
         // Reset any inherited writing-mode
         block.style.writingMode = 'horizontal-tb';
         block.style.textOrientation = 'mixed';
+      } else {
+        // Normal-width container: always constrain to parent
+        block.style.maxWidth = '100%';
+        block.style.width = 'auto';
       }
       target.insertAdjacentElement('afterend', block);
       return true;
@@ -1599,13 +2638,64 @@
       return false;
     },
 
+    // Detect data content elements: tables, charts, diagrams, tree structures,
+    // and any structured information display. These should NEVER be UI chrome.
+    isDataContentElement(el) {
+      if (!el || el === document.body || el === document.documentElement) return false;
+
+      const tag = el.tagName;
+      const text = this.getElementText(el);
+
+      // Must have some Latin text to be considered content
+      if (text.length < 8 || !this.hasLatinText(text)) return false;
+
+      // TABLE elements and their parts are always data content
+      if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
+
+      // Check for table-like grid layout (many cells arranged in rows)
+      const clsId = (' ' + (el.className || '') + ' ' + ' ' + (el.id || '') + ' ').toLowerCase();
+      const dataPatterns = [
+        'table', '-table', '_table',
+        'chart', '-chart', ' graph', ' diagram',
+        'tree', '-tree', ' node', ' branch',
+        'grid ', ' grid-', ' grid_',
+        ' snapshot', ' report', ' metric',
+        'data-', 'data_', '-data',
+        ' figure', ' fig-',
+        ' visual', ' visualization',
+        ' hierarchy', ' org',
+        ' flow', '-flow', ' workflow'
+      ];
+      for (const p of dataPatterns) {
+        if (clsId.includes(p)) return true;
+      }
+
+      // Check if element contains table rows or a grid of text-bearing children
+      const children = Array.from(el.children);
+      const hasTableChild = children.some(c =>
+        ['TABLE', 'TBODY', 'THEAD', 'TR', 'TD', 'TH'].includes(c.tagName)
+      );
+      if (hasTableChild && text.length >= 12) return true;
+
+      // Grid detection: many same-level children each with short text
+      // (typical for tree diagrams, org charts, flow charts)
+      const textChildren = children.filter(c => {
+        const ct = this.getElementText(c);
+        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+      });
+      if (textChildren.length >= 3 && text.length >= 20) return true;
+
+      return false;
+    },
+
     hideOriginalContainer(container) {
       container.setAttribute('data-lingoflow-hidden', 'true');
       container.hidden = true;
     },
 
     renderTranslationOnlyUnit(container, translation) {
-      if (!container || !container.parentNode) return false;
+      // Skip UI chrome elements in translation-only mode too
+      if (!container || !container.parentNode || this.shouldSkipContainer(container)) return false;
 
       const range = document.createRange();
       range.selectNode(container);
@@ -1613,6 +2703,9 @@
       range.insertNode(marker);
 
       const block = this.createTranslationOnlyBlock(translation);
+      // Constrain width to prevent overflow
+      block.style.maxWidth = '100%';
+      block.style.overflow = 'visible';
       this.copyLayoutMargins(container, block);
       marker.replaceWith(block);
       range.detach();
@@ -1708,8 +2801,10 @@
       return { successCount, failCount, stoppedByInvalidContext };
     },
 
-    async runIncrementalTranslation(mode, root = document.body, notify = false) {
-      const units = this.collectTranslationUnits(root);
+    async runIncrementalTranslation(mode, root = null, notify = false) {
+      // Use stored translationRoot if available, otherwise fallback to document.body
+      const useRoot = root || state.translationRoot || document.body;
+      const units = this.collectTranslationUnits(useRoot);
       if (!units.length) return { successCount: 0, failCount: 0, stoppedByInvalidContext: false };
       if (notify) UI.showNotification(statusText('found', units.length));
       return this.translateAndRenderUnits(units, mode);
@@ -1727,15 +2822,15 @@
       }
     },
 
-    async collectInitialTranslationUnits() {
-      let units = this.collectTranslationUnits(document.body);
+    async collectInitialTranslationUnits(root = document.body) {
+      let units = this.collectTranslationUnits(root);
       if (units.length) return units;
 
       const delays = [700, 1400, 2400];
       for (const delay of delays) {
         await new Promise(resolve => window.setTimeout(resolve, delay));
         if (!state.isTranslating) return [];
-        units = this.collectTranslationUnits(document.body);
+        units = this.collectTranslationUnits(root);
         if (units.length) return units;
       }
 
@@ -1745,7 +2840,8 @@
     scheduleSecondScan(mode) {
       window.setTimeout(() => {
         if (!state.activeTranslationMode || state.isTranslating) return;
-        this.runIncrementalTranslation(mode, document.body, false);
+        // Use stored translationRoot (no explicit root = uses state.translationRoot)
+        this.runIncrementalTranslation(mode, null, false);
       }, 800);
     },
 
@@ -1768,7 +2864,8 @@
         clearTimeout(state.mutationTimer);
         state.mutationTimer = window.setTimeout(() => {
           if (!state.activeTranslationMode || state.isTranslating) return;
-          this.runIncrementalTranslation(mode, document.body, false);
+          // Use stored translationRoot (null = use default)
+          this.runIncrementalTranslation(mode, null, false);
         }, 500);
       });
 
@@ -1806,9 +2903,12 @@
 
       state.isTranslating = true;
 
-      UI.showNotification(statusText('scanning'));
+      // Smart: detect main content area, only translate inside it
+      const mainArea = this.findMainContentArea();
+      state.translationRoot = mainArea;
+      console.log('LingoFlow: Main content area =', mainArea && mainArea.tagName, mainArea && mainArea.className);
 
-      const units = await this.collectInitialTranslationUnits();
+      const units = await this.collectInitialTranslationUnits(mainArea);
       console.log('LingoFlow: enableTranslationMode found ' + units.length + ' translation units');
 
       if (units.length === 0) {
@@ -1819,7 +2919,8 @@
         return;
       }
 
-      UI.showNotification(statusText('found', units.length));
+      // Show persistent notification (won't auto-dismiss until result comes in)
+      UI.showNotification(statusText('found', units.length), true);
 
       const result = await this.translateAndRenderUnits(units, 'translation');
       const { successCount, failCount, stoppedByInvalidContext } = result;
@@ -1866,9 +2967,12 @@
 
       state.isTranslating = true;
 
-      UI.showNotification(statusText('scanning'));
+      // Smart: detect main content area, only translate inside it
+      const mainArea = this.findMainContentArea();
+      state.translationRoot = mainArea;
+      console.log('LingoFlow: Main content area =', mainArea && mainArea.tagName, mainArea && mainArea.className);
 
-      const units = await this.collectInitialTranslationUnits();
+      const units = await this.collectInitialTranslationUnits(mainArea);
       console.log('LingoFlow: enableBilingualMode found ' + units.length + ' translation units');
 
       if (units.length === 0) {
@@ -1879,7 +2983,8 @@
         return;
       }
 
-      UI.showNotification(statusText('found', units.length));
+      // Show persistent notification (won't auto-dismiss until result comes in)
+      UI.showNotification(statusText('found', units.length), true);
 
       const result = await this.translateAndRenderUnits(units, 'bilingual');
       const { successCount, failCount, stoppedByInvalidContext } = result;
@@ -1933,6 +3038,7 @@
       state.translatedNodes.clear();
       state.isBilingualMode = false;
       state.isTranslated = false;
+      state.translationRoot = null;
       window.scrollTo(scrollX, scrollY);
     }
   };

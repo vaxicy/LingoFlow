@@ -113,14 +113,14 @@ function restoreModeState() {
     if (response && response.received) {
       updateModeUI(response.mode || null);
       setActiveMode(response.mode || null);
+    } else {
+      // Content script 无响应，fallback 读 storage
+      chrome.runtime.sendMessage({ action: 'get_settings' }, (resp) => {
+        const settings = resp && resp.settings;
+        updateModeUI(settings && settings.activeMode || null);
+      });
     }
   }, { silent: true });
-
-  chrome.runtime.sendMessage({ action: 'get_settings' }, (response) => {
-    const settings = response && response.settings;
-    const activeMode = settings && settings.activeMode;
-    updateModeUI(activeMode || null);
-  });
 }
 
 function updateModeUI(mode) {
@@ -133,8 +133,9 @@ function updateModeUI(mode) {
   if (translateToggle) translateToggle.checked = mode === 'translate';
   if (bilingualToggle) bilingualToggle.checked = mode === 'bilingual';
 
+  // Restore button is ALWAYS enabled — user can force-restore at any time
   if (restoreButton) {
-    restoreButton.disabled = !mode;
+    restoreButton.disabled = false;
     restoreButton.classList.toggle('is-active', !!mode);
   }
 
@@ -1312,7 +1313,10 @@ function sendMessageToContent(message, callback, options = {}, retries = 2) {
           setTimeout(() => sendMessageToContent(message, callback, options, retries - 1), 600);
           return;
         }
-        if (options.silent) return;
+        if (options.silent) {
+          if (callback) callback(null);
+          return;
+        }
         // All normal retries exhausted; try injecting content script explicitly as last resort.
         console.log('LingoFlow Popup: Attempting explicit content script injection for tab', tabId);
         injectContentScriptAndSend(tabId, message, callback, options);
@@ -1345,6 +1349,7 @@ function injectContentScriptAndSend(tabId, message, callback, options = {}) {
         if (chrome.runtime.lastError) {
           console.error('LingoFlow Popup: Inline injection also failed:', chrome.runtime.lastError.message);
           if (!options.silent) showStatus(getMessage('error_cannot_access'), 'error');
+          if (callback) callback(null);
           return;
         }
         console.log('LingoFlow Popup: Inline handler injected successfully');
@@ -1374,6 +1379,7 @@ function attemptSendAfterInjection(tabId, message, attemptsLeft, callback, optio
         }
         console.error('LingoFlow Popup: All post-injection attempts exhausted');
         if (!options.silent) showStatus(getMessage('error_cannot_access'), 'error');
+        if (callback) callback(null);
         return;
       }
       console.log('LingoFlow Popup: Message sent after injection, response:', response);
@@ -1426,15 +1432,15 @@ function createInlineHandler(initialMessage) {
     var styleEl = document.createElement('style');
     styleEl.id = 'lingoflow-inline-styles';
     styleEl.textContent = [
-      '.lingoflow-block{max-width:100%;min-width:0;text-align:left;color:inherit;background:transparent;box-sizing:border-box;overflow-wrap:anywhere}',
+      '.lingoflow-block{max-width:100%!important;min-width:0!important;width:auto!important;text-align:left;color:inherit;background:transparent;box-sizing:border-box!important;overflow-wrap:anywhere!important;word-break:break-word!important}',
       '.lingoflow-block-external{display:block;width:100%}',
       '.lingoflow-block-internal{display:block;margin:0;padding:0}',
-      '.lingoflow-original,.lingoflow-translation{display:block;max-width:100%;min-width:0;margin:0;padding:0;text-align:left;background:transparent;box-sizing:border-box;overflow-wrap:anywhere}',
+      '.lingoflow-original,.lingoflow-translation{display:block;max-width:100%!important;min-width:0!important;width:auto!important;margin:0;padding:0;text-align:left;background:transparent;box-sizing:border-box!important;overflow-wrap:anywhere!important;word-break:break-word!important}',
       '.lingoflow-original{color:inherit;font:inherit;line-height:inherit}',
       '.lingoflow-original>:first-child{margin-top:0!important}',
       '.lingoflow-original>:last-child{margin-bottom:0!important}',
-      '.lingoflow-translation{color:inherit;font:inherit;font-size:inherit;font-style:inherit;font-weight:inherit;letter-spacing:inherit;line-height:inherit;text-align:inherit;margin-top:.18em}',
-      '.lingoflow-translation-only{display:block;max-width:100%;min-width:0;color:inherit;background:transparent;font:inherit;font-size:inherit;font-style:inherit;font-weight:inherit;letter-spacing:inherit;line-height:inherit;text-align:inherit;box-sizing:border-box;overflow-wrap:anywhere}'
+      '.lingoflow-translation{color:inherit;font:inherit;font-size:inherit;font-style:inherit;font-weight:inherit;letter-spacing:inherit;line-height:inherit;text-align:inherit;margin-top:.18em!important;max-height:none!important;overflow:visible!important;display:block!important}',
+      '.lingoflow-translation-only{display:block;max-width:100%!important;min-width:0!important;width:auto!important;color:inherit;background:transparent;font:inherit;font-size:inherit;font-style:inherit;font-weight:inherit;letter-spacing:inherit;line-height:inherit;text-align:inherit;box-sizing:border-box!important;overflow-wrap:anywhere!important;word-break:break-word!important;overflow:visible!important}'
     ].join('\n');
     (document.head || document.documentElement).appendChild(styleEl);
   }
