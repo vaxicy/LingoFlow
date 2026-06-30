@@ -302,14 +302,18 @@
 
 /* Bilingual Mode */
 .lingoflow-block {
-  max-width: 100%;
-  min-width: 0;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  width: auto !important;
   text-align: left;
   color: inherit;
   background: transparent;
-  overflow-wrap: anywhere;
-  word-break: normal;
-  box-sizing: border-box;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  box-sizing: border-box !important;
+  flex-shrink: 1 !important;
+  min-height: 0 !important;
+  overflow: visible !important;
 }
 
 .lingoflow-block-external {
@@ -326,14 +330,18 @@
 .lingoflow-original,
 .lingoflow-translation {
   display: block;
-  max-width: 100%;
-  min-width: 0;
+  max-width:100% !important;
+  min-width:0 !important;
+  width: auto !important;
   margin: 0;
   padding: 0;
   text-align: left;
   background: transparent;
-  box-sizing: border-box;
-  overflow-wrap: anywhere;
+  box-sizing: border-box !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  flex-shrink: 1 !important;
+  min-height: 0 !important;
 }
 
 .lingoflow-original {
@@ -359,13 +367,17 @@
   letter-spacing: inherit;
   line-height: inherit;
   text-align: inherit;
-  margin-top: 0.18em;
+  margin-top: 0.18em !important;
+  max-height: none !important;
+  overflow: visible !important;
+  display: block !important;
 }
 
 .lingoflow-translation-only {
   display: block;
-  max-width: 100%;
-  min-width: 0;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  width: auto !important;
   color: inherit;
   background: transparent;
   font: inherit;
@@ -375,14 +387,19 @@
   letter-spacing: inherit;
   line-height: inherit;
   text-align: inherit;
-  box-sizing: border-box;
-  overflow-wrap: anywhere;
+  box-sizing: border-box !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  flex-shrink: 1 !important;
+  min-height: 0 !important;
+  overflow: visible !important;
 }
 
 .lingoflow-inline-translation {
   display: block;
-  max-width: 100%;
-  min-width: 0;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  width: auto !important;
   color: inherit;
   background: transparent;
   font: inherit;
@@ -392,9 +409,66 @@
   letter-spacing: inherit;
   line-height: inherit;
   text-align: inherit;
-  box-sizing: border-box;
-  overflow-wrap: anywhere;
+  box-sizing: border-box !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  flex-shrink: 1 !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  margin-top: 0.2em !important;
+  margin-bottom: 0.1em !important;
+  /* Prevent vertical text in narrow containers */
+  white-space: normal !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+  min-width: 160px !important;
+  width: max-content !important;
+}
+
+/* Tooltip for dangerous layouts where inline injection would break the page */
+.lingoflow-tooltip-host {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dotted rgba(124, 108, 255, 0.5);
+}
+
+.lingoflow-tooltip-popup {
+  position: fixed;
+  z-index: 2147483647;
+  background: linear-gradient(135deg, rgba(30, 27, 58, 0.97), rgba(42, 47, 84, 0.97));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(184, 173, 255, 0.28);
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(2, 6, 23, 0.32), 0 6px 20px rgba(73, 109, 255, 0.14);
+  padding: 10px 14px;
+  max-width: 360px;
+  min-width: 120px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.5;
+  color: #f0eeff;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  white-space: normal;
   word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+.lingoflow-tooltip-popup.lingoflow-tooltip-visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.lingoflow-tooltip-host:hover .lingoflow-tooltip-popup,
+.lingoflow-tooltip-host.lingoflow-tooltip-active .lingoflow-tooltip-popup {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 /* Dark Mode */
 @media (prefers-color-scheme: dark) {

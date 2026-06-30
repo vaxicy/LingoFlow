@@ -1359,6 +1359,12 @@
       block.className = 'lingoflow-inline-translation';
       block.setAttribute('data-lingoflow', 'true');
       block.textContent = translation;
+      // Force horizontal text layout (prevent inherited vertical writing-mode)
+      block.style.writingMode = 'horizontal-tb';
+      block.style.textOrientation = 'mixed';
+      block.style.whiteSpace = 'normal';
+      block.style.wordBreak = 'break-word';
+      block.style.overflowWrap = 'break-word';
       return block;
     },
 
@@ -1380,6 +1386,49 @@
 
     shouldRenderInside(container) {
       return ['LI', 'DIV', 'TD', 'TH', 'BLOCKQUOTE', 'DD', 'DT', 'FIGCAPTION'].includes(container.tagName);
+    },
+
+    // Detect if a container's parent layout is safe for bilingual injection.
+    // Returns false for layouts that will break when we wrap/render the container.
+    isLayoutSafe(container) {
+      if (!container || !container.parentElement) return true;
+      const parent = container.parentElement;
+      const pStyle = window.getComputedStyle(parent);
+
+      // 1. Parent has overflow:hidden/clip and fixed height — injected content will be clipped
+      const overflow = pStyle.overflow + ' ' + pStyle.overflowX + ' ' + pStyle.overflowY;
+      const clipsOverflow = /(hidden|clip)/.test(overflow);
+      if (clipsOverflow) {
+        const parentRect = parent.getBoundingClientRect();
+        if (parentRect.height > 0 && parent.scrollHeight > parent.clientHeight + 4) return false;
+        // Even without scroll mismatch, hidden overflow + positioned children is risky
+        if (parentRect.height > 0 && parentRect.height < 800) return false;
+      }
+
+      // 2. Parent is a flex/grid container with strict alignment — wrapping breaks it
+      const display = pStyle.display;
+      if (/flex|grid/.test(display)) {
+        // Safe if flex/grid container has enough gap and wrapping is allowed
+        const noWrap = pStyle.flexWrap === 'nowrap' && display === 'flex';
+        const strictAlign = /center|space-between|space-around/.test(pStyle.justifyContent + ' ' + pStyle.alignItems);
+        if (noWrap || strictAlign) return false;
+      }
+
+      // 3. Container or parent uses absolute/fixed positioning
+      const cStyle = window.getComputedStyle(container);
+      if (/absolute|fixed/.test(cStyle.position) || /absolute|fixed/.test(pStyle.position)) return false;
+
+      // 4. Parent has a fixed height that can't expand
+      if (pStyle.height !== 'auto' && pStyle.height !== '' && /px/.test(pStyle.height)) {
+        const h = parseInt(pStyle.height, 10);
+        if (h > 0 && h < 600) return false;
+      }
+
+      // 5. Container is inside a small, fixed-size widget (e.g., Google homepage buttons)
+      const rect = container.getBoundingClientRect();
+      if (rect.width > 0 && rect.width < 120 && rect.height > 0 && rect.height < 60) return false;
+
+      return true;
     },
 
     renderExternal(container, translation) {
@@ -1427,7 +1476,12 @@
     },
 
     renderTranslationUnit(container, translation) {
-      if (this.isConservativePage()) {
+      // For very dangerous layouts (tiny buttons, etc.), use tooltip on hover
+      if (this.isVeryDangerousLayout(container)) {
+        return this.renderTooltipTranslation(container, translation);
+      }
+      // For conservative pages or unsafe layouts, use the conservative (after-end) insertion
+      if (this.isConservativePage() || !this.isLayoutSafe(container)) {
         return this.renderConservativeBilingualUnit(container, translation);
       }
       return this.shouldRenderInside(container)
@@ -1460,8 +1514,89 @@
       this.copyLayoutMargins(container, block);
       block.style.marginTop = '0.25em';
       block.style.marginBottom = '0.35em';
+      // Prevent vertical text in narrow containers:
+      // Force the translation block to be wide enough for horizontal text
+      const targetRect = target.getBoundingClientRect();
+      if (targetRect.width > 0 && targetRect.width < 200) {
+        block.style.minWidth = '160px';
+        block.style.width = 'max-content';
+        block.style.whiteSpace = 'normal';
+        block.style.wordBreak = 'break-word';
+        block.style.overflowWrap = 'break-word';
+        // Reset any inherited writing-mode
+        block.style.writingMode = 'horizontal-tb';
+        block.style.textOrientation = 'mixed';
+      }
       target.insertAdjacentElement('afterend', block);
       return true;
+    },
+
+    // For very dangerous layouts (tiny buttons, complex positioned widgets),
+    // render translation as a tooltip on hover instead of injecting DOM.
+    renderTooltipTranslation(container, translation) {
+      if (!container || !container.parentNode) return false;
+      if (container.dataset.lingoflowTooltip) return false; // already added
+
+      container.dataset.lingoflowTooltip = 'true';
+      container.classList.add('lingoflow-tooltip-host');
+
+      const popup = document.createElement('div');
+      popup.className = 'lingoflow-tooltip-popup';
+      popup.setAttribute('data-lingoflow', 'true');
+      popup.textContent = translation;
+
+      container.appendChild(popup);
+
+      const showTooltip = (e) => {
+        e.stopPropagation();
+        // Position the popup near the container
+        const rect = container.getBoundingClientRect();
+        popup.style.top = (rect.bottom + 8) + 'px';
+        popup.style.left = Math.min(rect.left, window.innerWidth - 380) + 'px';
+        popup.classList.add('lingoflow-tooltip-visible');
+        container.classList.add('lingoflow-tooltip-active');
+      };
+
+      const hideTooltip = () => {
+        popup.classList.remove('lingoflow-tooltip-visible');
+        container.classList.remove('lingoflow-tooltip-active');
+      };
+
+      container.addEventListener('mouseenter', showTooltip);
+      container.addEventListener('mouseleave', hideTooltip);
+      container.addEventListener('touchstart', (e) => {
+        e.stopPropagation();
+        if (popup.classList.contains('lingoflow-tooltip-visible')) {
+          hideTooltip();
+        } else {
+          // Hide other tooltips first
+          document.querySelectorAll('.lingoflow-tooltip-visible').forEach(el => {
+            el.classList.remove('lingoflow-tooltip-visible');
+          });
+          showTooltip(e);
+        }
+      }, { passive: true });
+
+      // Hide on scroll
+      window.addEventListener('scroll', hideTooltip, { passive: true });
+
+      return true;
+    },
+
+    isVeryDangerousLayout(container) {
+      if (!container) return false;
+      const rect = container.getBoundingClientRect();
+      // Tiny elements (buttons, badges) — tooltip is safer
+      if (rect.width > 0 && rect.width < 100 && rect.height > 0 && rect.height < 50) return true;
+      // Narrow containers (< 80px) — Chinese text will render vertically
+      if (rect.width > 0 && rect.width < 80) return true;
+      // Elements inside positioned complex widgets
+      let el = container.parentElement;
+      for (let i = 0; el && i < 5; i++, el = el.parentElement) {
+        const s = window.getComputedStyle(el);
+        if (s.position === 'absolute' || s.position === 'fixed') return true;
+      }
+      return false;
     },
 
     hideOriginalContainer(container) {
