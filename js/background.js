@@ -31,12 +31,6 @@ function setupContextMenus() {
       title: chrome.i18n.getMessage('save_to_vocabulary') || 'Save',
       contexts: ['selection']
     });
-
-    chrome.contextMenus.create({
-      id: 'lingoflow-copy',
-      title: chrome.i18n.getMessage('copy_text') || 'Copy',
-      contexts: ['selection']
-    });
   });
 }
 
@@ -107,13 +101,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     case 'lingoflow-save':
       chrome.tabs.sendMessage(tab.id, {
         action: 'save_selection',
-        text: info.selectionText
-      }, targetOptions).catch(() => {});
-      break;
-
-    case 'lingoflow-copy':
-      chrome.tabs.sendMessage(tab.id, {
-        action: 'copy_selection',
         text: info.selectionText
       }, targetOptions).catch(() => {});
       break;
