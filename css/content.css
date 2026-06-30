@@ -228,6 +228,14 @@
   line-height: 1.55;
 }
 
+.lingoflow-result-paragraph {
+  margin: 0 0 0.65em;
+}
+
+.lingoflow-result-paragraph:last-child {
+  margin-bottom: 0;
+}
+
 .lingoflow-result-actions {
   display: flex;
   align-items: center;

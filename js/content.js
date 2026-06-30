@@ -31,6 +31,11 @@
     isTranslating: false,
     isTranslated: false,       // whether page currently has active translation
     selectionTranslationEnabled: true,
+    hoverParagraphTranslationEnabled: false,
+    hoverParagraphTimer: null,
+    hoverParagraphTarget: null,
+    hoverParagraphInFlight: 0,
+    hoverParagraphCache: new Map(),
     toolbarPosition: 'above',
     uiLanguage: 'auto',
     targetLanguage: 'zh',
@@ -89,7 +94,10 @@
       return state.uiLanguage.toLowerCase().startsWith('zh');
     }
     try {
-      return chrome.i18n.getUILanguage().toLowerCase().startsWith('zh');
+      const i18n = (typeof chrome !== 'undefined' && chrome != null && chrome.i18n) || null;
+      return i18n && typeof i18n.getUILanguage === 'function'
+        ? i18n.getUILanguage().toLowerCase().startsWith('zh')
+        : false;
     } catch (_) {
       return false;
     }
@@ -337,6 +345,30 @@
       return this.isSingleEnglishWord(text) ? 'word' : 'sentence';
     },
 
+    splitParagraphs(text) {
+      const normalized = String(text || '')
+        .replace(/\r\n?/g, '\n')
+        .replace(/\u00a0/g, ' ')
+        .trim();
+      if (!normalized) return [];
+
+      const blankSeparated = normalized
+        .split(/\n\s*\n+/)
+        .map(part => part.replace(/[ \t]+/g, ' ').trim())
+        .filter(Boolean);
+      if (blankSeparated.length > 1) return blankSeparated;
+
+      const lineSeparated = normalized
+        .split(/\n+/)
+        .map(part => part.replace(/[ \t]+/g, ' ').trim())
+        .filter(Boolean);
+      if (lineSeparated.length > 1 && lineSeparated.some(part => part.length >= 12)) {
+        return lineSeparated;
+      }
+
+      return [normalized.replace(/\s+/g, ' ')];
+    },
+
     getCacheKey(text) {
       return `${this.getType(text)}:${state.targetLanguage}:${String(text || '').trim().toLowerCase()}`;
     },
@@ -350,6 +382,23 @@
         ? await this.lookupWord(normalized)
         : await this.translateText(normalized);
 
+      this.cache.set(cacheKey, result);
+      return result;
+    },
+
+    async resolveWithParagraphs(text, paragraphs) {
+      const cleanParagraphs = Array.isArray(paragraphs)
+        ? paragraphs.map(part => String(part || '').trim()).filter(Boolean)
+        : [];
+      if (this.isSingleEnglishWord(text) || cleanParagraphs.length <= 1) {
+        return this.resolve(text);
+      }
+
+      const normalized = cleanParagraphs.join('\n\n');
+      const cacheKey = `${this.getType(normalized)}:${state.targetLanguage}:${normalized.toLowerCase()}`;
+      if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
+
+      const result = await this.translateParagraphs(cleanParagraphs, text);
       this.cache.set(cacheKey, result);
       return result;
     },
@@ -388,6 +437,11 @@
     },
 
     async translateText(text) {
+      const paragraphs = this.splitParagraphs(text);
+      if (paragraphs.length > 1) {
+        return this.translateParagraphs(paragraphs, text);
+      }
+
       const translation = await TranslationEngine.translate(text, state.targetLanguage || 'zh');
       if (isFallbackText(translation)) {
         return {
@@ -401,6 +455,34 @@
         mode: this.getType(text),
         text,
         translation,
+        paragraphs: null,
+        dictionary: null
+      };
+    },
+
+    async translateParagraphs(paragraphs, originalText) {
+      const sourceParagraphs = paragraphs.map(part => String(part || '').trim()).filter(Boolean);
+      const translations = await TranslationEngine.translateMany(sourceParagraphs, state.targetLanguage || 'zh');
+      const paragraphResults = sourceParagraphs.map((source, index) => ({
+        text: source,
+        translation: translations[index] || ''
+      })).filter(item => item.translation && !isFallbackText(item.translation));
+
+      if (!paragraphResults.length) {
+        return {
+          mode: this.getType(originalText),
+          text: originalText,
+          translation: '',
+          paragraphs: [],
+          error: true
+        };
+      }
+
+      return {
+        mode: this.getType(originalText),
+        text: originalText,
+        translation: paragraphResults.map(item => item.translation).join('\n\n'),
+        paragraphs: paragraphResults,
         dictionary: null
       };
     },
@@ -410,6 +492,9 @@
       if (result.mode === 'word' && result.dictionary) {
         return result.dictionary.translation || result.translation || result.text || '';
       }
+      if (Array.isArray(result.paragraphs) && result.paragraphs.length) {
+        return result.paragraphs.map(item => item.translation || '').filter(Boolean).join('\n\n');
+      }
       return result.translation || result.text || '';
     },
 
@@ -417,6 +502,7 @@
       return {
         text: result.text || '',
         translation: result.translation || '',
+        paragraphs: Array.isArray(result.paragraphs) ? result.paragraphs : null,
         dictionary: result.dictionary || null,
         type: result.mode === 'word' ? 'word' : 'sentence',
         sourceUrl: window.location.href
@@ -623,6 +709,14 @@
       const isWord = resultData.mode === 'word';
       const meanings = dictionary && Array.isArray(dictionary.meanings) ? dictionary.meanings : [];
       const examples = dictionary && Array.isArray(dictionary.examples) ? dictionary.examples : [];
+      const renderParagraphs = (items, key, fallbackText) => {
+        const values = Array.isArray(items) && items.length
+          ? items.map(item => item && item[key]).filter(Boolean)
+          : SelectionLookup.splitParagraphs(fallbackText);
+        return values.map(value => (
+          `<p class="lingoflow-result-paragraph">${this.escapeHtml(value)}</p>`
+        )).join('');
+      };
 
       const result = document.createElement('div');
       result.id = 'lingoflow-translation-result';
@@ -649,8 +743,8 @@
           `).join('')}</div>` : ''}
         `
         : `
-          <div class="lingoflow-result-original">${this.escapeHtml(originalText)}</div>
-          <div class="lingoflow-result-translation">${this.escapeHtml(translation)}</div>
+          <div class="lingoflow-result-original">${renderParagraphs(resultData.paragraphs, 'text', originalText)}</div>
+          <div class="lingoflow-result-translation">${renderParagraphs(resultData.paragraphs, 'translation', translation)}</div>
         `;
 
       result.innerHTML = `
@@ -690,6 +784,11 @@
         if (e.stopImmediatePropagation) e.stopImmediatePropagation();
 
         const action = actionButton.getAttribute('data-result-action');
+
+        if (action === 'copy') {
+          this.handleCopy(SelectionLookup.getCopyText(resultData));
+          return;
+        }
 
         if (action === 'save') {
           this.saveResolvedResult(resultData);
@@ -742,13 +841,14 @@
         if (selection && selection.rangeCount > 0) {
           selectionContext = {
             text,
+            paragraphs: this.extractSelectionParagraphs(selection.getRangeAt(0), text),
             rect: selection.getRangeAt(0).getBoundingClientRect()
           };
         }
       }
 
       this.setToolbarLoading(true);
-      const result = await SelectionLookup.resolve(text);
+      const result = await SelectionLookup.resolveWithParagraphs(text, selectionContext && selectionContext.paragraphs);
       this.setToolbarLoading(false);
 
       // If translation failed (fallback text), show notification instead of result
@@ -763,6 +863,7 @@
         data: {
           text: text,
           translation: result.translation,
+          paragraphs: Array.isArray(result.paragraphs) ? result.paragraphs : null,
           sourceUrl: window.location.href
         }
       });
@@ -782,6 +883,7 @@
         if (rect && (rect.width || rect.height)) {
           return {
             text,
+            paragraphs: this.extractSelectionParagraphs(selection.getRangeAt(0), text),
             rect: {
               left: rect.left,
               right: rect.right,
@@ -814,7 +916,7 @@
     async showResultForText(text) {
       const selectionContext = this.getContextSelectionContext(text);
       this.showNotification(_getMessage('translation_in_progress', 'Translating...'));
-      const result = await SelectionLookup.resolve(text);
+      const result = await SelectionLookup.resolveWithParagraphs(text, selectionContext && selectionContext.paragraphs);
       if (!result || result.error || !result.translation) {
         this.showNotification(statusText('translationFailed'));
         return false;
@@ -825,6 +927,7 @@
         data: {
           text,
           translation: result.translation,
+          paragraphs: Array.isArray(result.paragraphs) ? result.paragraphs : null,
           sourceUrl: window.location.href
         }
       });
@@ -835,7 +938,8 @@
 
     async saveTextWithResolvedResult(text) {
       this.showNotification(_getMessage('saving', 'Saving...'));
-      const result = await SelectionLookup.resolve(text);
+      const selectionContext = this.getContextSelectionContext(text);
+      const result = await SelectionLookup.resolveWithParagraphs(text, selectionContext && selectionContext.paragraphs);
       if (!result || result.error || !result.translation) {
         this.showNotification(statusText('translationFailed'));
         return false;
@@ -855,7 +959,7 @@
     async handleSave(text, translation) {
       if (!translation) {
         this.setToolbarLoading(true);
-        const result = await SelectionLookup.resolve(text);
+        const result = await SelectionLookup.resolveWithParagraphs(text, this.selectionContext && this.selectionContext.paragraphs);
         this.setToolbarLoading(false);
         if (!result || result.error || !result.translation) {
           this.showNotification(statusText('translationFailed'));
@@ -977,6 +1081,7 @@
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
         if (!rect || (rect.width === 0 && rect.height === 0)) return;
+        const paragraphs = this.extractSelectionParagraphs(range, selectedText);
 
         const selectionKey = `${selectedText}|${Math.round(rect.left)}|${Math.round(rect.top)}|${Math.round(rect.width)}|${Math.round(rect.height)}`;
         if (selectionKey === this.lastSelectionKey && document.getElementById('lingoflow-toolbar')) return;
@@ -984,6 +1089,7 @@
 
         UI.createFloatingToolbar({
           text: selectedText,
+          paragraphs,
           rect: {
             left: rect.left,
             right: rect.right,
@@ -1001,6 +1107,128 @@
       }
     },
 
+    extractSelectionParagraphs(range, selectedText) {
+      const blockSelector = 'p, li, blockquote, dd, dt, figcaption, h1, h2, h3, h4, h5, h6';
+      const root = range.commonAncestorContainer.nodeType === Node.ELEMENT_NODE
+        ? range.commonAncestorContainer
+        : range.commonAncestorContainer.parentElement;
+      if (!root) return SelectionLookup.splitParagraphs(selectedText);
+
+      const candidates = [];
+      if (root.matches && root.matches(blockSelector)) candidates.push(root);
+      root.querySelectorAll && candidates.push(...root.querySelectorAll(blockSelector));
+
+      const selectedNormalized = PageTranslator.normalizeText(selectedText);
+      const parts = [];
+      const seen = new Set();
+
+      candidates.forEach(el => {
+        if (!range.intersectsNode(el)) return;
+        if (el.closest && el.closest('[data-lingoflow], .lingoflow-ui')) return;
+        const text = PageTranslator.normalizeText(el.innerText || el.textContent || '');
+        if (!text || seen.has(text)) return;
+        if (text.length < 2 || !selectedNormalized.includes(text.slice(0, Math.min(24, text.length)))) return;
+        seen.add(text);
+        parts.push(text);
+      });
+
+      if (parts.length > 1) return parts;
+      return SelectionLookup.splitParagraphs(selectedText);
+    },
+
+    findHoverParagraphTarget(target) {
+      if (!target || !state.hoverParagraphTranslationEnabled) return null;
+      if (target.closest && target.closest('.lingoflow-ui, [data-lingoflow]')) return null;
+      if (window.getSelection && String(window.getSelection()).trim()) return null;
+
+      let el = target.nodeType === Node.ELEMENT_NODE ? target : target.parentElement;
+      const paragraphTags = new Set(['P', 'LI', 'BLOCKQUOTE', 'DD', 'DT', 'FIGCAPTION', 'ARTICLE', 'SECTION', 'ASIDE']);
+
+      for (let depth = 0; el && el !== document.body && depth < 7; depth++, el = el.parentElement) {
+        if (PageTranslator.skipTags.has(el.tagName)) return null;
+        if (PageTranslator.shouldSkipContainer(el)) continue;
+        if (el.dataset.lingoflowProcessed === 'true' || el.dataset.lingoflowHoverLoading === 'true') return null;
+        if (PageTranslator.hasExistingTranslation(el) || PageTranslator.hasLinkedTranslation(el)) return null;
+
+        const text = PageTranslator.normalizeText(PageTranslator.getElementText(el));
+        const isParagraphTag = paragraphTags.has(el.tagName);
+        const isReadableDiv = el.tagName === 'DIV' &&
+          text.length >= 40 &&
+          text.length <= 1500 &&
+          el.children.length <= 6 &&
+          !PageTranslator.isDataContentElement(el);
+
+        if ((isParagraphTag || isReadableDiv) && PageTranslator.shouldTranslateText(text)) {
+          return el;
+        }
+      }
+
+      return null;
+    },
+
+    scheduleHoverParagraphTranslation(e) {
+      const target = this.findHoverParagraphTarget(e.target);
+      if (!target) return;
+      if (state.hoverParagraphTarget === target) return;
+
+      clearTimeout(state.hoverParagraphTimer);
+      state.hoverParagraphTarget = target;
+      state.hoverParagraphTimer = window.setTimeout(() => {
+        this.translateHoveredParagraph(target);
+      }, 300);
+    },
+
+    cancelHoverParagraphTranslation(e) {
+      const target = state.hoverParagraphTarget;
+      if (!target) return;
+      if (e && e.relatedTarget && target.contains(e.relatedTarget)) return;
+      clearTimeout(state.hoverParagraphTimer);
+      state.hoverParagraphTimer = null;
+      state.hoverParagraphTarget = null;
+    },
+
+    async translateHoveredParagraph(container) {
+      if (!state.hoverParagraphTranslationEnabled || !container || !container.isConnected) return;
+      if (state.hoverParagraphInFlight >= 2) return;
+      if (container.dataset.lingoflowProcessed === 'true' || container.dataset.lingoflowHoverLoading === 'true') return;
+      if (PageTranslator.hasExistingTranslation(container) || PageTranslator.hasLinkedTranslation(container)) return;
+
+      const text = PageTranslator.normalizeText(PageTranslator.getElementText(container));
+      if (!PageTranslator.shouldTranslateText(text)) return;
+
+      const cacheKey = `${state.targetLanguage}:${text.toLowerCase()}`;
+      const cached = state.hoverParagraphCache.get(cacheKey);
+      container.dataset.lingoflowHoverLoading = 'true';
+      state.hoverParagraphInFlight++;
+
+      try {
+        const translation = cached || await TranslationEngine.translate(text, state.targetLanguage || 'zh');
+        if (!cached && translation && !isFallbackText(translation)) {
+          state.hoverParagraphCache.set(cacheKey, translation);
+        }
+        if (!translation || isFallbackText(translation)) return;
+        if (!container.isConnected) return;
+        if (PageTranslator.hasExistingTranslation(container) || PageTranslator.hasLinkedTranslation(container)) return;
+
+        PageTranslator.markProcessed(container);
+        const rendered = PageTranslator.renderTranslationUnit(container, translation);
+        if (rendered) {
+          container.setAttribute('data-lingoflow-hover-rendered', 'true');
+          state.isTranslated = true;
+        } else {
+          container.removeAttribute('data-lingoflow-processed');
+        }
+      } catch (err) {
+        console.warn('LingoFlow: Hover paragraph translation failed:', getErrorMessage(err));
+      } finally {
+        state.hoverParagraphInFlight = Math.max(0, state.hoverParagraphInFlight - 1);
+        container.removeAttribute('data-lingoflow-hover-loading');
+        if (state.hoverParagraphTarget === container) {
+          state.hoverParagraphTarget = null;
+        }
+      }
+    },
+
     // Handle messages from background script (exposed globally for top-level listener)
     handleMessage(request, sender, sendResponse) {
       switch (request.action) {
@@ -1009,7 +1237,9 @@
           {
             const s = request.settings || {};
             const wasSelectionEnabled = state.selectionTranslationEnabled;
+            const wasHoverEnabled = state.hoverParagraphTranslationEnabled;
             state.selectionTranslationEnabled = s.selectionTranslation !== false;
+            state.hoverParagraphTranslationEnabled = s.hoverParagraphTranslation === true;
             state.toolbarPosition = s.toolbarPosition || 'above';
             state.uiLanguage = s.uiLanguage || 'auto';
             state.targetLanguage = s.targetLanguage || 'zh';
@@ -1018,6 +1248,11 @@
             if (wasSelectionEnabled && !state.selectionTranslationEnabled) {
               UI.removeFloatingToolbar();
               UI.removeTranslationResult();
+            }
+            if (wasHoverEnabled && !state.hoverParagraphTranslationEnabled) {
+              clearTimeout(state.hoverParagraphTimer);
+              state.hoverParagraphTimer = null;
+              state.hoverParagraphTarget = null;
             }
           }
           sendResponse({ received: true });
@@ -1162,11 +1397,22 @@
       if (normalized.length < 3) return false;
       if (normalized.length > 2000) return false;
       if (/^\d+([.,:/-]\d+)*$/.test(normalized)) return false;
-      if (!/[A-Za-z]{2,}/.test(normalized)) return false;
       if (!/[A-Za-z0-9]/.test(normalized.replace(/[^\p{L}\p{N}]/gu, ''))) return false;
       if (isAllCapsShortLabel(normalized)) return false;
+
+      const target = state.targetLanguage || 'zh';
+      const isTranslatingToChinese = target === 'zh' || target === 'zh-CN';
+
+      if (isTranslatingToChinese) {
+        // 英译中：跳过纯中文文本
+        if (isChineseText(normalized)) return false;
+        if (!/[A-Za-z]{2,}/.test(normalized)) return false;
+      } else {
+        // 中译英（或其他）：跳过纯英文文本
+        if (/^[A-Za-z0-9\s\p{P}\p{S}]+$/u.test(normalized) && !/[\u4e00-\u9fff\u3400-\u4dbf]/.test(normalized)) return false;
+      }
+
       if (hasMixedLatinAndChinese(normalized)) return false;
-      if (isChineseText(normalized)) return false;
       return true;
     },
 
@@ -3088,6 +3334,9 @@
       const scrollX = window.scrollX;
       const scrollY = window.scrollY;
       this.stopDynamicTranslationObserver();
+      clearTimeout(state.hoverParagraphTimer);
+      state.hoverParagraphTimer = null;
+      state.hoverParagraphTarget = null;
 
       document.querySelectorAll('.lingoflow-block[data-lingoflow="true"]').forEach(block => {
         this.restoreBilingualBlock(block);
@@ -3107,15 +3356,19 @@
         el.removeAttribute('data-lingoflow-rendered');
         el.removeAttribute('data-lingoflow-source-id');
         el.removeAttribute('data-lingoflow-tooltip');
+        el.removeAttribute('data-lingoflow-hover-loading');
+        el.removeAttribute('data-lingoflow-hover-rendered');
         el.classList.remove('lingoflow-translated', 'lingoflow-bilingual');
         el.classList.remove('lingoflow-tooltip-host', 'lingoflow-tooltip-active');
         delete el.dataset.lfTranslated;
       });
 
-      document.querySelectorAll('[data-lingoflow-rendered], [data-lingoflow-source-id], [data-lingoflow-tooltip]').forEach(el => {
+      document.querySelectorAll('[data-lingoflow-rendered], [data-lingoflow-source-id], [data-lingoflow-tooltip], [data-lingoflow-hover-loading], [data-lingoflow-hover-rendered]').forEach(el => {
         el.removeAttribute('data-lingoflow-rendered');
         el.removeAttribute('data-lingoflow-source-id');
         el.removeAttribute('data-lingoflow-tooltip');
+        el.removeAttribute('data-lingoflow-hover-loading');
+        el.removeAttribute('data-lingoflow-hover-rendered');
         el.classList.remove('lingoflow-tooltip-host', 'lingoflow-tooltip-active');
       });
 
@@ -3127,6 +3380,17 @@
       window.scrollTo(scrollX, scrollY);
     }
   };
+  // Global safety net: catch any unhandled promise rejections (e.g., chrome.i18n
+  // undefined after Service Worker termination) to prevent ugly console errors.
+  window.addEventListener('unhandledrejection', (e) => {
+    const msg = e.reason && (e.reason.message || e.reason.toString()) || '';
+    // Only suppress known-harmless context-invalidated errors
+    if (msg.includes('getMessage') || msg.includes('i18n') ||
+        msg.includes('context invalidated') || msg.includes('Extension context')) {
+      e.preventDefault();
+      console.warn('LingoFlow: Suppressed unhandled rejection:', msg);
+    }
+  });
   // Initialize
   function init() {
     try {
@@ -3136,6 +3400,7 @@
       chrome.storage.local.get(['lingoflow_settings'], (result) => {
         if (result.lingoflow_settings) {
           state.selectionTranslationEnabled = result.lingoflow_settings.selectionTranslation !== false;
+          state.hoverParagraphTranslationEnabled = result.lingoflow_settings.hoverParagraphTranslation === true;
           state.toolbarPosition = result.lingoflow_settings.toolbarPosition || 'above';
           state.uiLanguage = result.lingoflow_settings.uiLanguage || 'auto';
           state.targetLanguage = result.lingoflow_settings.targetLanguage || 'zh';
@@ -3150,6 +3415,8 @@
       document.addEventListener('touchend', (e) => EventHandlers.scheduleSelectionToolbar(e, 120), { passive: true });
       document.addEventListener('selectionchange', () => EventHandlers.scheduleSelectionToolbar({ target: document.activeElement }, 140));
       document.addEventListener('keyup', (e) => EventHandlers.scheduleSelectionToolbar(e, 80));
+      document.addEventListener('pointerover', (e) => EventHandlers.scheduleHoverParagraphTranslation(e), { passive: true });
+      document.addEventListener('pointerout', (e) => EventHandlers.cancelHoverParagraphTranslation(e), { passive: true });
       document.addEventListener('mousedown', (e) => {
         if (e.target && e.target.closest && e.target.closest('.lingoflow-ui')) return;
         EventHandlers.lastSelectionKey = '';
@@ -3171,7 +3438,9 @@
         if (namespace === 'local' && changes.lingoflow_settings) {
           const settings = changes.lingoflow_settings.newValue;
           const wasSelectionEnabled = state.selectionTranslationEnabled;
+          const wasHoverEnabled = state.hoverParagraphTranslationEnabled;
           state.selectionTranslationEnabled = settings.selectionTranslation !== false;
+          state.hoverParagraphTranslationEnabled = settings.hoverParagraphTranslation === true;
           state.toolbarPosition = settings.toolbarPosition || 'above';
           state.uiLanguage = settings.uiLanguage || 'auto';
           state.targetLanguage = settings.targetLanguage || 'zh';
@@ -3182,6 +3451,11 @@
           if (wasSelectionEnabled && !state.selectionTranslationEnabled) {
             UI.removeFloatingToolbar();
             UI.removeTranslationResult();
+          }
+          if (wasHoverEnabled && !state.hoverParagraphTranslationEnabled) {
+            clearTimeout(state.hoverParagraphTimer);
+            state.hoverParagraphTimer = null;
+            state.hoverParagraphTarget = null;
           }
         }
       });

@@ -336,9 +336,11 @@ function initSettingsPanel() {
     'popup-translate-to',
     'popup-ui-language',
     'popup-selection-translation',
+    'popup-hover-paragraph-translation',
     'popup-auto-save-settings',
     'popup-existing-bilingual-strategy',
-    'popup-history-limit'
+    'popup-history-limit',
+    'popup-save-history'
   ];
 
   controls.forEach(id => {
@@ -939,6 +941,8 @@ function applyPopupSettings(settings) {
   if (uiLanguage) uiLanguage.value = settings.uiLanguage || 'auto';
   const selectionTranslation = document.getElementById('popup-selection-translation');
   if (selectionTranslation) selectionTranslation.checked = settings.selectionTranslation !== false;
+  const hoverParagraphTranslation = document.getElementById('popup-hover-paragraph-translation');
+  if (hoverParagraphTranslation) hoverParagraphTranslation.checked = settings.hoverParagraphTranslation === true;
   if (autoSaveSettings) autoSaveSettings.checked = settings.autoSaveSettings !== false;
   if (existingBilingualStrategy) existingBilingualStrategy.value = settings.existingBilingualStrategy || 'skip';
   if (historyLimit) historyLimit.value = String(settings.historyLimit || 50);
@@ -976,6 +980,7 @@ function getPopupSettingsFromUI() {
     uiLanguage: document.getElementById('popup-ui-language')?.value || 'auto',
     theme: document.querySelector('[data-popup-theme].active')?.getAttribute('data-popup-theme') || 'light',
     selectionTranslation: document.getElementById('popup-selection-translation')?.checked !== false,
+    hoverParagraphTranslation: document.getElementById('popup-hover-paragraph-translation')?.checked === true,
     autoSaveSettings: document.getElementById('popup-auto-save-settings')?.checked !== false,
     toolbarPosition: document.querySelector('[data-position].active')?.getAttribute('data-position') || 'above',
     existingBilingualStrategy: document.getElementById('popup-existing-bilingual-strategy')?.value || 'skip',
@@ -1076,6 +1081,7 @@ function getDefaultSettings() {
     uiLanguage: 'auto',
     theme: 'light',
     autoSaveSettings: true,
+    hoverParagraphTranslation: false,
     toolbarPosition: 'above',
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
@@ -1217,7 +1223,10 @@ function matchesPanelQuery(item, query) {
   const dictionaryText = item.dictionary
     ? `${item.dictionary.translation || ''} ${(item.dictionary.meanings || []).map(item => item.definition || '').join(' ')}`
     : '';
-  const text = `${item.text || ''} ${item.translation || ''} ${dictionaryText} ${item.sourceUrl || ''}`.toLowerCase();
+  const paragraphText = Array.isArray(item.paragraphs)
+    ? item.paragraphs.map(part => `${part.text || ''} ${part.translation || ''}`).join(' ')
+    : '';
+  const text = `${item.text || ''} ${item.translation || ''} ${paragraphText} ${dictionaryText} ${item.sourceUrl || ''}`.toLowerCase();
   return text.includes(query);
 }
 
@@ -1259,7 +1268,12 @@ function downloadFile(content, filename, contentType) {
 }
 
 async function copyPanelText(item) {
-  const text = [item.text, item.translation].filter(Boolean).join('\n');
+  const text = Array.isArray(item.paragraphs) && item.paragraphs.length
+    ? [
+        item.paragraphs.map(part => part.text || '').filter(Boolean).join('\n\n'),
+        item.paragraphs.map(part => part.translation || '').filter(Boolean).join('\n\n')
+      ].filter(Boolean).join('\n\n')
+    : [item.text, item.translation].filter(Boolean).join('\n');
   try {
     await navigator.clipboard.writeText(text);
     showStatus(getMessage('copied'), 'success');

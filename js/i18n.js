@@ -62,12 +62,13 @@ function getMessage(key, substitutions = []) {
   // Guard: chrome.i18n may be undefined when extension context is invalidated
   // (e.g., Service Worker terminated and restarted by Chrome).
   try {
-    if (typeof chrome !== 'undefined' && chrome.i18n && typeof chrome.i18n.getMessage === 'function') {
-      const message = chrome.i18n.getMessage(key, substitutions);
+    const i18n = (typeof chrome !== 'undefined' && chrome != null && chrome.i18n) || null;
+    if (i18n && typeof i18n.getMessage === 'function') {
+      const message = i18n.getMessage(key, substitutions);
       return message || key;
     }
   } catch (_) {
-    // Silently fall through
+    // Silently fall through — context invalidated or i18n unavailable
   }
   return key;
 }

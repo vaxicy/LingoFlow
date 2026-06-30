@@ -56,6 +56,7 @@ chrome.runtime.onInstalled.addListener(() => {
           uiLanguage: 'auto',
           theme: 'light',
           autoSaveSettings: true,
+          hoverParagraphTranslation: false,
           existingBilingualStrategy: 'skip',
           saveHistory: true,
           historyLimit: 50,
@@ -178,6 +179,7 @@ function saveToVocabulary(data) {
       id: generateId(),
       text: data.text,
       translation: data.translation || '',
+      paragraphs: Array.isArray(data.paragraphs) ? data.paragraphs : null,
       dictionary: data.dictionary || null,
       type: data.type || 'word',
       sourceUrl: data.sourceUrl || '',
@@ -218,6 +220,7 @@ function addToHistory(data) {
       id: generateId(),
       text: data.text,
       translation: data.translation || '',
+      paragraphs: Array.isArray(data.paragraphs) ? data.paragraphs : null,
       sourceUrl: data.sourceUrl || '',
       createdAt: Date.now()
     });
@@ -322,6 +325,7 @@ function getDefaultSettings(overrides = {}) {
     theme: 'light',
     selectionTranslation: true,
     autoSaveSettings: true,
+    hoverParagraphTranslation: false,
     saveHistory: true,
     existingBilingualStrategy: 'skip',
     historyLimit: 50,

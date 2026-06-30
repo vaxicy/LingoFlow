@@ -494,5 +494,13 @@
   "toolbar_position_desc": {
     "message": "Where to show the selection toolbar",
     "description": "Toolbar position setting description"
+  },
+  "hover_paragraph_translation": {
+    "message": "Hover Paragraph Translation",
+    "description": "Settings toggle"
+  },
+  "hover_paragraph_translation_desc": {
+    "message": "Show bilingual translation when hovering over paragraphs",
+    "description": "Settings toggle description"
   }
 }
