@@ -1038,6 +1038,7 @@ function applyPopupSettings(settings) {
     deepseekModelSelect.value = settings.deepseekModel || 'deepseek-v4-flash';
     if (!deepseekModelSelect.value) deepseekModelSelect.value = 'deepseek-v4-flash';
   }
+
   const youdaoAppKeyInput = document.getElementById('popup-youdao-app-key');
   if (youdaoAppKeyInput) youdaoAppKeyInput.value = settings.youdaoAppKey || '';
   const youdaoAppSecretInput = document.getElementById('popup-youdao-app-secret');
