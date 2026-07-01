@@ -336,6 +336,7 @@
         case 'mymemory':
         case 'youdao':
         case 'youdaollm':
+        case 'deepseek':
           // All non-Google engines delegate to background.js which has the real API logic
           return await this.backgroundTranslator.translate(text, targetLang);
 
@@ -355,12 +356,13 @@
         const timeoutId = setTimeout(() => {
           console.warn('LingoFlow: Batch translation timed out, falling back to single requests');
           Promise.all(list.map(text => this.translate(text, targetLang))).then(resolve);
-        }, 55000);
+        }, 120000); // Increased from 55s to 120s for slow LLM engines like DeepSeek
 
         try {
-          // Guard: chrome.runtime may be invalidated
+          // Guard: chrome.runtime may be invalidated (SW may be killed by browser)
           if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
             clearTimeout(timeoutId);
+            console.warn('LingoFlow: chrome.runtime unavailable, falling back to single requests');
             Promise.all(list.map(text => this.translate(text, targetLang))).then(resolve);
             return;
           }
@@ -373,23 +375,33 @@
             (response) => {
               clearTimeout(timeoutId);
 
+              // Check for extension context errors (SW killed/restarted)
               if (chrome.runtime.lastError) {
-                console.warn('LingoFlow: Batch translation send failed:', getErrorMessage(chrome.runtime.lastError));
+                const errMsg = getErrorMessage(chrome.runtime.lastError);
+                console.warn('LingoFlow: Batch translation send failed:', errMsg,
+                  '- falling back to single requests');
                 Promise.all(list.map(text => this.translate(text, targetLang))).then(resolve);
                 return;
               }
+
+              console.log('LingoFlow: Batch translate response received:',
+                response ? (Array.isArray(response.translations)
+                  ? `${response.translations.length} translations, first="${(response.translations[0] || '').substring(0, 60)}"`
+                  : 'non-array response') : 'null/undefined');
 
               if (response && Array.isArray(response.translations)) {
                 resolve(response.translations);
                 return;
               }
 
+              console.warn('LingoFlow: Invalid batch response format, falling back to single requests');
               Promise.all(list.map(text => this.translate(text, targetLang))).then(resolve);
             }
           );
         } catch (err) {
           clearTimeout(timeoutId);
-          console.warn('LingoFlow: Batch translation error:', getErrorMessage(err));
+          console.warn('LingoFlow: Batch translation error:', getErrorMessage(err),
+            '- falling back to single requests');
           Promise.all(list.map(text => this.translate(text, targetLang))).then(resolve);
         }
       });
@@ -3122,12 +3134,14 @@
         this.markProcessed(container);
 
         if (isContextInvalidatedText(translation)) {
+          console.warn('LingoFlow: Context invalidated for unit');
           container.removeAttribute('data-lingoflow-processed');
           stoppedByInvalidContext = true;
           return;
         }
 
         if (isFallbackText(translation)) {
+          console.warn('LingoFlow: Fallback text for unit:', translation.substring(0, 80));
           container.removeAttribute('data-lingoflow-processed');
           failCount++;
           return;
@@ -3140,6 +3154,7 @@
         if (rendered) {
           successCount++;
         } else {
+          console.warn('LingoFlow: renderUnit returned false for text:', (translation || '').substring(0, 60));
           container.removeAttribute('data-lingoflow-processed');
         }
       };

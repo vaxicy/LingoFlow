@@ -54,6 +54,8 @@ chrome.runtime.onInstalled.addListener(() => {
             geminiModel: 'gemini-3.1-flash-lite',
             youdaoAppKey: '',
             youdaoAppSecret: '',
+            deepseekApiKey: '',
+            deepseekModel: 'deepseek-v4-flash',
             youdaoLLMModel: '3',
             targetLanguage: 'zh',
             uiLanguage: 'auto',
@@ -524,8 +526,10 @@ function translateText(text, targetLang, sendResponse) {
       translateWithMyMemory(text, targetLang, sendResponse);
     } else if (engine === 'youdao') {
       translateWithYoudao(text, targetLang, sendResponse);
-    } else if (engine === 'youdaollm') {
+        } else if (engine === 'youdaollm') {
       translateWithYoudaoLLM(text, targetLang, sendResponse);
+        } else if (engine === 'deepseek') {
+      translateWithDeepSeekCb(text, targetLang, sendResponse);
     } else {
       translateWithGoogle(text, targetLang, sendResponse);
     }
@@ -560,6 +564,11 @@ function translateBatch(texts, targetLang, sendResponse) {
 
     if (engine === 'youdaollm') {
       translateBatchWithYoudaoLLM(list, targetLang, sendResponse);
+      return;
+    }
+
+    if (engine === 'deepseek') {
+      translateBatchWithDeepSeek(list, targetLang, sendResponse);
       return;
     }
 
@@ -1864,6 +1873,139 @@ function parseYoudaoLLMSSE(response) {
     console.log('LingoFlow: Youdao LLM parsed', eventCount, 'SDE events, result length:', lastTranslation.length);
     return lastTranslation || '';
   });
+}
+
+// ======================== DeepSeek Translation ========================
+// DeepSeek API is OpenAI-compatible: https://api-docs.deepseek.com/zh-cn/
+// Endpoint: POST https://api.deepseek.com/chat/completions
+// Returns a Promise that resolves with the translated text.
+function translateWithDeepSeek(text, targetLang) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(['lingoflow_settings'], (result) => {
+      const settings = result.lingoflow_settings || {};
+      const apiKey = (settings.deepseekApiKey || '').trim();
+      const model = (settings.deepseekModel || 'deepseek-v4-flash').trim();
+
+      if (!apiKey) {
+        reject(new Error('DeepSeek API key not set'));
+        return;
+      }
+
+      const targetLangName = targetLang === 'zh' ? '中文' :
+                             targetLang === 'en' ? 'English' : targetLang;
+      const sourceLangName = targetLang === 'zh' ? 'English' : '中文';
+
+      const maxLen = 4000;
+      const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => { controller.abort(); }, 30000);
+
+      fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            {
+              role: 'system',
+              content: `You are a professional translator. Translate the user's input from ${sourceLangName} to ${targetLangName}. Output ONLY the translation, no explanations, no quotes, no extra text.`
+            },
+            { role: 'user', content: truncated }
+          ],
+          temperature: 0.3,
+          stream: false
+        }),
+        signal: controller.signal
+      })
+        .then(response => {
+          clearTimeout(timeoutId);
+          if (!response.ok) {
+            return response.text().then(body => {
+              throw new Error(`HTTP ${response.status}: ${body.substring(0, 200)}`);
+            });
+          }
+          return response.json();
+        })
+        .then(data => {
+          const translatedText = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
+          if (translatedText) {
+            const preview = translatedText.trim().substring(0, 80);
+            console.log(`LingoFlow: DeepSeek (${model}) OK, len=${translatedText.length}, text="${preview}"`);
+            resolve(translatedText.trim());
+          } else {
+            console.warn('LingoFlow: DeepSeek empty response, raw:', JSON.stringify(data).substring(0, 200));
+            reject(new Error('Empty response from DeepSeek API'));
+          }
+        })
+        .catch(error => {
+          clearTimeout(timeoutId);
+          reject(error);
+        });
+    });
+  });
+}
+
+// Wrapper for translateText() which uses sendResponse callback
+function translateWithDeepSeekCb(text, targetLang, sendResponse) {
+  translateWithDeepSeek(text, targetLang)
+    .then(translatedText => {
+      sendResponse({ success: true, translation: translatedText });
+    })
+    .catch(error => {
+      const message = error && error.message ? error.message : String(error);
+      console.warn('LingoFlow: DeepSeek error:', message, '- falling back to Google');
+      translateWithGoogle(text, targetLang, sendResponse);
+    });
+}
+
+function translateBatchWithDeepSeek(texts, targetLang, sendResponse) {
+  const list = Array.isArray(texts) ? texts.filter(t => typeof t === 'string' && t.trim()) : [];
+  console.log(`LingoFlow: DeepSeek batch start, ${list.length} items`);
+
+  if (!list.length) {
+    sendResponse({ success: true, translations: [] });
+    return;
+  }
+
+  const translations = new Array(list.length);
+  let cursor = 0, active = 0, finished = 0;
+  const concurrency = 5; // DeepSeek V4 Flash supports high RPM
+
+  function runNext() {
+    while (active < concurrency && cursor < list.length) {
+      const index = cursor++;
+      active++;
+
+      translateWithDeepSeek(list[index], targetLang)
+        .then(result => {
+          translations[index] = result;
+        })
+        .catch(err => {
+          console.warn(`LingoFlow: DeepSeek batch item ${index} failed:`, err && err.message);
+          translations[index] = list[index]; // fallback to original text
+        })
+        .finally(() => {
+          active--;
+          finished++;
+          if (finished === list.length) {
+            console.log(`LingoFlow: DeepSeek batch complete, ${list.length} items done`);
+            try {
+              sendResponse({ success: true, translations });
+            } catch (e) {
+              console.error('LingoFlow: DeepSeek batch sendResponse error:', e);
+            }
+          } else {
+            setTimeout(runNext, 50); // Reduced delay between batches
+          }
+        });
+    }
+  }
+
+  runNext();
 }
 
 function translateBatchWithYoudaoLLM(texts, targetLang, sendResponse) {

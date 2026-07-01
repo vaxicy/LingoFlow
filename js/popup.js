@@ -333,6 +333,23 @@ const YOUDAO_LLM_MODELS = [
   { id: '0', group: '有道子曰', name: '子曰 Pro (14B)', descZh: '高质量 · 付费' }
 ];
 
+const DEEPSEEK_MODELS = [
+  { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', desc: '推荐 · 极速 · 便宜' },
+  { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro', desc: '高质量 · 思考模式' }
+];
+
+function populateDeepSeekModelSelect(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  select.textContent = '';
+  DEEPSEEK_MODELS.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.name + (m.desc ? '  ' + m.desc : '');
+    select.appendChild(opt);
+  });
+}
+
 function initSettingsPanel() {
   const controls = [
     'popup-translation-engine',
@@ -344,6 +361,8 @@ function initSettingsPanel() {
     'popup-youdao-app-key',
     'popup-youdao-app-secret',
     'popup-youdao-llm-model',
+    'popup-deepseek-key',
+    'popup-deepseek-model',
     'popup-translate-to',
     'popup-ui-language',
     'popup-selection-translation',
@@ -363,11 +382,13 @@ function initSettingsPanel() {
         const isMS = control.value === 'microsoft';
         const isGemini = control.value === 'gemini';
         const isYoudao = control.value === 'youdao' || control.value === 'youdaollm';
+        const isDeepSeek = control.value === 'deepseek';
         toggleApiKeyRow(isSF);
         toggleModelRow(isSF);
         toggleMicrosoftRow(isMS);
         toggleGeminiRows(isGemini);
         toggleYoudaoRows(isYoudao);
+        toggleDeepSeekRows(isDeepSeek);
         syncEngineSelect(control.value);
       }
       if (id === 'popup-ui-language' && typeof setLanguage === 'function') {
@@ -961,6 +982,13 @@ function toggleYoudaoRows(show) {
   if (modelRow) modelRow.hidden = !show;
 }
 
+function toggleDeepSeekRows(show) {
+  const keyRow = document.getElementById('popup-deepseek-key-row');
+  const modelRow = document.getElementById('popup-deepseek-model-row');
+  if (keyRow) keyRow.hidden = !show;
+  if (modelRow) modelRow.hidden = !show;
+}
+
 function applyPopupSettings(settings) {
   const translationEngine = document.getElementById('popup-translation-engine');
   const apiKeyInput = document.getElementById('popup-siliconflow-key');
@@ -982,11 +1010,13 @@ function applyPopupSettings(settings) {
     const isMS = translationEngine.value === 'microsoft';
     const isGemini = translationEngine.value === 'gemini';
     const isYoudao = translationEngine.value === 'youdao' || translationEngine.value === 'youdaollm';
+    const isDeepSeek = translationEngine.value === 'deepseek';
     toggleApiKeyRow(isSF);
     toggleModelRow(isSF);
     toggleMicrosoftRow(isMS);
     toggleGeminiRows(isGemini);
     toggleYoudaoRows(isYoudao);
+    toggleDeepSeekRows(isDeepSeek);
     syncEngineSelect(translationEngine.value);
   }
   if (apiKeyInput) apiKeyInput.value = settings.siliconflowApiKey || '';
@@ -1000,6 +1030,13 @@ function applyPopupSettings(settings) {
   if (geminiModelSelect) {
     geminiModelSelect.value = settings.geminiModel || 'gemini-3.1-flash-lite';
     if (!geminiModelSelect.value) geminiModelSelect.value = 'gemini-3.1-flash-lite';
+  }
+  const deepseekKeyInput = document.getElementById('popup-deepseek-key');
+  if (deepseekKeyInput) deepseekKeyInput.value = settings.deepseekApiKey || '';
+  const deepseekModelSelect = document.getElementById('popup-deepseek-model');
+  if (deepseekModelSelect) {
+    deepseekModelSelect.value = settings.deepseekModel || 'deepseek-v4-flash';
+    if (!deepseekModelSelect.value) deepseekModelSelect.value = 'deepseek-v4-flash';
   }
   const youdaoAppKeyInput = document.getElementById('popup-youdao-app-key');
   if (youdaoAppKeyInput) youdaoAppKeyInput.value = settings.youdaoAppKey || '';
@@ -1049,6 +1086,8 @@ function getPopupSettingsFromUI() {
     microsoftApiKey: document.getElementById('popup-microsoft-key')?.value || '',
     geminiApiKey: document.getElementById('popup-gemini-key')?.value || '',
     geminiModel: document.getElementById('popup-gemini-model')?.value || 'gemini-3.1-flash-lite',
+    deepseekApiKey: document.getElementById('popup-deepseek-key')?.value || '',
+    deepseekModel: document.getElementById('popup-deepseek-model')?.value || 'deepseek-v4-flash',
     youdaoAppKey: document.getElementById('popup-youdao-app-key')?.value || '',
     youdaoAppSecret: document.getElementById('popup-youdao-app-secret')?.value || '',
     youdaoLLMModel: document.getElementById('popup-youdao-llm-model')?.value || '3',

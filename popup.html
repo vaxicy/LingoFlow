@@ -195,6 +195,7 @@
             <option value="microsoft" data-i18n="engine_microsoft">Microsoft Translator</option>
             <option value="youdao" data-i18n="engine_youdao">有道翻译</option>
             <option value="youdaollm" data-i18n="engine_youdaollm">有道大模型</option>
+            <option value="deepseek" data-i18n="engine_deepseek">DeepSeek AI</option>
           </select>
           <div class="engine-select" id="engine-select">
             <button class="engine-select-trigger" id="engine-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
@@ -265,6 +266,15 @@
                 <span>
                   <strong>有道大模型</strong>
                   <small>AI 翻译</small>
+                </span>
+                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </button>
+              <button class="engine-select-option" type="button" role="option" data-engine-value="deepseek" aria-selected="false">
+                <span>
+                  <strong>DeepSeek AI</strong>
+                  <small>高质量 · 低价</small>
                 </span>
                 <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                   <path d="M20 6 9 17l-5-5"/>
@@ -358,6 +368,25 @@
           </div>
           <select class="panel-select" id="popup-gemini-model">
             <!-- Options populated by JS -->
+          </select>
+        </div>
+
+        <div class="settings-row settings-row-stack" id="popup-deepseek-key-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="deepseek_api_key_label">DeepSeek API Key</strong>
+            <span data-i18n="deepseek_api_key_desc">DeepSeek 平台 API 密钥</span>
+          </div>
+          <input type="password" class="panel-input" id="popup-deepseek-key" placeholder="sk-..." autocomplete="off">
+        </div>
+
+        <div class="settings-row settings-row-stack" id="popup-deepseek-model-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="deepseek_model_label">DeepSeek Model</strong>
+            <span data-i18n="deepseek_model_desc">选择用于翻译的 DeepSeek 模型</span>
+          </div>
+          <select class="panel-select" id="popup-deepseek-model">
+            <option value="deepseek-v4-flash">DeepSeek V4 Flash（推荐 · 极速 · 便宜）</option>
+            <option value="deepseek-v4-pro">DeepSeek V4 Pro（高质量 · 思考模式）</option>
           </select>
         </div>
 
