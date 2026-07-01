@@ -124,6 +124,19 @@ body {
   letter-spacing: 0;
 }
 
+.settings-section-title {
+  padding: 16px 12px 6px;
+  color: rgba(214, 217, 255, 0.58);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+body[data-theme="light"] .settings-section-title {
+  color: #5f6f8c;
+}
+
 .mode-row {
   display: flex;
   align-items: center;

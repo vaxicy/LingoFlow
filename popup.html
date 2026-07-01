@@ -295,6 +295,8 @@
           <input type="password" class="panel-input" id="popup-microsoft-key" placeholder="Azure Translator Key" autocomplete="off">
         </div>
 
+        <!-- Microsoft Region: hidden, default eastasia -->
+
         <div class="settings-row settings-row-stack" id="popup-gemini-key-row" hidden>
           <div class="settings-row-copy">
             <strong data-i18n="gemini_api_key_label">Gemini API Key</strong>
@@ -313,39 +315,7 @@
           </select>
         </div>
 
-        <!-- Microsoft Region: hidden, default eastasia -->
-
-        <div class="settings-row settings-row-inline">
-          <div class="settings-row-copy">
-            <strong data-i18n="translate_to">Translate to</strong>
-          </div>
-          <select class="panel-select" id="popup-translate-to">
-            <option value="zh" data-i18n="chinese">Chinese</option>
-            <option value="en" data-i18n="english">English</option>
-          </select>
-        </div>
-
-        <div class="settings-row settings-row-inline">
-          <div class="settings-row-copy">
-            <strong data-i18n="ui_language">UI Language</strong>
-            <span data-i18n="ui_language_desc">Language of the extension interface</span>
-          </div>
-          <select class="panel-select" id="popup-ui-language">
-            <option value="auto" data-i18n="follow_system">Follow System</option>
-            <option value="zh" data-i18n="chinese">Chinese</option>
-            <option value="en" data-i18n="english">English</option>
-          </select>
-        </div>
-
-        <div class="settings-row settings-row-inline">
-          <div class="settings-row-copy">
-            <strong data-i18n="theme">Theme</strong>
-          </div>
-          <div class="panel-segment" id="popup-theme">
-            <button class="panel-segment-btn active" type="button" data-popup-theme="light" data-i18n="light">Light</button>
-            <button class="panel-segment-btn" type="button" data-popup-theme="dark" data-i18n="dark">Dark</button>
-          </div>
-        </div>
+        <div class="settings-section-title" data-i18n="feature_settings">Features</div>
 
         <div class="settings-row settings-row-inline">
           <div class="settings-row-copy">
@@ -356,6 +326,16 @@
             <input type="checkbox" id="popup-selection-translation">
             <span></span>
           </label>
+        </div>
+
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
+            <strong data-i18n="translate_to">Translate to</strong>
+          </div>
+          <select class="panel-select" id="popup-translate-to">
+            <option value="zh" data-i18n="chinese">Chinese</option>
+            <option value="en" data-i18n="english">English</option>
+          </select>
         </div>
 
         <div class="settings-row settings-row-inline">
@@ -380,17 +360,6 @@
           </div>
         </div>
 
-        <div class="settings-row settings-row-inline">
-          <div class="settings-row-copy">
-            <strong data-i18n="auto_save_settings">Auto-save Settings</strong>
-            <span data-i18n="auto_save_settings_desc">Save changes immediately</span>
-          </div>
-          <label class="panel-switch">
-            <input type="checkbox" id="popup-auto-save-settings">
-            <span></span>
-          </label>
-        </div>
-
         <div class="settings-row settings-row-stack">
           <div class="settings-row-copy">
             <strong data-i18n="existing_bilingual_content">Existing bilingual content</strong>
@@ -402,28 +371,67 @@
           </select>
         </div>
 
-          <div class="settings-row settings-row-inline">
-            <div class="settings-row-copy">
-              <strong data-i18n="history_limit">History Limit</strong>
-              <span data-i18n="history_limit_desc">Maximum number of history records</span>
-            </div>
-            <select class="panel-select" id="popup-history-limit">
-              <option value="20">20</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
-          </div>
+        <div class="settings-section-title" data-i18n="ui_settings">Interface</div>
 
-          <div class="settings-row settings-row-inline">
-            <div class="settings-row-copy">
-              <strong data-i18n="save_history">Save History</strong>
-              <span data-i18n="save_history_desc">Record translation history</span>
-            </div>
-            <label class="panel-switch">
-              <input type="checkbox" id="popup-save-history">
-              <span></span>
-            </label>
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
+            <strong data-i18n="ui_language">UI Language</strong>
+            <span data-i18n="ui_language_desc">Language of the extension interface</span>
           </div>
+          <select class="panel-select" id="popup-ui-language">
+            <option value="auto" data-i18n="follow_system">Follow System</option>
+            <option value="zh" data-i18n="chinese">Chinese</option>
+            <option value="en" data-i18n="english">English</option>
+          </select>
+        </div>
+
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
+            <strong data-i18n="theme">Theme</strong>
+          </div>
+          <div class="panel-segment" id="popup-theme">
+            <button class="panel-segment-btn active" type="button" data-popup-theme="light" data-i18n="light">Light</button>
+            <button class="panel-segment-btn" type="button" data-popup-theme="dark" data-i18n="dark">Dark</button>
+          </div>
+        </div>
+
+        <div class="settings-section-title" data-i18n="data_settings">Data & History</div>
+
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
+            <strong data-i18n="save_history">Save History</strong>
+            <span data-i18n="save_history_desc">Record translation history</span>
+          </div>
+          <label class="panel-switch">
+            <input type="checkbox" id="popup-save-history">
+            <span></span>
+          </label>
+        </div>
+
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
+            <strong data-i18n="history_limit">History Limit</strong>
+            <span data-i18n="history_limit_desc">Maximum number of history records</span>
+          </div>
+          <select class="panel-select" id="popup-history-limit">
+            <option value="20">20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+
+        <div class="settings-section-title" data-i18n="advanced_settings">Advanced</div>
+
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
+            <strong data-i18n="auto_save_settings">Auto-save Settings</strong>
+            <span data-i18n="auto_save_settings_desc">Save changes immediately</span>
+          </div>
+          <label class="panel-switch">
+            <input type="checkbox" id="popup-auto-save-settings">
+            <span></span>
+          </label>
+        </div>
         </div>
       </div>
 

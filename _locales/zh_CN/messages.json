@@ -502,5 +502,21 @@
   "hover_paragraph_translation_desc": {
     "message": "鼠标悬停在段落上时自动显示双语翻译",
     "description": "设置开关描述"
+  },
+  "feature_settings": {
+    "message": "功能开关",
+    "description": "设置分组标题"
+  },
+  "ui_settings": {
+    "message": "界面设置",
+    "description": "设置分组标题"
+  },
+  "data_settings": {
+    "message": "数据与历史",
+    "description": "设置分组标题"
+  },
+  "advanced_settings": {
+    "message": "高级",
+    "description": "设置分组标题"
   }
 }

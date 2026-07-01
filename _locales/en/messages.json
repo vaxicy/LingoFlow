@@ -502,5 +502,21 @@
   "hover_paragraph_translation_desc": {
     "message": "Show bilingual translation when hovering over paragraphs",
     "description": "Settings toggle description"
+  },
+  "feature_settings": {
+    "message": "Features",
+    "description": "Settings section title"
+  },
+  "ui_settings": {
+    "message": "Interface",
+    "description": "Settings section title"
+  },
+  "data_settings": {
+    "message": "Data & History",
+    "description": "Settings section title"
+  },
+  "advanced_settings": {
+    "message": "Advanced",
+    "description": "Settings section title"
   }
 }
