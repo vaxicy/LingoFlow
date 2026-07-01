@@ -1392,6 +1392,8 @@
       return stats.cjkCount >= 2 && stats.cjkRatio >= 0.3;
     },
 
+    // 页面翻译过滤：固定只翻译英文→中文
+    // （"翻译为"设置仅影响划词翻译，不影响页面翻译）
     shouldTranslateText(text) {
       const normalized = this.normalizeText(text);
       if (normalized.length < 3) return false;
@@ -1400,18 +1402,9 @@
       if (!/[A-Za-z0-9]/.test(normalized.replace(/[^\p{L}\p{N}]/gu, ''))) return false;
       if (isAllCapsShortLabel(normalized)) return false;
 
-      const target = state.targetLanguage || 'zh';
-      const isTranslatingToChinese = target === 'zh' || target === 'zh-CN';
-
-      if (isTranslatingToChinese) {
-        // 英译中：跳过纯中文文本
-        if (isChineseText(normalized)) return false;
-        if (!/[A-Za-z]{2,}/.test(normalized)) return false;
-      } else {
-        // 中译英（或其他）：跳过纯英文文本
-        if (/^[A-Za-z0-9\s\p{P}\p{S}]+$/u.test(normalized) && !/[\u4e00-\u9fff\u3400-\u4dbf]/.test(normalized)) return false;
-      }
-
+      // 页面翻译固定英译中：只翻含英文的文本
+      if (isChineseText(normalized)) return false;
+      if (!/[A-Za-z]{2,}/.test(normalized)) return false;
       if (hasMixedLatinAndChinese(normalized)) return false;
       return true;
     },
@@ -2173,7 +2166,6 @@
         ' mat-', 'mdc-',
         // Common frameworks
         ' wp-', 'wp_', ' elementor-', ' elementor_',
-        ' shopify-', ' shopify_',
         ' ant-', ' mui-', ' chakra-', ' bootstrap-',
         // Generic UI widgets
         ' widget-', ' widget_', ' component-', ' component_',
@@ -2196,6 +2188,7 @@
           ' control-', ' control_', ' utility-', ' utility_',
           ' analytics-', ' analytics_', ' skillshop-', ' skillshop_',
           ' coursera-', ' coursera_',
+          ' shopify-', ' shopify_',
           ' btn-', ' btn_', ' button-', ' button_',
           ' tab-', ' tab_', ' tabs ',
           ' badge-', ' badge_', ' tag-', ' tag_',
@@ -2404,7 +2397,8 @@
       return Array.from(units.values())
         .map(unit => ({
           container: unit.container,
-          text: this.normalizeText(unit.textParts.join(' '))
+          text: this.normalizeText(unit.textParts.join(' ')),
+          targetLang: 'zh-CN'  // 页面翻译固定英译中
         }))
         .filter(unit => this.shouldTranslateText(unit.text));
     },
@@ -2581,7 +2575,14 @@
         // Google Skill Shop / Coursera / edX patterns
         '.q介ute-content', '.q介ute-body', '.course-body', '.course-main',
         '.learning-content', '.training-content', '.material-content',
-        '[class*="course"]', '[class*="lesson"]', '[class*="training"]'
+        '[class*="course"]', '[class*="lesson"]', '[class*="training"]',
+        // E-commerce / product page patterns
+        '.product-description', '#product-description',
+        '.product-details', '.product-info',
+        '.collection', '.products', '.product-grid',
+        '.shop-content', '.store-content',
+        '[class*="product"][class*="description"]',
+        '[class*="collection"]'
       ];
       for (const sel of semanticSelectors) {
         try {
@@ -3090,7 +3091,12 @@
 
           if (!activeChunk.length) continue;
 
-          const translations = await TranslationEngine.translateMany(activeChunk.map(unit => unit.text));
+          // 页面翻译固定英译中，所有 unit 的 targetLang 都是 'zh-CN'
+          const batchTargetLang = activeChunk[0]?.targetLang || 'zh-CN';
+          const translations = await TranslationEngine.translateMany(
+            activeChunk.map(unit => unit.text),
+            batchTargetLang
+          );
           activeChunk.forEach((unit, index) => {
             renderUnit(unit, translations[index]);
           });
@@ -3208,59 +3214,81 @@
     },
 
     async enableTranslationMode() {
-      if (state.isTranslating) {
-        UI.showNotification(statusText('translationInProgress'));
-        return;
-      }
-
-      // If page already has translation, restore first to avoid double-translating
-      if (state.isTranslated) {
-        this.restoreOriginal();
-      }
-
-      state.isTranslating = true;
-
-      // Smart: detect main content area, only translate inside it
-      const mainArea = this.findMainContentArea();
-      state.translationRoot = mainArea;
-      console.log('LingoFlow: Main content area =', mainArea && mainArea.tagName, mainArea && mainArea.className);
-
-      const units = await this.collectInitialTranslationUnits(mainArea);
-      console.log('LingoFlow: enableTranslationMode found ' + units.length + ' translation units');
-
-      if (units.length === 0) {
-        state.isTranslating = false;
-        if (!this.isTopFrame() || !this.hasEmbeddedFrames()) {
-          UI.showNotification(statusText('noText'));
+      try {
+        if (state.isTranslating) {
+          UI.showNotification(statusText('translationInProgress'));
+          return;
         }
-        return;
-      }
 
-      // Show persistent notification (won't auto-dismiss until result comes in)
-      UI.showNotification(statusText('found', units.length), true);
+        // If page already has translation, restore first to avoid double-translating
+        if (state.isTranslated) {
+          this.restoreOriginal();
+        }
 
-      const result = await this.translateAndRenderUnits(units, 'translation');
-      const { successCount, failCount, stoppedByInvalidContext } = result;
+        state.isTranslating = true;
 
-      if (stoppedByInvalidContext) {
-        UI.showNotification(statusText('reloaded'));
-      } else if (successCount === 0 && failCount === 0) {
-        UI.showNotification(statusText('noText'));
-      } else if (failCount > 0 && successCount === 0) {
+        // Smart: detect main content area, only translate inside it
+        const mainArea = this.findMainContentArea();
+        state.translationRoot = mainArea;
+        console.log('LingoFlow: Main content area =', mainArea && mainArea.tagName, mainArea && mainArea.className);
+
+        let units = await this.collectInitialTranslationUnits(mainArea);
+        console.log('LingoFlow: enableTranslationMode found ' + units.length + ' units in mainArea');
+
+        // Fallback: if mainArea yields no units, try document.body
+        if (units.length === 0 && mainArea !== document.body) {
+          console.log('LingoFlow: No units in mainArea, trying document.body');
+          state.translationRoot = document.body;
+          units = await this.collectInitialTranslationUnits(document.body);
+          console.log('LingoFlow: enableTranslationMode found ' + units.length + ' units in document.body');
+        }
+
+        // Extra diag: if still 0 units, log what's on the page
+        if (units.length === 0) {
+          const allText = document.body.innerText || '';
+          console.log('LingoFlow: Page text length =', allText.length,
+            'hasLatin =', /[A-Za-z]{2,}/.test(allText),
+            'hasChinese =', /[\u4e00-\u9fff]/.test(allText));
+        }
+
+        if (units.length === 0) {
+          state.isTranslating = false;
+          if (!this.isTopFrame() || !this.hasEmbeddedFrames()) {
+            UI.showNotification(statusText('noText'));
+          }
+          return;
+        }
+
+        // Show persistent notification (won't auto-dismiss until result comes in)
+        UI.showNotification(statusText('found', units.length), true);
+
+        const result = await this.translateAndRenderUnits(units, 'translation');
+        const { successCount, failCount, stoppedByInvalidContext } = result;
+
+        if (stoppedByInvalidContext) {
+          UI.showNotification(statusText('reloaded'));
+        } else if (successCount === 0 && failCount === 0) {
+          UI.showNotification(statusText('noText'));
+        } else if (failCount > 0 && successCount === 0) {
+          UI.showNotification(statusText('translationFailed'));
+        } else if (failCount > 0) {
+          UI.showNotification(statusText('partial', successCount, failCount));
+        } else {
+          UI.showNotification(statusText('translationOnlyDone', successCount));
+        }
+
+        if (successCount > 0) {
+          state.isTranslated = true;
+          this.scheduleSecondScan('translation');
+          this.startDynamicTranslationObserver('translation');
+        }
+        state.isBilingualMode = false;
+      } catch (err) {
+        console.error('LingoFlow: enableTranslationMode error:', err);
         UI.showNotification(statusText('translationFailed'));
-      } else if (failCount > 0) {
-        UI.showNotification(statusText('partial', successCount, failCount));
-      } else {
-        UI.showNotification(statusText('translationOnlyDone', successCount));
+      } finally {
+        state.isTranslating = false;
       }
-
-      if (successCount > 0) {
-        state.isTranslated = true;
-        this.scheduleSecondScan('translation');
-        this.startDynamicTranslationObserver('translation');
-      }
-      state.isBilingualMode = false;
-      state.isTranslating = false;
     },
 
     toggleBilingualMode() {
@@ -3275,59 +3303,80 @@
     },
 
     async enableBilingualMode() {
-      if (state.isTranslating) {
-        UI.showNotification(statusText('translationInProgress'));
-        return;
-      }
-
-      // If page already has translation, restore first
-      if (state.isTranslated) {
-        this.restoreOriginal();
-      }
-
-      state.isTranslating = true;
-
-      // Smart: detect main content area, only translate inside it
-      const mainArea = this.findMainContentArea();
-      state.translationRoot = mainArea;
-      console.log('LingoFlow: Main content area =', mainArea && mainArea.tagName, mainArea && mainArea.className);
-
-      const units = await this.collectInitialTranslationUnits(mainArea);
-      console.log('LingoFlow: enableBilingualMode found ' + units.length + ' translation units');
-
-      if (units.length === 0) {
-        state.isTranslating = false;
-        if (!this.isTopFrame() || !this.hasEmbeddedFrames()) {
-          UI.showNotification(statusText('noText'));
+      try {
+        if (state.isTranslating) {
+          UI.showNotification(statusText('translationInProgress'));
+          return;
         }
-        return;
-      }
 
-      // Show persistent notification (won't auto-dismiss until result comes in)
-      UI.showNotification(statusText('found', units.length), true);
+        // If page already has translation, restore first
+        if (state.isTranslated) {
+          this.restoreOriginal();
+        }
 
-      const result = await this.translateAndRenderUnits(units, 'bilingual');
-      const { successCount, failCount, stoppedByInvalidContext } = result;
+        state.isTranslating = true;
 
-      if (stoppedByInvalidContext) {
-        UI.showNotification(statusText('reloaded'));
-      } else if (successCount === 0 && failCount === 0) {
-        UI.showNotification(statusText('noText'));
-      } else if (failCount > 0 && successCount === 0) {
+        // Smart: detect main content area, only translate inside it
+        const mainArea = this.findMainContentArea();
+        state.translationRoot = mainArea;
+        console.log('LingoFlow: Main content area =', mainArea && mainArea.tagName, mainArea && mainArea.className);
+
+        let units = await this.collectInitialTranslationUnits(mainArea);
+        console.log('LingoFlow: enableBilingualMode found ' + units.length + ' translation units in mainArea');
+
+        // Fallback: if mainArea yields no units, try document.body
+        if (units.length === 0 && mainArea !== document.body) {
+          console.log('LingoFlow: No units in mainArea, trying document.body');
+          state.translationRoot = document.body;
+          units = await this.collectInitialTranslationUnits(document.body);
+          console.log('LingoFlow: enableBilingualMode found ' + units.length + ' units in document.body');
+        }
+
+        // Extra diag: if still 0 units, log what's on the page
+        if (units.length === 0) {
+          const allText = document.body.innerText || '';
+          console.log('LingoFlow: Page text length =', allText.length,
+            'hasLatin =', /[A-Za-z]{2,}/.test(allText),
+            'hasChinese =', /[\u4e00-\u9fff]/.test(allText));
+        }
+
+        if (units.length === 0) {
+          if (!this.isTopFrame() || !this.hasEmbeddedFrames()) {
+            UI.showNotification(statusText('noText'));
+          }
+          return;
+        }
+
+        // Show persistent notification (won't auto-dismiss until result comes in)
+        UI.showNotification(statusText('found', units.length), true);
+
+        const result = await this.translateAndRenderUnits(units, 'bilingual');
+        const { successCount, failCount, stoppedByInvalidContext } = result;
+
+        if (stoppedByInvalidContext) {
+          UI.showNotification(statusText('reloaded'));
+        } else if (successCount === 0 && failCount === 0) {
+          UI.showNotification(statusText('noText'));
+        } else if (failCount > 0 && successCount === 0) {
+          UI.showNotification(statusText('translationFailed'));
+        } else if (failCount > 0) {
+          UI.showNotification(statusText('partial', successCount, failCount));
+        } else {
+          UI.showNotification(statusText('done', successCount));
+        }
+
+        if (successCount > 0) {
+          state.isTranslated = true;
+          this.scheduleSecondScan('bilingual');
+          this.startDynamicTranslationObserver('bilingual');
+        }
+        state.isBilingualMode = successCount > 0;
+      } catch (err) {
+        console.error('LingoFlow: enableBilingualMode error:', err);
         UI.showNotification(statusText('translationFailed'));
-      } else if (failCount > 0) {
-        UI.showNotification(statusText('partial', successCount, failCount));
-      } else {
-        UI.showNotification(statusText('done', successCount));
+      } finally {
+        state.isTranslating = false;
       }
-
-      if (successCount > 0) {
-        state.isTranslated = true;
-        this.scheduleSecondScan('bilingual');
-        this.startDynamicTranslationObserver('bilingual');
-      }
-      state.isBilingualMode = successCount > 0;
-      state.isTranslating = false;
     },
 
     restoreOriginal() {

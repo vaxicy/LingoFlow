@@ -352,8 +352,8 @@
     "description": "Unsaved changes confirmation"
   },
   "translate_to": {
-    "message": "Translate to",
-    "description": "Target language setting label"
+    "message": "Selection translation to",
+    "description": "Selection translation target language setting label"
   },
   "ui_language": {
     "message": "UI Language",

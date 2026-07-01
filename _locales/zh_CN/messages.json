@@ -352,8 +352,8 @@
     "description": "未保存更改确认"
   },
   "translate_to": {
-    "message": "翻译为",
-    "description": "目标语言设置标签"
+    "message": "划词翻译为",
+    "description": "划词翻译目标语言设置标签"
   },
   "ui_language": {
     "message": "界面语言",
