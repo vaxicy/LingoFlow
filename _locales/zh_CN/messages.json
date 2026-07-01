@@ -395,6 +395,30 @@
     "message": "Microsoft Translator",
     "description": "Microsoft Translator 翻译引擎选项"
   },
+  "engine_youdao": {
+    "message": "有道翻译",
+    "description": "有道翻译引擎选项"
+  },
+  "engine_youdaollm": {
+    "message": "有道大模型",
+    "description": "有道大模型翻译引擎选项"
+  },
+  "youdao_app_key_label": {
+    "message": "有道 App Key",
+    "description": "有道翻译 App Key 标签"
+  },
+  "youdao_app_key_desc": {
+    "message": "有道智云应用 ID",
+    "description": "有道 App Key 描述"
+  },
+  "youdao_app_secret_label": {
+    "message": "有道 App Secret",
+    "description": "有道翻译 App Secret 标签"
+  },
+  "youdao_app_secret_desc": {
+    "message": "有道智云应用密钥",
+    "description": "有道 App Secret 描述"
+  },
   "microsoft_api_key_label": {
     "message": "Microsoft API Key",
     "description": "Microsoft API Key 标签"

@@ -273,10 +273,72 @@
       }
     },
 
-    // Translate text
+    // Generic translator that sends requests to background.js for any engine.
+    // Background.js reads translationEngine from settings and dispatches to the correct API.
+    backgroundTranslator: {
+      translate: async (text, targetLang) => {
+        const tl = targetLang === 'zh' ? 'zh-CN' :
+                   targetLang === 'en' ? 'en' : 'zh-CN';
+        const maxLen = 5000;
+        const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
+
+        return new Promise((resolve) => {
+          const timeoutId = setTimeout(() => {
+            console.warn('LingoFlow: Background translator timed out');
+            resolve(`[LingoFlow translation timeout] ${text}`);
+          }, 50000);
+
+          try {
+            if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.sendMessage) {
+              clearTimeout(timeoutId);
+              resolve(`[LingoFlow context invalidated] ${text}`);
+              return;
+            }
+            chrome.runtime.sendMessage(
+              { action: 'translate', text: truncated, targetLang: tl },
+              (response) => {
+                clearTimeout(timeoutId);
+                if (chrome.runtime.lastError) {
+                  console.warn('LingoFlow: Background translate error:', getErrorMessage(chrome.runtime.lastError));
+                  resolve(`[LingoFlow translation failed] ${text}`);
+                  return;
+                }
+                if (response && response.success && response.translation) {
+                  resolve(response.translation);
+                } else {
+                  console.warn('LingoFlow: Translation failed:', getErrorMessage(response && response.error));
+                  resolve(`[LingoFlow translation failed] ${text}`);
+                }
+              }
+            );
+          } catch (err) {
+            clearTimeout(timeoutId);
+            console.warn('LingoFlow: sendMessage error:', getErrorMessage(err));
+            if (isContextInvalidatedError(err)) {
+              resolve(`[LingoFlow context invalidated] ${text}`);
+              return;
+            }
+            resolve(`[LingoFlow translation failed] ${text}`);
+          }
+        });
+      }
+    },
+
+    // Translate text — all engines route through background script (which has full engine dispatch)
     async translate(text, targetLang = 'zh') {
       switch (this.activeEngine) {
         case 'google':
+          return await this.googleTranslator.translate(text, targetLang);
+
+        case 'siliconflow':
+        case 'microsoft':
+        case 'gemini':
+        case 'mymemory':
+        case 'youdao':
+        case 'youdaollm':
+          // All non-Google engines delegate to background.js which has the real API logic
+          return await this.backgroundTranslator.translate(text, targetLang);
+
         default:
           return await this.googleTranslator.translate(text, targetLang);
       }

@@ -325,6 +325,14 @@ const GEMINI_MODELS = [
   { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash（质量备用）' }
 ];
 
+const YOUDAO_LLM_MODELS = [
+  // 有道大模型翻译 API (llm-trans) 仅支持以下 handleOption 值：
+  // '0' = 子曰 Pro (14B) — 高质量，需付费
+  // '3' = 子曰 Lite (1.5B) — 免费轻量，推荐
+  { id: '3', group: '有道子曰', name: '子曰 Lite (1.5B)', descZh: '免费 · 推荐' },
+  { id: '0', group: '有道子曰', name: '子曰 Pro (14B)', descZh: '高质量 · 付费' }
+];
+
 function initSettingsPanel() {
   const controls = [
     'popup-translation-engine',
@@ -333,6 +341,9 @@ function initSettingsPanel() {
     'popup-microsoft-key',
     'popup-gemini-key',
     'popup-gemini-model',
+    'popup-youdao-app-key',
+    'popup-youdao-app-secret',
+    'popup-youdao-llm-model',
     'popup-translate-to',
     'popup-ui-language',
     'popup-selection-translation',
@@ -351,10 +362,12 @@ function initSettingsPanel() {
         const isSF = control.value === 'siliconflow';
         const isMS = control.value === 'microsoft';
         const isGemini = control.value === 'gemini';
+        const isYoudao = control.value === 'youdao' || control.value === 'youdaollm';
         toggleApiKeyRow(isSF);
         toggleModelRow(isSF);
         toggleMicrosoftRow(isMS);
         toggleGeminiRows(isGemini);
+        toggleYoudaoRows(isYoudao);
         syncEngineSelect(control.value);
       }
       if (id === 'popup-ui-language' && typeof setLanguage === 'function') {
@@ -390,10 +403,23 @@ function initSettingsPanel() {
       markSettingsChanged();
     });
   }
+  const youdaoAppKeyInput = document.getElementById('popup-youdao-app-key');
+  if (youdaoAppKeyInput) {
+    youdaoAppKeyInput.addEventListener('input', () => {
+      markSettingsChanged();
+    });
+  }
+  const youdaoAppSecretInput = document.getElementById('popup-youdao-app-secret');
+  if (youdaoAppSecretInput) {
+    youdaoAppSecretInput.addEventListener('input', () => {
+      markSettingsChanged();
+    });
+  }
 
   // Populate model selector options
   populateModelSelect('popup-siliconflow-model');
   populateGeminiModelSelect('popup-gemini-model');
+  populateYoudaoLLMModelSelect('popup-youdao-llm-model');
   initSiliconFlowModelSelect();
   initPanelCustomSelects();
 
@@ -495,7 +521,9 @@ const ENGINE_SELECT_META = {
   microsoft: { label: 'Microsoft Translator', description: '稳定专业' },
   siliconflow: { label: '硅基流动 AI', description: 'AI 翻译' },
   gemini: { label: 'Gemini AI', description: '便宜快速' },
-  mymemory: { label: 'MyMemory（免费）', description: '免费备用' }
+  mymemory: { label: 'MyMemory（免费）', description: '免费备用' },
+  youdao: { label: '有道翻译', description: '国内快速' },
+  youdaollm: { label: '有道大模型', description: 'AI 翻译' }
 };
 
 function initEngineSelect() {
@@ -877,6 +905,31 @@ function populateGeminiModelSelect(selectId) {
   });
 }
 
+function populateYoudaoLLMModelSelect(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  select.textContent = '';
+
+  let currentGroup = null;
+  YOUDAO_LLM_MODELS.forEach((m, i) => {
+    // Insert group separator <optgroup>
+    if (m.group !== currentGroup) {
+      currentGroup = m.group;
+      const og = document.createElement('optgroup');
+      og.label = currentGroup;
+      // Append remaining models of this group as options
+      for (let j = i; j < YOUDAO_LLM_MODELS.length && YOUDAO_LLM_MODELS[j].group === currentGroup; j++) {
+        const mm = YOUDAO_LLM_MODELS[j];
+        const opt = document.createElement('option');
+        opt.value = mm.id;
+        opt.textContent = mm.name + (mm.descZh ? '  ' + mm.descZh : '');
+        og.appendChild(opt);
+      }
+      select.appendChild(og);
+    }
+  });
+}
+
 function toggleApiKeyRow(show) {
   const row = document.getElementById('popup-api-key-row');
   if (row) row.hidden = !show;
@@ -896,6 +949,15 @@ function toggleGeminiRows(show) {
   const keyRow = document.getElementById('popup-gemini-key-row');
   const modelRow = document.getElementById('popup-gemini-model-row');
   if (keyRow) keyRow.hidden = !show;
+  if (modelRow) modelRow.hidden = !show;
+}
+
+function toggleYoudaoRows(show) {
+  const keyRow = document.getElementById('popup-youdao-key-row');
+  const secretRow = document.getElementById('popup-youdao-secret-row');
+  const modelRow = document.getElementById('popup-youdao-llm-model-row');
+  if (keyRow) keyRow.hidden = !show;
+  if (secretRow) secretRow.hidden = !show;
   if (modelRow) modelRow.hidden = !show;
 }
 
@@ -919,10 +981,12 @@ function applyPopupSettings(settings) {
     const isSF = translationEngine.value === 'siliconflow';
     const isMS = translationEngine.value === 'microsoft';
     const isGemini = translationEngine.value === 'gemini';
+    const isYoudao = translationEngine.value === 'youdao' || translationEngine.value === 'youdaollm';
     toggleApiKeyRow(isSF);
     toggleModelRow(isSF);
     toggleMicrosoftRow(isMS);
     toggleGeminiRows(isGemini);
+    toggleYoudaoRows(isYoudao);
     syncEngineSelect(translationEngine.value);
   }
   if (apiKeyInput) apiKeyInput.value = settings.siliconflowApiKey || '';
@@ -936,6 +1000,15 @@ function applyPopupSettings(settings) {
   if (geminiModelSelect) {
     geminiModelSelect.value = settings.geminiModel || 'gemini-3.1-flash-lite';
     if (!geminiModelSelect.value) geminiModelSelect.value = 'gemini-3.1-flash-lite';
+  }
+  const youdaoAppKeyInput = document.getElementById('popup-youdao-app-key');
+  if (youdaoAppKeyInput) youdaoAppKeyInput.value = settings.youdaoAppKey || '';
+  const youdaoAppSecretInput = document.getElementById('popup-youdao-app-secret');
+  if (youdaoAppSecretInput) youdaoAppSecretInput.value = settings.youdaoAppSecret || '';
+  const youdaoLLMModelSelect = document.getElementById('popup-youdao-llm-model');
+  if (youdaoLLMModelSelect) {
+    youdaoLLMModelSelect.value = settings.youdaoLLMModel || '3';
+    if (!youdaoLLMModelSelect.value) youdaoLLMModelSelect.value = '3';
   }
   if (translateTo) translateTo.value = settings.targetLanguage || 'zh';
   if (uiLanguage) uiLanguage.value = settings.uiLanguage || 'auto';
@@ -976,6 +1049,9 @@ function getPopupSettingsFromUI() {
     microsoftApiKey: document.getElementById('popup-microsoft-key')?.value || '',
     geminiApiKey: document.getElementById('popup-gemini-key')?.value || '',
     geminiModel: document.getElementById('popup-gemini-model')?.value || 'gemini-3.1-flash-lite',
+    youdaoAppKey: document.getElementById('popup-youdao-app-key')?.value || '',
+    youdaoAppSecret: document.getElementById('popup-youdao-app-secret')?.value || '',
+    youdaoLLMModel: document.getElementById('popup-youdao-llm-model')?.value || '3',
     targetLanguage: document.getElementById('popup-translate-to')?.value || 'zh',
     uiLanguage: document.getElementById('popup-ui-language')?.value || 'auto',
     theme: document.querySelector('[data-popup-theme].active')?.getAttribute('data-popup-theme') || 'light',
@@ -1077,6 +1153,9 @@ function getDefaultSettings() {
     microsoftApiKey: '',
     geminiApiKey: '',
     geminiModel: 'gemini-3.1-flash-lite',
+    youdaoAppKey: '',
+    youdaoAppSecret: '',
+    youdaoLLMModel: '3',
     targetLanguage: 'zh',
     uiLanguage: 'auto',
     theme: 'light',

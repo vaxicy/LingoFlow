@@ -395,6 +395,30 @@
     "message": "Microsoft Translator",
     "description": "Microsoft Translator engine option"
   },
+  "engine_youdao": {
+    "message": "Youdao Translate",
+    "description": "Youdao Translate engine option"
+  },
+  "engine_youdaollm": {
+    "message": "Youdao LLM",
+    "description": "Youdao Large Model translation engine option"
+  },
+  "youdao_app_key_label": {
+    "message": "Youdao App Key",
+    "description": "Youdao App Key label"
+  },
+  "youdao_app_key_desc": {
+    "message": "Youdao Zhiyun application ID (AppKey)",
+    "description": "Youdao App Key description"
+  },
+  "youdao_app_secret_label": {
+    "message": "Youdao App Secret",
+    "description": "Youdao App Secret label"
+  },
+  "youdao_app_secret_desc": {
+    "message": "Youdao Zhiyun application secret",
+    "description": "Youdao App Secret description"
+  },
   "microsoft_api_key_label": {
     "message": "Microsoft API Key",
     "description": "Microsoft API Key label"

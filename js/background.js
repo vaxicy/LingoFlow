@@ -44,24 +44,27 @@ chrome.runtime.onInstalled.addListener(() => {
   // Initialize default settings
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     if (!result.lingoflow_settings) {
-      chrome.storage.local.set({
-        lingoflow_settings: {
-          translationEngine: 'google',
-          siliconflowApiKey: '',
-          siliconflowModel: 'tencent/Hunyuan-MT-7B',
-          microsoftApiKey: '',
-          geminiApiKey: '',
-          geminiModel: 'gemini-3.1-flash-lite',
-          targetLanguage: 'zh',
-          uiLanguage: 'auto',
-          theme: 'light',
-          autoSaveSettings: true,
-          hoverParagraphTranslation: false,
-          existingBilingualStrategy: 'skip',
-          saveHistory: true,
-          historyLimit: 50,
-          activeMode: null
-        }
+        chrome.storage.local.set({
+          lingoflow_settings: {
+            translationEngine: 'google',
+            siliconflowApiKey: '',
+            siliconflowModel: 'tencent/Hunyuan-MT-7B',
+            microsoftApiKey: '',
+            geminiApiKey: '',
+            geminiModel: 'gemini-3.1-flash-lite',
+            youdaoAppKey: '',
+            youdaoAppSecret: '',
+            youdaoLLMModel: '3',
+            targetLanguage: 'zh',
+            uiLanguage: 'auto',
+            theme: 'light',
+            autoSaveSettings: true,
+            hoverParagraphTranslation: false,
+            existingBilingualStrategy: 'skip',
+            saveHistory: true,
+            historyLimit: 50,
+            activeMode: null
+          }
       });
     }
   });
@@ -320,6 +323,8 @@ function getDefaultSettings(overrides = {}) {
     translationEngine: 'google',
     geminiApiKey: '',
     geminiModel: 'gemini-3.1-flash-lite',
+    youdaoAppKey: '',
+    youdaoAppSecret: '',
     targetLanguage: 'zh',
     uiLanguage: 'auto',
     theme: 'light',
@@ -509,7 +514,7 @@ function translateText(text, targetLang, sendResponse) {
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
     console.log('LingoFlow: Selected translation engine:', engine);
-    if (engine === 'siliconflow') {
+        if (engine === 'siliconflow') {
       translateWithSiliconFlow(text, targetLang, sendResponse);
     } else if (engine === 'microsoft') {
       translateWithMicrosoft(text, targetLang, sendResponse);
@@ -517,6 +522,10 @@ function translateText(text, targetLang, sendResponse) {
       translateWithGemini(text, targetLang, sendResponse);
     } else if (engine === 'mymemory') {
       translateWithMyMemory(text, targetLang, sendResponse);
+    } else if (engine === 'youdao') {
+      translateWithYoudao(text, targetLang, sendResponse);
+    } else if (engine === 'youdaollm') {
+      translateWithYoudaoLLM(text, targetLang, sendResponse);
     } else {
       translateWithGoogle(text, targetLang, sendResponse);
     }
@@ -541,6 +550,16 @@ function translateBatch(texts, targetLang, sendResponse) {
 
     if (engine === 'siliconflow') {
       translateBatchWithSiliconFlow(list, targetLang, sendResponse);
+      return;
+    }
+
+    if (engine === 'youdao') {
+      translateBatchWithYoudao(list, targetLang, sendResponse);
+      return;
+    }
+
+    if (engine === 'youdaollm') {
+      translateBatchWithYoudaoLLM(list, targetLang, sendResponse);
       return;
     }
 
@@ -1586,6 +1605,311 @@ function translateWithMyMemory(text, targetLang, sendResponse) {
   }
 
   tryWithFallback(0);
+}
+
+// Youdao Translate (Youdao Zhiyun NMT API v3)
+// Docs: https://ai.youdao.com/DOCSIRMA/html/trans/api/wbfy/
+function translateWithYoudao(text, targetLang, sendResponse) {
+  const youdaoTarget = targetLang === 'zh' ? 'zh-CHS' :
+                       targetLang === 'en' ? 'en' : 'zh-CHS';
+
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const settings = result.lingoflow_settings || {};
+    const appKey = (settings.youdaoAppKey || '').trim();
+    const appSecret = (settings.youdaoAppSecret || '').trim();
+
+    if (!appKey || !appSecret) {
+      console.warn('LingoFlow: Youdao appKey or appSecret not set, falling back to Google');
+      translateWithGoogle(text, targetLang, sendResponse);
+      return;
+    }
+
+    const maxLen = 5000;
+    const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
+    const salt = generateYoudaoSalt();
+    const curtime = Math.floor(Date.now() / 1000).toString();
+    const input = getYoudaoInput(truncated);
+    const signSrc = appKey + input + salt + curtime + appSecret;
+
+    // Compute SHA256 sign, then send request
+    sha256Youdao(signSrc).then(sign => {
+      const params = new URLSearchParams();
+      params.append('q', truncated);
+      params.append('from', 'auto');
+      params.append('to', youdaoTarget);
+      params.append('appKey', appKey);
+      params.append('salt', salt);
+      params.append('sign', sign);
+      params.append('signType', 'v3');
+      params.append('curtime', curtime);
+
+      const url = 'https://openapi.youdao.com/api';
+      console.log('LingoFlow: Youdao translating', truncated.length, 'chars to', youdaoTarget);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => { controller.abort(); }, 10000);
+
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+        signal: controller.signal
+      })
+        .then(response => {
+          clearTimeout(timeoutId);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
+        })
+        .then(data => {
+          if (data && String(data.errorCode) === '0' && data.translation && data.translation[0]) {
+            const translatedText = data.translation[0];
+            console.log('LingoFlow: Youdao succeeded, result length:', translatedText.length);
+            sendResponse({ success: true, translation: translatedText });
+          } else {
+            const errMsg = (data && data.errorCode) ? `Youdao error ${data.errorCode}` : 'Invalid response';
+            console.warn('LingoFlow: Youdao failed:', errMsg, '- falling back to Google');
+            translateWithGoogle(text, targetLang, sendResponse);
+          }
+        })
+        .catch(error => {
+          clearTimeout(timeoutId);
+          const message = error && error.message ? error.message : String(error);
+          console.warn('LingoFlow: Youdao error:', message, '- falling back to Google');
+          translateWithGoogle(text, targetLang, sendResponse);
+        });
+    }).catch(() => {
+      console.warn('LingoFlow: Youdao sign computation failed, falling back to Google');
+      translateWithGoogle(text, targetLang, sendResponse);
+    });
+  });
+}
+
+function translateBatchWithYoudao(texts, targetLang, sendResponse) {
+  // Translate each item individually via the proven single-text endpoint,
+  // with concurrency control — avoids multi-q signing issues (error 202).
+  const list = Array.isArray(texts) ? texts.filter(t => typeof t === 'string' && t.trim()) : [];
+  if (!list.length) {
+    sendResponse({ success: true, translations: [] });
+    return;
+  }
+
+  const translations = new Array(list.length);
+  let cursor = 0, active = 0, finished = 0;
+  const concurrency = 1; // Youdao free tier has strict rate limits
+
+  function runNext() {
+    while (active < concurrency && cursor < list.length) {
+      const index = cursor++;
+      active++;
+
+      translateOneYoudao(list[index], targetLang)
+        .then(result => { translations[index] = result; })
+        .catch(() => { translations[index] = `[LingoFlow]`; })
+        .finally(() => {
+          active--;
+          finished++;
+          if (finished === list.length) {
+            sendResponse({ success: true, translations });
+          } else {
+            // Small delay between requests to avoid Youdao rate limiting (411)
+            setTimeout(runNext, 300);
+          }
+        });
+    }
+  }
+
+  runNext();
+}
+
+function translateOneYoudao(text, targetLang) {
+  return new Promise((resolve, reject) => {
+    translateWithYoudao(text, targetLang, (resp) => {
+      if (resp && resp.success) {
+        resolve(resp.translation);
+      } else {
+        reject(new Error('youdao_single_failed'));
+      }
+    });
+  });
+}
+
+function generateYoudaoSalt() {
+  return 'salt_' + Date.now().toString(36) + Math.random().toString(36).substring(2);
+}
+
+function getYoudaoInput(text) {
+  if (text.length <= 20) return text;
+  return text.substring(0, 10) + text.length + text.substring(text.length - 10);
+}
+
+function sha256Youdao(message) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(message);
+  return crypto.subtle.digest('SHA-256', data).then(hash => {
+    return Array.from(new Uint8Array(hash))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+  });
+}
+
+// Youdao LLM Translate (Youdao Zhiyun Large Model Translation API)
+// Docs: https://ai.youdao.com/DOCSIRMA/html/trans/api/dmxfy/
+function translateWithYoudaoLLM(text, targetLang, sendResponse) {
+  const youdaoTarget = targetLang === 'zh' ? 'zh-CHS' :
+                       targetLang === 'en' ? 'en' : 'zh-CHS';
+
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const settings = result.lingoflow_settings || {};
+    const appKey = (settings.youdaoAppKey || '').trim();
+    const appSecret = (settings.youdaoAppSecret || '').trim();
+
+    if (!appKey || !appSecret) {
+      console.warn('LingoFlow: Youdao LLM appKey or appSecret not set, falling back to Google');
+      translateWithGoogle(text, targetLang, sendResponse);
+      return;
+    }
+
+    const maxLen = 5000;
+    const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
+    const salt = generateYoudaoSalt();
+    const curtime = Math.floor(Date.now() / 1000).toString();
+    const input = getYoudaoInput(truncated);
+    const signSrc = appKey + input + salt + curtime + appSecret;
+
+    sha256Youdao(signSrc).then(sign => {
+      const params = new URLSearchParams();
+      params.append('appKey', appKey);
+      params.append('salt', salt);
+      params.append('curtime', curtime);
+      params.append('sign', sign);
+      params.append('signType', 'v3');
+      params.append('i', truncated);
+      params.append('from', 'auto');
+      params.append('to', youdaoTarget);
+      // handleOption: '0' = Youdao Ziyue Pro (14B), '3' = Youdao Ziyue Lite (1.5B, free)
+      // Only these two values are accepted by the llm-trans API. External models like deepseek-v4-flash
+      // are NOT supported as handleOption values for this endpoint.
+      const validOptions = { '0': '0', '3': '3', 'pro': '0', 'lite': '3' };
+      const handleOpt = (settings.youdaoLLMModel || '3').trim().toLowerCase();
+      const actualHandleOption = validOptions[handleOpt] || '3';
+      params.append('handleOption', actualHandleOption);
+      params.append('streamType', 'full');
+
+      const url = 'https://openapi.youdao.com/proxy/http/llm-trans';
+      console.log(`LingoFlow: Youdao LLM → handleOption=${actualHandleOption} (${actualHandleOption === '0' ? 'Pro(14B)' : 'Lite(1.5B)'}), target=${youdaoTarget}, chars=${truncated.length}`);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => { controller.abort(); }, 15000);
+
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: params.toString(),
+        signal: controller.signal
+      })
+        .then(response => {
+          clearTimeout(timeoutId);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return parseYoudaoLLMSSE(response);
+        })
+        .then(translatedText => {
+          console.log('LingoFlow: Youdao LLM succeeded, result length:', translatedText.length);
+          sendResponse({ success: true, translation: translatedText });
+        })
+        .catch(error => {
+          clearTimeout(timeoutId);
+          const message = error && error.message ? error.message : String(error);
+          console.warn('LingoFlow: Youdao LLM error:', message, '- falling back to Google');
+          translateWithGoogle(text, targetLang, sendResponse);
+        });
+    }).catch(() => {
+      console.warn('LingoFlow: Youdao LLM sign computation failed, falling back to Google');
+      translateWithGoogle(text, targetLang, sendResponse);
+    });
+  });
+}
+
+
+
+// Parse Youdao LLM SSE response:
+// Format: {"code":"0","message":"success","data":{"transFull":"...","langType":"..."},"requestId":"...","successful":true}
+// With streamType=full, each event's data.transFull contains the full translation so far (monotonically growing).
+// We take the last non-empty transFull as the final result.
+function parseYoudaoLLMSSE(response) {
+  return response.text().then(raw => {
+    console.log('LingoFlow: Youdao LLM raw SSE response (first 800 chars):', raw.substring(0, 800));
+    let lastTranslation = '';
+    let eventCount = 0;
+    const lines = raw.split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed === 'data:' || trimmed === 'data: [DONE]') continue;
+      let jsonStr = trimmed;
+      if (trimmed.startsWith('data:')) {
+        jsonStr = trimmed.substring(5).trim();
+      }
+      try {
+        const obj = JSON.parse(jsonStr);
+        eventCount++;
+        // Per official docs: translation is in data.transFull (streamType=full) or data.transIncre
+        const d = typeof obj.data === 'object' && obj.data !== null ? obj.data : {};
+        const trans = d.transFull || d.transIncre || d.translation || d.result || d.text || '';
+        if (typeof trans === 'string' && trans.length > 0) {
+          lastTranslation = trans; // keep latest (longest in full mode)
+        }
+      } catch (_) {
+        // ignore parse errors for individual SSE lines
+      }
+    }
+    console.log('LingoFlow: Youdao LLM parsed', eventCount, 'SDE events, result length:', lastTranslation.length);
+    return lastTranslation || '';
+  });
+}
+
+function translateBatchWithYoudaoLLM(texts, targetLang, sendResponse) {
+  const list = Array.isArray(texts) ? texts.filter(t => typeof t === 'string' && t.trim()) : [];
+  if (!list.length) {
+    sendResponse({ success: true, translations: [] });
+    return;
+  }
+
+  const translations = new Array(list.length);
+  let cursor = 0, active = 0, finished = 0;
+  const concurrency = 1;
+
+  function runNext() {
+    while (active < concurrency && cursor < list.length) {
+      const index = cursor++;
+      active++;
+
+      translateOneYoudaoLLM(list[index], targetLang)
+        .then(result => { translations[index] = result; })
+        .catch(() => { translations[index] = `[LingoFlow]`; })
+        .finally(() => {
+          active--;
+          finished++;
+          if (finished === list.length) {
+            sendResponse({ success: true, translations });
+          } else {
+            setTimeout(runNext, 300);
+          }
+        });
+    }
+  }
+
+  runNext();
+}
+
+function translateOneYoudaoLLM(text, targetLang) {
+  return new Promise((resolve, reject) => {
+    translateWithYoudaoLLM(text, targetLang, (resp) => {
+      if (resp && resp.success) {
+        resolve(resp.translation);
+      } else {
+        reject(new Error('youdao_llm_failed'));
+      }
+    });
+  });
 }
 
 // Microsoft Translator (Azure AI Translator - free tier: 2M chars/month)

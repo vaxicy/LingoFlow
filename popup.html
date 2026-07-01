@@ -193,6 +193,8 @@
             <option value="siliconflow" data-i18n="engine_siliconflow">硅基流动 AI</option>
             <option value="gemini" data-i18n="engine_gemini">Gemini AI</option>
             <option value="microsoft" data-i18n="engine_microsoft">Microsoft Translator</option>
+            <option value="youdao" data-i18n="engine_youdao">有道翻译</option>
+            <option value="youdaollm" data-i18n="engine_youdaollm">有道大模型</option>
           </select>
           <div class="engine-select" id="engine-select">
             <button class="engine-select-trigger" id="engine-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
@@ -250,6 +252,24 @@
                   <path d="M20 6 9 17l-5-5"/>
                 </svg>
               </button>
+              <button class="engine-select-option" type="button" role="option" data-engine-value="youdao" aria-selected="false">
+                <span>
+                  <strong>有道翻译</strong>
+                  <small>国内快速</small>
+                </span>
+                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </button>
+              <button class="engine-select-option" type="button" role="option" data-engine-value="youdaollm" aria-selected="false">
+                <span>
+                  <strong>有道大模型</strong>
+                  <small>AI 翻译</small>
+                </span>
+                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </button>
             </div>
           </div>
         </div>
@@ -296,6 +316,32 @@
         </div>
 
         <!-- Microsoft Region: hidden, default eastasia -->
+
+        <div class="settings-row settings-row-stack" id="popup-youdao-key-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="youdao_app_key_label">有道 App Key</strong>
+            <span data-i18n="youdao_app_key_desc">有道智云应用 ID</span>
+          </div>
+          <input type="text" class="panel-input" id="popup-youdao-app-key" placeholder="appKey" autocomplete="off">
+        </div>
+
+        <div class="settings-row settings-row-stack" id="popup-youdao-secret-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="youdao_app_secret_label">有道 App Secret</strong>
+            <span data-i18n="youdao_app_secret_desc">有道智云应用密钥</span>
+          </div>
+          <input type="password" class="panel-input" id="popup-youdao-app-secret" placeholder="应用密钥" autocomplete="off">
+        </div>
+
+        <div class="settings-row settings-row-stack" id="popup-youdao-llm-model-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="youdao_llm_model_label">大模型选择</strong>
+            <span data-i18n="youdao_llm_model_desc">有道大模型翻译使用的 AI 模型</span>
+          </div>
+          <select class="panel-select" id="popup-youdao-llm-model">
+            <!-- Options populated by JS -->
+          </select>
+        </div>
 
         <div class="settings-row settings-row-stack" id="popup-gemini-key-row" hidden>
           <div class="settings-row-copy">
