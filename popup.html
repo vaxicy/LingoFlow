@@ -196,6 +196,8 @@
             <option value="youdao" data-i18n="engine_youdao">有道翻译</option>
             <option value="youdaollm" data-i18n="engine_youdaollm">有道大模型</option>
             <option value="deepseek" data-i18n="engine_deepseek">DeepSeek AI</option>
+            <option value="baidu" data-i18n="engine_baidu">百度翻译</option>
+            <option value="baidullm" data-i18n="engine_baidullm">百度大模型</option>
           </select>
           <div class="engine-select" id="engine-select">
             <button class="engine-select-trigger" id="engine-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
@@ -275,6 +277,24 @@
                 <span>
                   <strong>DeepSeek AI</strong>
                   <small>高质量 · 低价</small>
+                </span>
+                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </button>
+              <button class="engine-select-option" type="button" role="option" data-engine-value="baidu" aria-selected="false">
+                <span>
+                  <strong>百度翻译</strong>
+                  <small>国内稳定</small>
+                </span>
+                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </button>
+              <button class="engine-select-option" type="button" role="option" data-engine-value="baidullm" aria-selected="false">
+                <span>
+                  <strong>百度大模型</strong>
+                  <small>AI 翻译 · 高质量</small>
                 </span>
                 <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                   <path d="M20 6 9 17l-5-5"/>
@@ -388,6 +408,31 @@
             <option value="deepseek-v4-flash">DeepSeek V4 Flash（推荐 · 极速 · 便宜）</option>
             <option value="deepseek-v4-pro">DeepSeek V4 Pro（高质量 · 思考模式）</option>
           </select>
+        </div>
+
+        <div class="settings-row settings-row-stack" id="popup-baidu-app-id-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="baidu_app_id_label">百度 APP ID</strong>
+            <span data-i18n="baidu_app_id_desc">百度翻译开放平台应用 ID</span>
+          </div>
+          <input type="text" class="panel-input" id="popup-baidu-app-id" placeholder="APP ID" autocomplete="off">
+        </div>
+
+        <div class="settings-row settings-row-stack" id="popup-baidu-secret-key-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="baidu_secret_key_label">百度密钥</strong>
+            <span data-i18n="baidu_secret_key_desc">百度翻译开放平台应用密钥</span>
+          </div>
+          <input type="password" class="panel-input" id="popup-baidu-secret-key" placeholder="密钥" autocomplete="off">
+        </div>
+
+        <!-- Baidu LLM (大模型文本翻译) - uses Bearer Token auth with single API Key -->
+        <div class="settings-row settings-row-stack" id="popup-baidullm-ak-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="baidullm_api_key_label">百度大模型 API Key</strong>
+            <span data-i18n="baidullm_api_key_desc">翻译开放平台 → 大模型文本翻译 → API Key管理 创建的 API Key</span>
+          </div>
+          <input type="password" class="panel-input" id="popup-baidullm-ak" placeholder="bce-v3/ALTAK-..." autocomplete="off">
         </div>
 
         <div class="settings-section-title" data-i18n="feature_settings">Features</div>

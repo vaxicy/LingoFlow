@@ -270,7 +270,15 @@ function openVocabularyPanel() {
 function openSettingsPanel() {
   openPanel('settings-panel');
   chrome.runtime.sendMessage({ action: 'get_settings' }, (response) => {
-    panelState.savedSettings = cloneSettings((response && response.settings) || getDefaultSettings());
+    const settings = (response && response.settings) || getDefaultSettings();
+    
+    console.log('LingoFlow: Loading settings', {
+      translationEngine: settings.translationEngine,
+      baiduAppId: settings.baiduAppId ? '***' : '',
+      baiduSecretKey: settings.baiduSecretKey ? '***' : ''
+    });
+    
+    panelState.savedSettings = cloneSettings(settings);
     applyPopupSettings(panelState.savedSettings);
     setSettingsDirty(false);
   });
@@ -363,6 +371,8 @@ function initSettingsPanel() {
     'popup-youdao-llm-model',
     'popup-deepseek-key',
     'popup-deepseek-model',
+    'popup-baidu-app-id',
+    'popup-baidu-secret-key',
     'popup-translate-to',
     'popup-ui-language',
     'popup-selection-translation',
@@ -383,12 +393,20 @@ function initSettingsPanel() {
         const isGemini = control.value === 'gemini';
         const isYoudao = control.value === 'youdao' || control.value === 'youdaollm';
         const isDeepSeek = control.value === 'deepseek';
+        const isBaidu = control.value === 'baidu';
+        const isBaiduLLM = control.value === 'baidullm';
         toggleApiKeyRow(isSF);
         toggleModelRow(isSF);
         toggleMicrosoftRow(isMS);
         toggleGeminiRows(isGemini);
         toggleYoudaoRows(isYoudao);
         toggleDeepSeekRows(isDeepSeek);
+        toggleBaiduRows(isBaidu);
+        // Baidu LLM needs appid (from developer info) + API Key (Bearer token)
+        if (isBaiduLLM) {
+          document.getElementById('popup-baidu-app-id-row').hidden = false;
+        }
+        toggleBaiduLLMRows(isBaiduLLM);
         syncEngineSelect(control.value);
       }
       if (id === 'popup-ui-language' && typeof setLanguage === 'function') {
@@ -433,6 +451,30 @@ function initSettingsPanel() {
   const youdaoAppSecretInput = document.getElementById('popup-youdao-app-secret');
   if (youdaoAppSecretInput) {
     youdaoAppSecretInput.addEventListener('input', () => {
+      markSettingsChanged();
+    });
+  }
+  const baiduAppIdInput = document.getElementById('popup-baidu-app-id');
+  if (baiduAppIdInput) {
+    baiduAppIdInput.addEventListener('input', () => {
+      markSettingsChanged();
+    });
+  }
+  const baiduSecretKeyInput = document.getElementById('popup-baidu-secret-key');
+  if (baiduSecretKeyInput) {
+    baiduSecretKeyInput.addEventListener('input', () => {
+      markSettingsChanged();
+    });
+  }
+  const baiduLLMAkInput = document.getElementById('popup-baidullm-ak');
+  if (baiduLLMAkInput) {
+    baiduLLMAkInput.addEventListener('input', () => {
+      markSettingsChanged();
+    });
+  }
+  const deepseekKeyInput = document.getElementById('popup-deepseek-key');
+  if (deepseekKeyInput) {
+    deepseekKeyInput.addEventListener('input', () => {
       markSettingsChanged();
     });
   }
@@ -494,13 +536,27 @@ function initSettingsPanel() {
   // pagehide is the last chance. We save directly to storage (no async round-trip).
   let forceSaveDone = false;
   const forceSaveOnClose = () => {
-    if (forceSaveDone || !panelState.settingsDirty) return;
+    if (forceSaveDone) return;
     forceSaveDone = true;
     clearTimeout(settingsAutoSaveTimer);
+    
     const current = getPopupSettingsFromUI();
     const base = panelState.savedSettings || getDefaultSettings();
     const merged = getDefaultSettings({ ...base, ...current });
-    chrome.storage.local.set({ lingoflow_settings: merged });
+    
+    console.log('LingoFlow: Force saving settings before close', {
+      translationEngine: merged.translationEngine,
+      isDirty: panelState.settingsDirty
+    });
+    
+    chrome.storage.local.set({ lingoflow_settings: merged }, () => {
+      if (chrome.runtime.lastError) {
+        console.error('LingoFlow: Force save failed', chrome.runtime.lastError);
+      } else {
+        console.log('LingoFlow: Force save succeeded');
+      }
+    });
+    
     panelState.settingsDirty = false;
   };
 
@@ -544,7 +600,9 @@ const ENGINE_SELECT_META = {
   gemini: { label: 'Gemini AI', description: '便宜快速' },
   mymemory: { label: 'MyMemory（免费）', description: '免费备用' },
   youdao: { label: '有道翻译', description: '国内快速' },
-  youdaollm: { label: '有道大模型', description: 'AI 翻译' }
+  youdaollm: { label: '有道大模型', description: 'AI 翻译' },
+  baidu: { label: '百度翻译', description: '国内稳定' },
+  baidullm: { label: '百度大模型', description: 'AI 翻译 · 高质量' }
 };
 
 function initEngineSelect() {
@@ -989,6 +1047,18 @@ function toggleDeepSeekRows(show) {
   if (modelRow) modelRow.hidden = !show;
 }
 
+function toggleBaiduRows(show) {
+  const appIdRow = document.getElementById('popup-baidu-app-id-row');
+  const secretKeyRow = document.getElementById('popup-baidu-secret-key-row');
+  if (appIdRow) appIdRow.hidden = !show;
+  if (secretKeyRow) secretKeyRow.hidden = !show;
+}
+
+function toggleBaiduLLMRows(show) {
+  const akRow = document.getElementById('popup-baidullm-ak-row');
+  if (akRow) akRow.hidden = !show;
+}
+
 function applyPopupSettings(settings) {
   const translationEngine = document.getElementById('popup-translation-engine');
   const apiKeyInput = document.getElementById('popup-siliconflow-key');
@@ -1011,12 +1081,19 @@ function applyPopupSettings(settings) {
     const isGemini = translationEngine.value === 'gemini';
     const isYoudao = translationEngine.value === 'youdao' || translationEngine.value === 'youdaollm';
     const isDeepSeek = translationEngine.value === 'deepseek';
+    const isBaidu = translationEngine.value === 'baidu';
+    const isBaiduLLM = translationEngine.value === 'baidullm';
     toggleApiKeyRow(isSF);
     toggleModelRow(isSF);
     toggleMicrosoftRow(isMS);
     toggleGeminiRows(isGemini);
     toggleYoudaoRows(isYoudao);
     toggleDeepSeekRows(isDeepSeek);
+    toggleBaiduRows(isBaidu);
+    if (isBaiduLLM) {
+      document.getElementById('popup-baidu-app-id-row').hidden = false;
+    }
+    toggleBaiduLLMRows(isBaiduLLM);
     syncEngineSelect(translationEngine.value);
   }
   if (apiKeyInput) apiKeyInput.value = settings.siliconflowApiKey || '';
@@ -1038,6 +1115,13 @@ function applyPopupSettings(settings) {
     deepseekModelSelect.value = settings.deepseekModel || 'deepseek-v4-flash';
     if (!deepseekModelSelect.value) deepseekModelSelect.value = 'deepseek-v4-flash';
   }
+
+  const baiduAppIdInput = document.getElementById('popup-baidu-app-id');
+  if (baiduAppIdInput) baiduAppIdInput.value = settings.baiduAppId || '';
+  const baiduSecretKeyInput = document.getElementById('popup-baidu-secret-key');
+  if (baiduSecretKeyInput) baiduSecretKeyInput.value = settings.baiduSecretKey || '';
+  const baiduLLMAkInput = document.getElementById('popup-baidullm-ak');
+  if (baiduLLMAkInput) baiduLLMAkInput.value = settings.baiduLLMApiKey || '';
 
   const youdaoAppKeyInput = document.getElementById('popup-youdao-app-key');
   if (youdaoAppKeyInput) youdaoAppKeyInput.value = settings.youdaoAppKey || '';
@@ -1089,6 +1173,9 @@ function getPopupSettingsFromUI() {
     geminiModel: document.getElementById('popup-gemini-model')?.value || 'gemini-3.1-flash-lite',
     deepseekApiKey: document.getElementById('popup-deepseek-key')?.value || '',
     deepseekModel: document.getElementById('popup-deepseek-model')?.value || 'deepseek-v4-flash',
+    baiduAppId: document.getElementById('popup-baidu-app-id')?.value || '',
+    baiduSecretKey: document.getElementById('popup-baidu-secret-key')?.value || '',
+    baiduLLMApiKey: document.getElementById('popup-baidullm-ak')?.value || '',
     youdaoAppKey: document.getElementById('popup-youdao-app-key')?.value || '',
     youdaoAppSecret: document.getElementById('popup-youdao-app-secret')?.value || '',
     youdaoLLMModel: document.getElementById('popup-youdao-llm-model')?.value || '3',
@@ -1113,9 +1200,23 @@ function persistPopupSettings(options = {}) {
   const closeOnSuccess = options.closeOnSuccess !== false;
   const isAuto = !!options.auto;
   const settings = getPopupSettingsFromUI();
+  
+  console.log('LingoFlow: Persisting settings', {
+    translationEngine: settings.translationEngine,
+    isAuto: isAuto
+  });
+  
   setSettingsSaveState('saving');
   chrome.runtime.sendMessage({ action: 'update_settings', settings }, (response) => {
+    if (chrome.runtime.lastError) {
+      console.error('LingoFlow: Error sending message to background', chrome.runtime.lastError);
+      setSettingsSaveState('failed');
+      showStatus(getMessage('error_cannot_access'), 'error');
+      return;
+    }
+    
     if (!response || !response.success) {
+      console.error('LingoFlow: Background script reported failure', response);
       setSettingsSaveState('failed');
       showStatus(getMessage('error_cannot_access'), 'error');
       return;
@@ -1185,7 +1286,7 @@ function cloneSettings(settings) {
   return JSON.parse(JSON.stringify(settings));
 }
 
-function getDefaultSettings() {
+function getDefaultSettings(overrides = {}) {
   return {
     translationEngine: 'google',
     siliconflowApiKey: '',
@@ -1196,6 +1297,8 @@ function getDefaultSettings() {
     youdaoAppKey: '',
     youdaoAppSecret: '',
     youdaoLLMModel: '3',
+    baiduAppId: '',
+    baiduSecretKey: '',
     targetLanguage: 'zh',
     uiLanguage: 'auto',
     theme: 'light',
@@ -1205,7 +1308,8 @@ function getDefaultSettings() {
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
     saveHistory: true,
-    activeMode: null
+    activeMode: null,
+    ...overrides
   };
 }
 

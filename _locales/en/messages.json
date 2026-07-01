@@ -403,6 +403,38 @@
     "message": "Youdao LLM",
     "description": "Youdao Large Model translation engine option"
   },
+  "engine_baidu": {
+    "message": "Baidu Translate",
+    "description": "Baidu Translate engine option"
+  },
+  "engine_baidullm": {
+    "message": "Baidu LLM",
+    "description": "Baidu LLM translation engine option"
+  },
+  "baidullm_api_key_label": {
+    "message": "Baidu LLM API Key",
+    "description": "Baidu LLM translation API Key label"
+  },
+  "baidullm_api_key_desc": {
+    "message": "API Key from API Key Management page (used for Bearer Token auth)",
+    "description": "Baidu LLM API key description"
+  },
+  "baidu_app_id_label": {
+    "message": "Baidu APP ID",
+    "description": "Baidu Translate APP ID label"
+  },
+  "baidu_app_id_desc": {
+    "message": "APP ID from Developer Info (required for both General and LLM translation)",
+    "description": "Baidu Translate APP ID description"
+  },
+  "baidu_secret_key_label": {
+    "message": "Baidu Secret Key",
+    "description": "Baidu Translate secret key label"
+  },
+  "baidu_secret_key_desc": {
+    "message": "Baidu Translate open platform application secret key (only for General Translation)",
+    "description": "Baidu Translate secret key description"
+  },
   "youdao_app_key_label": {
     "message": "Youdao App Key",
     "description": "Youdao App Key label"

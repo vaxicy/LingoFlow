@@ -337,6 +337,8 @@
         case 'youdao':
         case 'youdaollm':
         case 'deepseek':
+        case 'baidu':
+        case 'baidullm':
           // All non-Google engines delegate to background.js which has the real API logic
           return await this.backgroundTranslator.translate(text, targetLang);
 
@@ -3133,6 +3135,8 @@
 
         this.markProcessed(container);
 
+        console.log('LingoFlow: renderUnit text=', (unit.text || '').substring(0, 60), 'trans=', (translation || '').substring(0, 80), 'mode=', renderMode);
+
         if (isContextInvalidatedText(translation)) {
           console.warn('LingoFlow: Context invalidated for unit');
           container.removeAttribute('data-lingoflow-processed');
@@ -3170,10 +3174,12 @@
 
           // 页面翻译固定英译中，所有 unit 的 targetLang 都是 'zh-CN'
           const batchTargetLang = activeChunk[0]?.targetLang || 'zh-CN';
+          console.log('LingoFlow: translateAndRenderUnits batch:', activeChunk.length, 'texts, engine=', TranslationEngine.activeEngine);
           const translations = await TranslationEngine.translateMany(
             activeChunk.map(unit => unit.text),
             batchTargetLang
           );
+          console.log('LingoFlow: translateAndRenderUnits got', Array.isArray(translations) ? translations.length : 'non-array', 'translations, first=', (translations && translations[0] || '').substring(0, 80));
           activeChunk.forEach((unit, index) => {
             renderUnit(unit, translations[index]);
           });

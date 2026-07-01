@@ -57,6 +57,7 @@ chrome.runtime.onInstalled.addListener(() => {
             deepseekApiKey: '',
             deepseekModel: 'deepseek-v4-flash',
             youdaoLLMModel: '3',
+            baiduLLMApiKey: '',
             targetLanguage: 'zh',
             uiLanguage: 'auto',
             theme: 'light',
@@ -309,11 +310,20 @@ function updateSettings(settings, sendResponse) {
       ...(settings || {})
     });
 
+    console.log('LingoFlow Background: Saving settings', {
+      translationEngine: merged.translationEngine,
+      baiduAppId: merged.baiduAppId ? '***' : '',
+      baiduSecretKey: merged.baiduSecretKey ? '***' : ''
+    });
+
     chrome.storage.local.set({ lingoflow_settings: merged }, () => {
-      console.log('LingoFlow: Settings updated', {
-        translationEngine: merged.translationEngine,
-        geminiModel: merged.geminiModel
-      });
+      if (chrome.runtime.lastError) {
+        console.error('LingoFlow Background: Error saving settings', chrome.runtime.lastError);
+        sendResponse({ success: false, error: chrome.runtime.lastError.message });
+        return;
+      }
+      
+      console.log('LingoFlow Background: Settings saved successfully');
       // Broadcast is handled by storage.onChanged listener above (covers all write paths)
       sendResponse({ success: true });
     });
@@ -327,6 +337,8 @@ function getDefaultSettings(overrides = {}) {
     geminiModel: 'gemini-3.1-flash-lite',
     youdaoAppKey: '',
     youdaoAppSecret: '',
+    baiduAppId: '',
+    baiduSecretKey: '',
     targetLanguage: 'zh',
     uiLanguage: 'auto',
     theme: 'light',
@@ -530,6 +542,10 @@ function translateText(text, targetLang, sendResponse) {
       translateWithYoudaoLLM(text, targetLang, sendResponse);
         } else if (engine === 'deepseek') {
       translateWithDeepSeekCb(text, targetLang, sendResponse);
+    } else if (engine === 'baidu') {
+      translateWithBaidu(text, targetLang, sendResponse);
+    } else if (engine === 'baidullm') {
+      translateWithBaiduLLMCb(text, targetLang, sendResponse);
     } else {
       translateWithGoogle(text, targetLang, sendResponse);
     }
@@ -569,6 +585,16 @@ function translateBatch(texts, targetLang, sendResponse) {
 
     if (engine === 'deepseek') {
       translateBatchWithDeepSeek(list, targetLang, sendResponse);
+      return;
+    }
+
+    if (engine === 'baidu') {
+      translateBatchWithBaidu(list, targetLang, sendResponse);
+      return;
+    }
+
+    if (engine === 'baidullm') {
+      translateBatchWithBaiduLLM(list, targetLang, sendResponse);
       return;
     }
 
@@ -2159,3 +2185,404 @@ function translateWithGoogle(text, targetLang, sendResponse) {
       sendResponse({ success: false, error: message });
     });
 }
+
+// ======================== Baidu Translate (百度翻译) ========================
+// 百度翻译通用文本API (General Text Translation)
+// Docs: https://fanyi-api.baidu.com/doc/23
+// Endpoint: https://fanyi-api.baidu.com/api/trans/vip/translate
+// Sign = MD5(appid + q + salt + secretKey)
+// NOTE: q in sign must be RAW text (not URL-encoded); UTF-8 encoding required for MD5
+function translateWithBaidu(text, targetLang, sendResponse) {
+  const baiduTarget = targetLang === 'zh' ? 'zh' :
+                      targetLang === 'en' ? 'en' : 'zh';
+
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const settings = result.lingoflow_settings || {};
+    const appId = (settings.baiduAppId || '').trim();
+    const secretKey = (settings.baiduSecretKey || '').trim();
+
+    console.log('LingoFlow: Baidu creds check:', {
+      hasAppId: !!appId,
+      appIdLen: appId.length,
+      hasKey: !!secretKey,
+      keyLen: secretKey.length,
+      appIdPreview: appId.substring(0, 6) + '...'
+    });
+
+    if (!appId || !secretKey) {
+      console.warn('LingoFlow: Baidu appId or secretKey not set, falling back to Google');
+      translateWithGoogle(text, targetLang, sendResponse);
+      return;
+    }
+
+    const maxLen = 6000;
+    const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
+    const salt = Date.now().toString();
+    
+    // Generate sign: MD5(appId + truncated + salt + secretKey)
+    // CRITICAL: Use raw text for sign calculation (not URL-encoded)
+    // CRITICAL: MD5 input must be UTF-8 encoded
+    const signRaw = appId + truncated + salt + secretKey;
+    const sign = baiduMd5(signRaw);
+    
+    console.log('LingoFlow: Baidu sign details:', {
+      textLen: truncated.length,
+      signRawLen: signRaw.length,
+      appId: appId,
+      salt: salt,
+      signHex: sign,
+      signLen: sign.length,
+      first100chars_of_q: truncated.substring(0, 100).replace(/[^\x20-\x7E\u4e00-\u9fff]/g, '?')
+    });
+    
+    // Build request params - URLSearchParams will encode q properly for transport
+    const params = new URLSearchParams();
+    params.append('q', truncated);
+    params.append('from', 'auto');
+    params.append('to', baiduTarget);
+    params.append('appid', appId);
+    params.append('salt', salt);
+    params.append('sign', sign);
+
+    // Use GET method to avoid any POST body encoding ambiguity
+    // Both GET and POST are supported by Baidu API; GET is simpler
+    const url = 'https://fanyi-api.baidu.com/api/trans/vip/translate?' + params.toString();
+
+    console.log('LingoFlow: Baidu request URL (params only):', params.toString().substring(0, 200) + '...');
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => { controller.abort(); }, 10000);
+
+    fetch(url, {
+      method: 'GET',
+      signal: controller.signal
+    })
+      .then(response => {
+        clearTimeout(timeoutId);
+        console.log('LingoFlow: Baidu response status:', response.status);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        console.log('LingoFlow: Baidu response data:', JSON.stringify(data).substring(0, 300));
+        if (data && data.trans_result && data.trans_result[0] && data.trans_result[0].dst) {
+          const translatedText = data.trans_result[0].dst;
+          console.log('LingoFlow: Baidu succeeded, result length:', translatedText.length);
+          sendResponse({ success: true, translation: translatedText });
+        } else if (data && data.error_code) {
+          // Detailed error logging for debugging
+          const errMsg = `Baidu error ${data.error_code}: ${data.error_msg || ''}`;
+          console.warn('LingoFlow: Baidu API error:', errMsg);
+          console.warn('LingoFlow: Baidu error_code:', data.error_code, '- Check:');
+          if (data.error_code === '54001') console.warn('  -> Sign mismatch! Verify appid/key and MD5');
+          if (data.error_code === '54003') console.warn('  -> Rate limited or auth error');
+          if (data.error_code === '54004') console.warn('  -> Account balance low');
+          if (data.error_code === '58000') console.warn('  -> Client IP blocked');
+          translateWithGoogle(text, targetLang, sendResponse);
+        } else {
+          console.warn('LingoFlow: Baidu invalid response format, falling back to Google');
+          translateWithGoogle(text, targetLang, sendResponse);
+        }
+      })
+      .catch(error => {
+        clearTimeout(timeoutId);
+        const message = error && error.message ? error.message : String(error);
+        console.warn('LingoFlow: Baidu fetch error:', message, '- falling back to Google');
+        translateWithGoogle(text, targetLang, sendResponse);
+      });
+  });
+}
+
+function translateBatchWithBaidu(texts, targetLang, sendResponse) {
+  const list = Array.isArray(texts) ? texts.filter(t => typeof t === 'string' && t.trim()) : [];
+  if (!list.length) {
+    sendResponse({ success: true, translations: [] });
+    return;
+  }
+
+  const translations = new Array(list.length);
+  let cursor = 0, active = 0, finished = 0;
+  const concurrency = 2; // Baidu free tier has rate limits
+
+  function runNext() {
+    while (active < concurrency && cursor < list.length) {
+      const index = cursor++;
+      active++;
+
+      translateOneBaidu(list[index], targetLang)
+        .then(result => { translations[index] = result; })
+        .catch(() => { translations[index] = list[index]; })
+        .finally(() => {
+          active--;
+          finished++;
+          if (finished === list.length) {
+            sendResponse({ success: true, translations });
+          } else {
+            setTimeout(runNext, 500); // Rate limit delay
+          }
+        });
+    }
+  }
+
+  runNext();
+}
+
+function translateOneBaidu(text, targetLang) {
+  return new Promise((resolve, reject) => {
+    translateWithBaidu(text, targetLang, (resp) => {
+      if (resp && resp.success) {
+        resolve(resp.translation);
+      } else {
+        reject(new Error('baidu_single_failed'));
+      }
+    });
+  });
+}
+
+// MD5 for Baidu Translate API signature
+// Properly handles UTF-8 encoded strings (Chinese characters etc.)
+function baiduMd5(string) {
+  function safeAdd(x, y) {
+    var lsw = (x & 0xffff) + (y & 0xffff);
+    var msw = (x >> 16) + (y >> 16) + (lsw >> 16);
+    return (msw << 16) | (lsw & 0xffff);
+  }
+
+  function bitRotateLeft(num, cnt) {
+    return (num << cnt) | (num >>> (32 - cnt));
+  }
+
+  function md5cmn(q, a, b, x, s, t) {
+    return safeAdd(bitRotateLeft(safeAdd(safeAdd(a, q), safeAdd(x, t)), s), b);
+  }
+
+  function md5ff(a, b, c, d, x, s, t) {
+    return md5cmn((b & c) | (~b & d), a, b, x, s, t);
+  }
+
+  function md5gg(a, b, c, d, x, s, t) {
+    return md5cmn((b & d) | (c & ~d), a, b, x, s, t);
+  }
+
+  function md5hh(a, b, c, d, x, s, t) {
+    return md5cmn(b ^ c ^ d, a, b, x, s, t);
+  }
+
+  function md5ii(a, b, c, d, x, s, t) {
+    return md5cmn(c ^ (b | ~d), a, b, x, s, t);
+  }
+
+  // ========= NEW MD5: UTF-8 safe via TextEncoder -> binary string -> Joseph Myers MD5 =========
+  var md5cycle = function(x, k) {
+    var a = x[0], b = x[1], c = x[2], d = x[3];
+    a = mff(a, b, c, d, k[0], 7, -680876936); d = mff(d, a, b, c, k[1], 12, -389564586); c = mff(c, d, a, b, k[2], 17, 606105819); b = mff(b, c, d, a, k[3], 22, -1044525330);
+    a = mff(a, b, c, d, k[4], 7, -176418897); d = mff(d, a, b, c, k[5], 12, 1200080426); c = mff(c, d, a, b, k[6], 17, -1473231341); b = mff(b, c, d, a, k[7], 22, -45705983);
+    a = mff(a, b, c, d, k[8], 7, 1770035416); d = mff(d, a, b, c, k[9], 12, -1958414417); c = mff(c, d, a, b, k[10], 17, -42063); b = mff(b, c, d, a, k[11], 22, -1990404162);
+    a = mff(a, b, c, d, k[12], 7, 1804603682); d = mff(d, a, b, c, k[13], 12, -40341101); c = mff(c, d, a, b, k[14], 17, -1502002290); b = mff(b, c, d, a, k[15], 22, 1236535329);
+    a = mgg(a, b, c, d, k[1], 5, -165796510); d = mgg(d, a, b, c, k[6], 9, -1069501632); c = mgg(c, d, a, b, k[11], 14, 643717713); b = mgg(b, c, d, a, k[0], 20, -373897302);
+    a = mgg(a, b, c, d, k[5], 5, -701558691); d = mgg(d, a, b, c, k[10], 9, 38016083); c = mgg(c, d, a, b, k[15], 14, -660478335); b = mgg(b, c, d, a, k[4], 20, -405537848);
+    a = mgg(a, b, c, d, k[9], 5, 568446438); d = mgg(d, a, b, c, k[14], 9, -1019803690); c = mgg(c, d, a, b, k[3], 14, -187363961); b = mgg(b, c, d, a, k[8], 20, 1163531501);
+    a = mgg(a, b, c, d, k[13], 5, -1444681467); d = mgg(d, a, b, c, k[2], 9, -51403784); c = mgg(c, d, a, b, k[7], 14, 1735328473); b = mgg(b, c, d, a, k[12], 20, -1926607734);
+    a = mhh(a, b, c, d, k[5], 4, -378558); d = mhh(d, a, b, c, k[8], 11, -2022574463); c = mhh(c, d, a, b, k[11], 16, 1839030562); b = mhh(b, c, d, a, k[14], 23, -35309556);
+    a = mhh(a, b, c, d, k[1], 4, -1530992060); d = mhh(d, a, b, c, k[4], 11, 1272893353); c = mhh(c, d, a, b, k[7], 16, -155497632); b = mhh(b, c, d, a, k[10], 23, -1094730640);
+    a = mhh(a, b, c, d, k[13], 4, 681279174); d = mhh(d, a, b, c, k[0], 11, -358537222); c = mhh(c, d, a, b, k[3], 16, -722521979); b = mhh(b, c, d, a, k[6], 23, 76029189);
+    a = mhh(a, b, c, d, k[9], 4, -640364487); d = mhh(d, a, b, c, k[12], 11, -421815835); c = mhh(c, d, a, b, k[15], 16, 530742520); b = mhh(b, c, d, a, k[2], 23, -995338651);
+    a = mii(a, b, c, d, k[0], 6, -198630844); d = mii(d, a, b, c, k[7], 10, 1126891415); c = mii(c, d, a, b, k[14], 15, -1416354905); b = mii(b, c, d, a, k[5], 21, -57434055);
+    a = mii(a, b, c, d, k[12], 6, 1700485571); d = mii(d, a, b, c, k[3], 10, -1894986606); c = mii(c, d, a, b, k[10], 15, -1051523); b = mii(b, c, d, a, k[1], 21, -2054922799);
+    a = mii(a, b, c, d, k[8], 6, 1873313359); d = mii(d, a, b, c, k[15], 10, -30611744); c = mii(c, d, a, b, k[6], 15, -1560198380); b = mii(b, c, d, a, k[13], 21, 1309151649);
+    a = mii(a, b, c, d, k[4], 6, -145523070); d = mii(d, a, b, c, k[11], 10, -1120210379); c = mii(c, d, a, b, k[2], 15, 718787259); b = mii(b, c, d, a, k[9], 21, -343485551);
+    x[0] = add32(a, x[0]); x[1] = add32(b, x[1]); x[2] = add32(c, x[2]); x[3] = add32(d, x[3]);
+  };
+  var cmn = function(q, a, b, x, s, t) { a = add32(add32(a, q), add32(x, t)); return add32((a << s) | (a >>> (32 - s)), b); };
+  var mff = function(a, b, c, d, x, s, t) { return cmn((b & c) | ((~b) & d), a, b, x, s, t); };
+  var mgg = function(a, b, c, d, x, s, t) { return cmn((b & d) | (c & (~d)), a, b, x, s, t); };
+  var mhh = function(a, b, c, d, x, s, t) { return cmn(b ^ c ^ d, a, b, x, s, t); };
+  var mii = function(a, b, c, d, x, s, t) { return cmn(c ^ (b | (~d)), a, b, x, s, t); };
+  var md5blk = function(s) { var md5blks = [], i; for (i = 0; i < 64; i += 4) md5blks[i >> 2] = s.charCodeAt(i) + (s.charCodeAt(i+1)<<8) + (s.charCodeAt(i+2)<<16) + (s.charCodeAt(i+3)<<24); return md5blks; };
+  var md51 = function(s) {
+    var n = s.length, state = [1732584193, -271733879, -1732584194, 271733878], i;
+    for (i = 64; i <= n; i += 64) md5cycle(state, md5blk(s.substring(i - 64, i)));
+    s = s.substring(i - 64);
+    var tail = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+    for (i = 0; i < s.length; i++) tail[i >> 2] |= s.charCodeAt(i) << ((i % 4) << 3);
+    tail[i >> 2] |= 0x80 << ((i % 4) << 3);
+    if (i > 55) { md5cycle(state, tail); for (i = 0; i < 16; i++) tail[i] = 0; }
+    tail[14] = n * 8;
+    md5cycle(state, tail);
+    return state;
+  };
+  var hex_chr = '0123456789abcdef'.split('');
+  var rhex = function(n) { var s = '', j = 0; for (; j < 4; j++) s += hex_chr[(n>>(j*8+4))&0x0F] + hex_chr[(n>>(j*8))&0x0F]; return s; };
+  var tohex = function(x) { for (var i = 0; i < x.length; i++) x[i] = rhex(x[i]); return x.join(''); };
+  var add32 = function(a, b) { return (a + b) & 0xFFFFFFFF; };
+  var encoder = new TextEncoder();
+  var utf8Bytes = encoder.encode(string);
+  var binStr = '';
+  for (var bi = 0; bi < utf8Bytes.length; bi++) binStr += String.fromCharCode(utf8Bytes[bi]);
+  return tohex(md51(binStr));
+  // ========= END NEW MD5 ========
+}
+// End of baiduMd5 function
+
+
+// ==================== Baidu LLM Translation (大模型文本翻译) ====================
+// API Doc: https://fanyi-api.baidu.com/product/133
+//
+// IMPORTANT: This API uses the SAME auth mechanism as General Translation (appid + MD5 sign),
+// but adds a "domain" or specific endpoint to activate the LLM/AI translation engine.
+// The "API Key" shown in the API Keys management page IS the appid credential.
+// Users need BOTH appid AND secret key (from their application).
+//
+// Two modes supported:
+// Mode 1: If baiduLLMApiKey looks like an appid string (no slashes), use it as appid
+//         and require baiduSecretKey for signing (same as general translation)
+// Mode 2: If user provides a full Bearer-style key, attempt Bearer Token auth
+//
+// Endpoint: POST https://fanyi-api.baidu.com/api/trans/vip/translate (with domain param)
+//            or   POST https://fanyi-api.baidu.com/ait/api/aiTextTranslate
+
+// ==================== Baidu LLM Translation (大模型文本翻译) ====================
+// API Doc: https://fanyi-api.baidu.com/product/133
+//
+// Auth: Bearer Token (API Key from API Key Management page) + appid in body
+//   Required credentials:
+//   1. appid — from 开发者信息 page (e.g. 20260702002641261)
+//   2. API Key — from API Key管理 page, used as Bearer Token
+//
+// Endpoint: POST https://fanyi-api.baidu.com/ait/api/aiTextTranslate
+// Required body fields: appid(必填), q(必填), from(必填), to(必填,不可auto)
+
+function translateWithBaiduLLM(text, targetLang) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const settings = await new Promise(cb => chrome.storage.local.get(['lingoflow_settings'], cb));
+      const conf = settings.lingoflow_settings || {};
+
+      const appId = (conf.baiduAppId || '').trim();
+      const apiKey = (conf.baiduLLMApiKey || '').trim();
+
+      if (!appId) {
+        reject(new Error('Baidu LLM APP ID not set'));
+        return;
+      }
+      if (!apiKey) {
+        reject(new Error('Baidu LLM API Key not set'));
+        return;
+      }
+
+      // Target language mapping — note: 'to' field does NOT support auto per doc
+      const targetLangMap = { 'zh': 'zh', 'en': 'en' };
+      const btTarget = targetLangMap[targetLang] || 'zh';
+      const maxLen = 6000;
+      const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+      const url = 'https://fanyi-api.baidu.com/ait/api/aiTextTranslate';
+
+      console.log('LingoFlow: Baidu LLM request to', url, ', text len:', truncated.length);
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+          appid: appId,
+          q: truncated,
+          from: 'auto',
+          to: btTarget
+        }),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
+      console.log('LingoFlow: Baidu LLM response status:', response.status);
+
+      if (!response.ok) {
+        const body = await response.text();
+        throw new Error(`HTTP ${response.status}: ${body.substring(0, 300)}`);
+      }
+
+      const data = await response.json();
+      console.log('LingoFlow: Baidu LLM response:', JSON.stringify(data).substring(0, 400));
+
+      if (data && data.result && data.result.trans_result && data.result.trans_result[0] && data.result.trans_result[0].dst) {
+        resolve(data.result.trans_result[0].dst);
+      } else if (data && data.trans_result && data.trans_result[0] && data.trans_result[0].dst) {
+        resolve(data.trans_result[0].dst);
+      } else if (data && data.error_code && String(data.error_code) !== '0') {
+        throw new Error(`Baidu LLM error ${data.error_code}: ${data.error_msg || ''}`);
+      } else if (data && data.error_msg) {
+        throw new Error(`Baidu LLM error: ${data.error_msg}`);
+      } else {
+        console.warn('LingoFlow: Baidu LLM unexpected format, raw:', JSON.stringify(data).substring(0, 400));
+        reject(new Error('Unexpected response format'));
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+function translateWithBaiduLLMCb(text, targetLang, sendResponse) {
+  translateWithBaiduLLM(text, targetLang)
+    .then(translatedText => {
+      console.log('LingoFlow: Baidu LLM succeeded, result length:', translatedText.length);
+      sendResponse({ success: true, translation: translatedText });
+    })
+    .catch(error => {
+      const message = error && error.message ? error.message : String(error);
+      console.warn('LingoFlow: Baidu LLM error:', message, '- falling back to Google');
+      translateWithGoogle(text, targetLang, sendResponse);
+    });
+}
+
+function translateBatchWithBaiduLLM(texts, targetLang, sendResponse) {
+  const list = Array.isArray(texts) ? texts.filter(t => typeof t === 'string' && t.trim()) : [];
+  console.log('LingoFlow: Baidu LLM batch start,', list.length, 'items');
+
+  if (!list.length) {
+    sendResponse({ success: true, translations: [] });
+    return;
+  }
+
+  const translations = new Array(list.length);
+  let cursor = 0, active = 0, finished = 0;
+  const concurrency = 5;
+
+  function runNext() {
+    while (active < concurrency && cursor < list.length) {
+      const index = cursor++;
+      active++;
+
+      translateWithBaiduLLM(list[index], targetLang)
+        .then(result => { translations[index] = result; })
+        .catch(err => {
+          console.warn('LingoFlow: Baidu LLM batch item', index, 'failed:', err && err.message);
+          translations[index] = list[index];
+        })
+        .finally(() => {
+          active--;
+          finished++;
+          if (finished === list.length) {
+            console.log('LingoFlow: Baidu LLM batch complete,', list.length, 'items done');
+            try { sendResponse({ success: true, translations }); } catch(e) {}
+          } else {
+            setTimeout(runNext, 300);
+          }
+        });
+    }
+  }
+  runNext();
+}
+
+
+
+
+
+
+
+
