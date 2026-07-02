@@ -8,7 +8,7 @@
     "description": "Extension short name"
   },
   "description": {
-    "message": "🌐 Foreign Web Reader | Selection translation, right-click translation, full-page translation. Supports 10+ engines (DeepSeek, Gemini, SiliconFlow, Baidu, Youdao, etc.). Custom translation box styles. Must-have tool for foreign language reading",
+    "message": "Foreign Web Reader with selection & full-page translation. Supports 10+ engines (Gemini, DeepSeek, Baidu, etc.). Custom UI.",
     "description": "Extension description (English)"
   },
   "app_name": {

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LingoFlow Promo Images</title>
+  <style>
+    :root {
+      --blue: #62a8ff;
+      --violet: #7468ff;
+      --ink: #111827;
+      --muted: #5f6f8a;
+      --gradient: linear-gradient(135deg, #62a8ff 0%, #7468ff 58%, #a99cff 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background: #eef4ff;
+    }
+
+    .promo {
+      position: relative;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 8% 8%, rgba(98, 168, 255, 0.28), transparent 34%),
+        radial-gradient(circle at 88% 12%, rgba(185, 176, 255, 0.34), transparent 32%),
+        linear-gradient(145deg, #f8fbff 0%, #edf3ff 100%);
+    }
+
+    .promo::before,
+    .promo::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+    }
+
+    .promo::before {
+      right: -120px;
+      bottom: -150px;
+      width: 390px;
+      height: 390px;
+      background: rgba(116, 104, 255, 0.16);
+    }
+
+    .promo::after {
+      left: -150px;
+      top: 180px;
+      width: 320px;
+      height: 320px;
+      background: rgba(98, 168, 255, 0.14);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: #6979ff;
+      font-weight: 930;
+      letter-spacing: 0;
+    }
+
+    .brand img {
+      border-radius: 20px;
+      filter: drop-shadow(0 14px 28px rgba(82, 109, 255, 0.24));
+    }
+
+    .kicker {
+      color: var(--violet);
+      font-weight: 920;
+    }
+
+    h1 {
+      margin: 0;
+      letter-spacing: 0;
+      line-height: 1.05;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-weight: 720;
+      line-height: 1.5;
+    }
+
+    .panel {
+      position: relative;
+      z-index: 1;
+      border: 1px solid rgba(103, 116, 255, 0.18);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.62)),
+        rgba(255, 255, 255, 0.78);
+      box-shadow: 0 30px 80px rgba(62, 88, 220, 0.17);
+    }
+
+    .translation-card {
+      display: grid;
+      gap: 16px;
+    }
+
+    .line {
+      padding-left: 15px;
+      border-left: 4px solid rgba(116, 104, 255, 0.45);
+    }
+
+    .original {
+      color: #172033;
+      font-weight: 850;
+      line-height: 1.45;
+    }
+
+    .translated {
+      color: #6875b5;
+      font-weight: 860;
+      line-height: 1.48;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .pill {
+      border-radius: 999px;
+      color: #5b54e8;
+      background: rgba(116, 104, 255, 0.11);
+      font-weight: 880;
+    }
+
+    .top-promo {
+      width: 1400px;
+      height: 560px;
+      padding: 54px 72px;
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+      gap: 60px;
+      align-items: center;
+    }
+
+    .top-promo .brand {
+      margin-bottom: 34px;
+      font-size: 36px;
+    }
+
+    .top-promo .brand img {
+      width: 76px;
+      height: 76px;
+    }
+
+    .top-promo .kicker {
+      margin-bottom: 12px;
+      font-size: 21px;
+    }
+
+    .top-promo h1 {
+      max-width: 650px;
+      font-size: 62px;
+    }
+
+    .top-promo p {
+      max-width: 610px;
+      margin-top: 24px;
+      font-size: 25px;
+    }
+
+    .top-promo .panel {
+      border-radius: 34px;
+      padding: 40px 46px;
+    }
+
+    .top-promo .original,
+    .top-promo .translated {
+      font-size: 25px;
+    }
+
+    .top-promo .pill {
+      padding: 12px 16px;
+      font-size: 18px;
+    }
+
+    .small-promo {
+      width: 440px;
+      height: 280px;
+      padding: 26px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .small-promo .brand {
+      font-size: 25px;
+    }
+
+    .small-promo .brand img {
+      width: 50px;
+      height: 50px;
+      border-radius: 14px;
+    }
+
+    .small-promo .kicker {
+      margin-bottom: 7px;
+      font-size: 14px;
+    }
+
+    .small-promo h1 {
+      max-width: 340px;
+      font-size: 36px;
+    }
+
+    .small-promo p {
+      max-width: 330px;
+      margin-top: 12px;
+      font-size: 16px;
+    }
+
+    .small-promo .pill {
+      padding: 8px 11px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <section class="promo top-promo" id="top-promo">
+    <div>
+      <div class="brand"><img src="../../icons/icon-128.png" alt="">LingoFlow</div>
+      <div class="kicker">外文网页阅读助手</div>
+      <h1>把英文网页变成更顺手的中文阅读体验</h1>
+      <p>双语对照、划词翻译、生词本和多翻译引擎，让外文资料阅读更自然。</p>
+    </div>
+
+    <div class="panel translation-card">
+      <div>
+        <div class="original">Great tools should stay quiet in your workflow.</div>
+        <div class="line translated">好的工具应该安静地融入你的阅读流程。</div>
+      </div>
+      <div>
+        <div class="original">Select words or sentences to translate instantly.</div>
+        <div class="line translated">选中单词或句子，即可快速翻译并保存。</div>
+      </div>
+      <div class="pill-row">
+        <span class="pill">双语模式</span>
+        <span class="pill">划词翻译</span>
+        <span class="pill">生词本</span>
+        <span class="pill">多引擎</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="promo small-promo" id="small-promo">
+    <div class="brand"><img src="../../icons/icon-128.png" alt="">LingoFlow</div>
+    <div>
+      <div class="kicker">外文网页阅读助手</div>
+      <h1>英文网页 中文阅读</h1>
+      <p>双语对照、划词翻译和生词本，让阅读更轻松。</p>
+    </div>
+    <div class="pill-row">
+      <span class="pill">双语</span>
+      <span class="pill">划词</span>
+      <span class="pill">保存</span>
+    </div>
+  </section>
+</body>
+</html>
