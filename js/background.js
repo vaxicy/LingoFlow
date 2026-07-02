@@ -46,7 +46,7 @@ chrome.runtime.onInstalled.addListener(() => {
     if (!result.lingoflow_settings) {
         chrome.storage.local.set({
           lingoflow_settings: {
-            translationEngine: 'google',
+            translationEngine: 'mymemory',
             siliconflowApiKey: '',
             siliconflowModel: 'tencent/Hunyuan-MT-7B',
             microsoftApiKey: '',
@@ -332,7 +332,7 @@ function updateSettings(settings, sendResponse) {
 
 function getDefaultSettings(overrides = {}) {
   return {
-    translationEngine: 'google',
+    translationEngine: 'mymemory',
     geminiApiKey: '',
     geminiModel: 'gemini-3.1-flash-lite',
     youdaoAppKey: '',
@@ -496,7 +496,7 @@ function translateTextsForDictionary(texts, targetLang) {
     }
 
     chrome.storage.local.get(['lingoflow_settings'], (result) => {
-      const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
+      const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'mymemory';
       const translations = new Array(list.length);
       let index = 0;
 
@@ -526,7 +526,7 @@ function translateTextsForDictionary(texts, targetLang) {
 function translateText(text, targetLang, sendResponse) {
   // Read engine preference from settings
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
-    const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
+    const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'mymemory';
     console.log('LingoFlow: Selected translation engine:', engine);
         if (engine === 'siliconflow') {
       translateWithSiliconFlow(text, targetLang, sendResponse);
@@ -560,7 +560,7 @@ function translateBatch(texts, targetLang, sendResponse) {
   }
 
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
-    const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
+    const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'mymemory';
     console.log('LingoFlow: Selected batch translation engine:', engine, `(${list.length} items)`);
 
     if (engine === 'gemini') {

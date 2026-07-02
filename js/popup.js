@@ -234,7 +234,7 @@ function resetUnsavedSettingsPreview(nextPanelId) {
   applyPopupSettings(panelState.savedSettings);
   if (typeof setLanguage === 'function') {
     setLanguage(panelState.savedSettings.uiLanguage || 'auto');
-    syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+    syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'mymemory');
   }
   setSettingsDirty(false);
 }
@@ -245,7 +245,7 @@ function loadPopupLanguage() {
     if (settings && typeof setLanguage === 'function') {
       applyPopupTheme(settings.theme || 'light');
       setLanguage(settings.uiLanguage || 'auto');
-      syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+      syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'mymemory');
     }
   });
 }
@@ -411,7 +411,7 @@ function initSettingsPanel() {
       }
       if (id === 'popup-ui-language' && typeof setLanguage === 'function') {
         Promise.resolve(setLanguage(control.value || 'auto')).then(() => {
-          syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+          syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'mymemory');
           syncSiliconFlowModelSelect(document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B');
           syncPanelCustomSelects();
           updateSettingsFooter();
@@ -523,7 +523,7 @@ function initSettingsPanel() {
         applyPopupSettings(panelState.savedSettings);
         if (typeof setLanguage === 'function') {
           setLanguage(panelState.savedSettings.uiLanguage || 'auto');
-          syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+          syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'mymemory');
         }
       }
       setSettingsDirty(false);
@@ -618,7 +618,7 @@ function initEngineSelect() {
 
   menu.querySelectorAll('[data-engine-value]').forEach(option => {
     option.addEventListener('click', () => {
-      const value = option.getAttribute('data-engine-value') || 'google';
+      const value = option.getAttribute('data-engine-value') || 'mymemory';
       nativeSelect.value = value;
       nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
       setEngineSelectOpen(false);
@@ -637,7 +637,7 @@ function initEngineSelect() {
     }
   });
 
-  syncEngineSelect(nativeSelect.value || 'google');
+  syncEngineSelect(nativeSelect.value || 'mymemory');
 }
 
 function setEngineSelectOpen(open) {
@@ -658,25 +658,25 @@ function setEngineSelectOpen(open) {
 function getEngineSelectLabel(value) {
   const nativeSelect = document.getElementById('popup-translation-engine');
   const nativeOption = nativeSelect && nativeSelect.querySelector(`option[value="${value}"]`);
-  const meta = ENGINE_SELECT_META[value] || ENGINE_SELECT_META.google;
+  const meta = ENGINE_SELECT_META[value] || ENGINE_SELECT_META.mymemory;
   return (nativeOption && nativeOption.textContent.trim()) || meta.label;
 }
 
 function syncEngineSelect(value) {
-  const currentValue = value || 'google';
+  const currentValue = value || 'mymemory';
   const label = document.getElementById('engine-select-label');
   const desc = document.getElementById('engine-select-desc');
-  const meta = ENGINE_SELECT_META[currentValue] || ENGINE_SELECT_META.google;
+  const meta = ENGINE_SELECT_META[currentValue] || ENGINE_SELECT_META.mymemory;
 
   if (label) label.textContent = getEngineSelectLabel(currentValue);
   if (desc) desc.textContent = meta.description;
 
   document.querySelectorAll('[data-engine-value]').forEach(option => {
     const selected = option.getAttribute('data-engine-value') === currentValue;
-    const optionValue = option.getAttribute('data-engine-value') || 'google';
+    const optionValue = option.getAttribute('data-engine-value') || 'mymemory';
     const optionLabel = option.querySelector('strong');
     const optionDesc = option.querySelector('small');
-    const optionMeta = ENGINE_SELECT_META[optionValue] || ENGINE_SELECT_META.google;
+    const optionMeta = ENGINE_SELECT_META[optionValue] || ENGINE_SELECT_META.mymemory;
 
     option.setAttribute('aria-selected', String(selected));
     if (optionLabel) optionLabel.textContent = getEngineSelectLabel(optionValue);
@@ -1075,7 +1075,7 @@ function applyPopupSettings(settings) {
   applyPopupTheme(theme);
 
   if (translationEngine) {
-    translationEngine.value = settings.translationEngine || 'google';
+    translationEngine.value = settings.translationEngine || 'mymemory';
     const isSF = translationEngine.value === 'siliconflow';
     const isMS = translationEngine.value === 'microsoft';
     const isGemini = translationEngine.value === 'gemini';
@@ -1165,7 +1165,7 @@ function applyPopupTheme(theme) {
 
 function getPopupSettingsFromUI() {
   return {
-    translationEngine: document.getElementById('popup-translation-engine')?.value || 'google',
+    translationEngine: document.getElementById('popup-translation-engine')?.value || 'mymemory',
     siliconflowApiKey: document.getElementById('popup-siliconflow-key')?.value || '',
     siliconflowModel: document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B',
     microsoftApiKey: document.getElementById('popup-microsoft-key')?.value || '',
@@ -1227,7 +1227,7 @@ function persistPopupSettings(options = {}) {
     setSettingsSaveState('saved');
     if (typeof setLanguage === 'function') {
       Promise.resolve(setLanguage(settings.uiLanguage || 'auto')).then(() => {
-        syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+        syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'mymemory');
         syncSiliconFlowModelSelect(document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B');
         syncPanelCustomSelects();
         updateSettingsFooter();
@@ -1288,7 +1288,7 @@ function cloneSettings(settings) {
 
 function getDefaultSettings(overrides = {}) {
   return {
-    translationEngine: 'google',
+    translationEngine: 'mymemory',
     siliconflowApiKey: '',
     siliconflowModel: 'tencent/Hunyuan-MT-7B',
     microsoftApiKey: '',

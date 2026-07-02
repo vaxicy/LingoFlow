@@ -188,28 +188,37 @@
             <span data-i18n="translation_engine_desc">Select translation service provider</span>
           </div>
           <select class="panel-select native-select-hidden" id="popup-translation-engine" aria-hidden="true" tabindex="-1">
-            <option value="google" data-i18n="engine_google">Google Translate</option>
             <option value="mymemory" data-i18n="engine_mymemory">MyMemory (Free)</option>
-            <option value="siliconflow" data-i18n="engine_siliconflow">硅基流动 AI</option>
-            <option value="gemini" data-i18n="engine_gemini">Gemini AI</option>
+            <option value="google" data-i18n="engine_google">Google Translate</option>
             <option value="microsoft" data-i18n="engine_microsoft">Microsoft Translator</option>
+            <option value="gemini" data-i18n="engine_gemini">Gemini AI</option>
+            <option value="siliconflow" data-i18n="engine_siliconflow">硅基流动 AI</option>
+            <option value="deepseek" data-i18n="engine_deepseek">DeepSeek AI</option>
             <option value="youdao" data-i18n="engine_youdao">有道翻译</option>
             <option value="youdaollm" data-i18n="engine_youdaollm">有道大模型</option>
-            <option value="deepseek" data-i18n="engine_deepseek">DeepSeek AI</option>
             <option value="baidu" data-i18n="engine_baidu">百度翻译</option>
             <option value="baidullm" data-i18n="engine_baidullm">百度大模型</option>
           </select>
           <div class="engine-select" id="engine-select">
             <button class="engine-select-trigger" id="engine-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
               <span class="engine-select-text">
-                <strong id="engine-select-label">Google Translate</strong>
-                <small id="engine-select-desc">快速通用</small>
+                <strong id="engine-select-label">MyMemory（免费）</strong>
+                <small id="engine-select-desc">免费备用</small>
               </span>
               <svg class="engine-select-chevron" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="m6 9 6 6 6-6"/>
               </svg>
             </button>
             <div class="engine-select-menu" id="engine-select-menu" role="listbox" aria-label="Translation engine" hidden>
+              <button class="engine-select-option" type="button" role="option" data-engine-value="mymemory" aria-selected="true">
+                <span>
+                  <strong>MyMemory（免费）</strong>
+                  <small>免费备用</small>
+                </span>
+                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </button>
               <button class="engine-select-option" type="button" role="option" data-engine-value="google" aria-selected="false">
                 <span>
                   <strong>Google 翻译</strong>
@@ -228,15 +237,6 @@
                   <path d="M20 6 9 17l-5-5"/>
                 </svg>
               </button>
-              <button class="engine-select-option" type="button" role="option" data-engine-value="siliconflow" aria-selected="false">
-                <span>
-                  <strong>硅基流动 AI</strong>
-                  <small>AI 翻译</small>
-                </span>
-                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-                  <path d="M20 6 9 17l-5-5"/>
-                </svg>
-              </button>
               <button class="engine-select-option" type="button" role="option" data-engine-value="gemini" aria-selected="false">
                 <span>
                   <strong>Gemini AI</strong>
@@ -246,10 +246,19 @@
                   <path d="M20 6 9 17l-5-5"/>
                 </svg>
               </button>
-              <button class="engine-select-option" type="button" role="option" data-engine-value="mymemory" aria-selected="false">
+              <button class="engine-select-option" type="button" role="option" data-engine-value="siliconflow" aria-selected="false">
                 <span>
-                  <strong>MyMemory（免费）</strong>
-                  <small>免费备用</small>
+                  <strong>硅基流动 AI</strong>
+                  <small>AI 翻译 · 有免费模型</small>
+                </span>
+                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </button>
+              <button class="engine-select-option" type="button" role="option" data-engine-value="deepseek" aria-selected="false">
+                <span>
+                  <strong>DeepSeek AI</strong>
+                  <small>高质量 · 低价</small>
                 </span>
                 <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                   <path d="M20 6 9 17l-5-5"/>
@@ -268,15 +277,6 @@
                 <span>
                   <strong>有道大模型</strong>
                   <small>AI 翻译</small>
-                </span>
-                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-                  <path d="M20 6 9 17l-5-5"/>
-                </svg>
-              </button>
-              <button class="engine-select-option" type="button" role="option" data-engine-value="deepseek" aria-selected="false">
-                <span>
-                  <strong>DeepSeek AI</strong>
-                  <small>高质量 · 低价</small>
                 </span>
                 <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                   <path d="M20 6 9 17l-5-5"/>

@@ -211,7 +211,7 @@
   // Translation Engine - Pluggable architecture
   const TranslationEngine = {
     // Current active engine (loaded from settings)
-    activeEngine: 'google',
+    activeEngine: 'mymemory',
 
     // Google Translate via background script (bypasses page CSP)
     googleTranslator: {
@@ -1320,7 +1320,7 @@
             state.uiLanguage = s.uiLanguage || 'auto';
             state.targetLanguage = s.targetLanguage || 'zh';
             state.existingBilingualStrategy = s.existingBilingualStrategy || 'skip';
-            TranslationEngine.activeEngine = s.translationEngine || 'google';
+            TranslationEngine.activeEngine = s.translationEngine || 'mymemory';
             if (wasSelectionEnabled && !state.selectionTranslationEnabled) {
               UI.removeFloatingToolbar();
               UI.removeTranslationResult();
@@ -3537,7 +3537,7 @@
           state.uiLanguage = result.lingoflow_settings.uiLanguage || 'auto';
           state.targetLanguage = result.lingoflow_settings.targetLanguage || 'zh';
           state.existingBilingualStrategy = result.lingoflow_settings.existingBilingualStrategy || 'skip';
-          TranslationEngine.activeEngine = result.lingoflow_settings.translationEngine || 'google';
+          TranslationEngine.activeEngine = result.lingoflow_settings.translationEngine || 'mymemory';
         }
       });
 
@@ -3577,7 +3577,7 @@
           state.uiLanguage = settings.uiLanguage || 'auto';
           state.targetLanguage = settings.targetLanguage || 'zh';
           state.existingBilingualStrategy = settings.existingBilingualStrategy || 'skip';
-          TranslationEngine.activeEngine = settings.translationEngine || 'google';
+          TranslationEngine.activeEngine = settings.translationEngine || 'mymemory';
 
           // If selection translation was just turned off, remove any visible toolbar/result
           if (wasSelectionEnabled && !state.selectionTranslationEnabled) {
