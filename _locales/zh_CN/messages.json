@@ -1,4 +1,16 @@
 {
+  "name": {
+    "message": "LingoFlow 🌐 外文网站阅读助手",
+    "description": "扩展名称（中文）"
+  },
+  "short_name": {
+    "message": "LingoFlow",
+    "description": "扩展短名称"
+  },
+  "description": {
+    "message": "🌐 外文网站阅读助手 | 支持划词翻译、右键翻译、全文翻译，接入 DeepSeek、Gemini、硅基流动、百度、有道等 10+ 翻译引擎，自定义翻译框样式，外语阅读必备工具",
+    "description": "扩展描述（中文）"
+  },
   "app_name": {
     "message": "LingoFlow - 外文网站阅读助手",
     "description": "应用名称"

@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "LingoFlow - 外文网站阅读助手",
-  "short_name": "LingoFlow",
+  "name": "__MSG_name__",
+  "short_name": "__MSG_short_name__",
   "version": "1.0.0",
-  "description": "外文网站现代阅读助手 / Modern Reading Assistant",
+  "description": "__MSG_description__",
   "default_locale": "en",
   "permissions": [
     "storage",

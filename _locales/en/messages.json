@@ -1,4 +1,16 @@
 {
+  "name": {
+    "message": "LingoFlow 🌐 Foreign Web Reader",
+    "description": "Extension name (English)"
+  },
+  "short_name": {
+    "message": "LingoFlow",
+    "description": "Extension short name"
+  },
+  "description": {
+    "message": "🌐 Foreign Web Reader | Selection translation, right-click translation, full-page translation. Supports 10+ engines (DeepSeek, Gemini, SiliconFlow, Baidu, Youdao, etc.). Custom translation box styles. Must-have tool for foreign language reading",
+    "description": "Extension description (English)"
+  },
   "app_name": {
     "message": "LingoFlow - Reading Assistant",
     "description": "Application name"
