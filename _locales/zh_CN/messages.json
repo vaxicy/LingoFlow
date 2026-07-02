@@ -587,6 +587,14 @@
     "message": "高级",
     "description": "设置分组标题"
   },
+  "help_support_settings": {
+    "message": "帮助与支持",
+    "description": "设置分组标题"
+  },
+  "preferences_settings": {
+    "message": "偏好",
+    "description": "设置分组标题"
+  },
   "setup_guide": {
     "message": "API 接入教程",
     "description": "接入教程链接文字"
@@ -594,5 +602,53 @@
   "setup_guide_desc": {
     "message": "各翻译引擎配置方法",
     "description": "接入教程链接说明"
+  },
+  "support_lingoflow": {
+    "message": "支持 LingoFlow",
+    "description": "支持入口标题"
+  },
+  "support_lingoflow_desc": {
+    "message": "微信赞赏与 PayPal 支持",
+    "description": "支持入口说明"
+  },
+  "support_kicker": {
+    "message": "自愿支持",
+    "description": "支持页小标题"
+  },
+  "support_page_title": {
+    "message": "支持 LingoFlow",
+    "description": "支持页标题"
+  },
+  "support_page_intro": {
+    "message": "LingoFlow 将保持免费。如果它帮你更舒服地阅读外文网页，可以自愿支持一下开发。",
+    "description": "支持页介绍"
+  },
+  "support_wechat_title": {
+    "message": "微信赞赏",
+    "description": "微信支持标题"
+  },
+  "support_wechat_desc": {
+    "message": "用微信扫一扫支持 LingoFlow。",
+    "description": "微信支持说明"
+  },
+  "support_paypal_title": {
+    "message": "PayPal",
+    "description": "PayPal 支持标题"
+  },
+  "support_paypal_desc": {
+    "message": "适合海外用户。",
+    "description": "PayPal 支持说明"
+  },
+  "support_paypal_note": {
+    "message": "你的支持会用于开发维护、翻译测试和后续优化。",
+    "description": "PayPal 支持补充说明"
+  },
+  "support_paypal_button": {
+    "message": "使用 PayPal 支持",
+    "description": "PayPal 支持按钮"
+  },
+  "support_footer": {
+    "message": "感谢你帮助 LingoFlow 保持免费并继续变好。",
+    "description": "支持页底部文案"
   }
 }

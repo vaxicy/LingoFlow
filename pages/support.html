@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LingoFlow - Support</title>
+  <link rel="stylesheet" href="../css/support.css">
+</head>
+<body>
+  <main class="support-shell">
+    <header class="support-hero">
+      <img src="../icons/icon-128.png" alt="LingoFlow" class="support-logo">
+      <div>
+        <h1 data-i18n="support_page_title">Support LingoFlow</h1>
+        <p data-i18n="support_page_intro">
+          LingoFlow is free to use. If it helps you read foreign-language websites more comfortably, you can support its development.
+        </p>
+      </div>
+    </header>
+
+    <section class="support-grid" aria-label="Support options">
+      <article class="support-card wechat-card">
+        <div class="support-card-header">
+          <span class="support-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"/>
+            </svg>
+          </span>
+          <div>
+            <h2 data-i18n="support_wechat_title">WeChat Appreciation</h2>
+            <p data-i18n="support_wechat_desc">Scan with WeChat to support LingoFlow.</p>
+          </div>
+        </div>
+
+        <div class="wechat-qr-wrap">
+          <img src="../assets/wechat-reward.png" alt="WeChat appreciation QR code" class="wechat-qr">
+        </div>
+      </article>
+
+      <article class="support-card paypal-card">
+        <div class="support-card-header">
+          <span class="support-card-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 1v22"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </span>
+          <div>
+            <h2 data-i18n="support_paypal_title">PayPal</h2>
+            <p data-i18n="support_paypal_desc">For international users.</p>
+          </div>
+        </div>
+
+        <p class="support-note" data-i18n="support_paypal_note">
+          Your support helps cover development time, translation testing, and ongoing maintenance.
+        </p>
+
+        <div class="paypal-qr-wrap">
+          <img src="../assets/paypal-qrcode.png" alt="PayPal support QR code" class="paypal-qr">
+        </div>
+
+        <a class="support-paypal-button" href="https://www.paypal.com/ncp/payment/G5HTQBKDTW478" target="_blank" rel="noopener noreferrer">
+          <span data-i18n="support_paypal_button">Support with PayPal</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <path d="M15 3h6v6"/>
+            <path d="M10 14 21 3"/>
+          </svg>
+        </a>
+      </article>
+    </section>
+
+    <p class="support-footer" data-i18n="support_footer">
+      Thank you for helping keep LingoFlow free and improving.
+    </p>
+  </main>
+
+  <script src="../js/i18n.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      try {
+        chrome.storage.local.get(['lingoflow_settings'], (result) => {
+          const settings = result && result.lingoflow_settings;
+          const theme = settings && settings.theme === 'dark' ? 'dark' : 'light';
+          document.body.setAttribute('data-theme', theme);
+          if (settings && typeof setLanguage === 'function') {
+            setLanguage(settings.uiLanguage || 'auto');
+          }
+        });
+      } catch (_) {
+        document.body.setAttribute('data-theme', 'light');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -587,6 +587,14 @@
     "message": "Advanced",
     "description": "Settings section title"
   },
+  "help_support_settings": {
+    "message": "Help & Support",
+    "description": "Settings section title"
+  },
+  "preferences_settings": {
+    "message": "Preferences",
+    "description": "Settings section title"
+  },
   "setup_guide": {
     "message": "API Setup Guide",
     "description": "Setup guide link text"
@@ -594,5 +602,53 @@
   "setup_guide_desc": {
     "message": "Configure translation engines",
     "description": "Setup guide link description"
+  },
+  "support_lingoflow": {
+    "message": "Support LingoFlow",
+    "description": "Support link title"
+  },
+  "support_lingoflow_desc": {
+    "message": "WeChat and PayPal donation",
+    "description": "Support link description"
+  },
+  "support_kicker": {
+    "message": "Voluntary support",
+    "description": "Support page kicker"
+  },
+  "support_page_title": {
+    "message": "Support LingoFlow",
+    "description": "Support page title"
+  },
+  "support_page_intro": {
+    "message": "LingoFlow is free to use. If it helps you read foreign-language websites more comfortably, you can support its development.",
+    "description": "Support page intro"
+  },
+  "support_wechat_title": {
+    "message": "WeChat Appreciation",
+    "description": "WeChat support title"
+  },
+  "support_wechat_desc": {
+    "message": "Scan with WeChat to support LingoFlow.",
+    "description": "WeChat support description"
+  },
+  "support_paypal_title": {
+    "message": "PayPal",
+    "description": "PayPal support title"
+  },
+  "support_paypal_desc": {
+    "message": "For international users.",
+    "description": "PayPal support description"
+  },
+  "support_paypal_note": {
+    "message": "Your support helps cover development time, translation testing, and ongoing maintenance.",
+    "description": "PayPal support note"
+  },
+  "support_paypal_button": {
+    "message": "Support with PayPal",
+    "description": "PayPal support button"
+  },
+  "support_footer": {
+    "message": "Thank you for helping keep LingoFlow free and improving.",
+    "description": "Support page footer"
   }
 }

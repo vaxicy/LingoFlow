@@ -2310,6 +2310,14 @@ body[data-theme="light"] #vocabulary-panel .panel-empty span {
   color: #dcd6ff;
 }
 
+.support-link-compact svg:first-child {
+  color: #ff8aa1;
+}
+
+.support-link-compact:hover svg:first-child {
+  color: #ffc0ce;
+}
+
 .setup-guide-copy {
   display: flex;
   flex-direction: column;
@@ -2372,6 +2380,10 @@ body[data-theme="light"] .setup-guide-copy small {
 
 body[data-theme="light"] .setup-guide-link svg:first-child {
   color: #756cff;
+}
+
+body[data-theme="light"] .support-link-compact svg:first-child {
+  color: #e85f7c;
 }
 
 body[data-theme="light"] .setup-guide-link svg:last-child {
