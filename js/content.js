@@ -1008,17 +1008,15 @@
     },
 
     async showResultForText(text) {
-      console.log('LingoFlow: showResultForText called', text);
       try {
         // 尝试获取选中位置，如果失败则使用屏幕中间位置
         let selectionContext = this.getContextSelectionContext(text);
-        
+
         // 检查选中位置是否有效（右键翻译时可能丢失选中状态）
         // 注意：getContextSelectionContext可能返回width=1, height=1的默认位置
-        if (!selectionContext || !selectionContext.rect || 
+        if (!selectionContext || !selectionContext.rect ||
             (selectionContext.rect.width <= 1 && selectionContext.rect.height <= 1) ||
             (selectionContext.rect.width === 0 && selectionContext.rect.height === 0)) {
-          console.log('LingoFlow: Using fallback position for result display');
           // 使用屏幕中间位置作为备用
           const width = 300;
           const height = 200;
@@ -1030,11 +1028,10 @@
             rect: { left, right: left + width, top, bottom: top + height, width, height }
           };
         }
-        
+
         this.showNotification(_getMessage('translation_in_progress', 'Translating...'));
         const result = await SelectionLookup.resolveWithParagraphs(text, selectionContext && selectionContext.paragraphs);
         if (!result || result.error || !result.translation) {
-          // 显示详细的错误信息，持久显示以便用户查看
           const errorMsg = result && result.error ? result.error : statusText('translationFailed');
           this.showNotification(errorMsg, true);
           return false;
@@ -1053,7 +1050,6 @@
         this.showTranslationResult(selectionContext, result);
         return true;
       } catch (err) {
-        console.error('LingoFlow: showResultForText error', err);
         this.showNotification(statusText('translationFailed'), true);
         return false;
       }
@@ -1382,7 +1378,6 @@
           break;
 
         case 'translate_selection':
-          console.log('LingoFlow: Received translate_selection message', request.text);
           UI.showResultForText(request.text);
           sendResponse({ received: true });
           break;

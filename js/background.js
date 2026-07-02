@@ -88,13 +88,11 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-  console.log('LingoFlow BG: Context menu clicked', info.menuItemId, info.selectionText);
   if (!tab || !tab.id) return;
   // Skip chrome:// and other restricted URLs where content scripts can't run
   if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') ||
       tab.url.startsWith('about:') || tab.url.startsWith('chrome-extension://') ||
       tab.url.startsWith('chrome.google.com')) {
-    console.log('LingoFlow BG: Skipping restricted URL', tab.url);
     return;
   }
 
@@ -108,13 +106,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     ? { frameId: info.frameId }
     : undefined;
 
-  console.log('LingoFlow BG: Sending message to tab', tab.id, 'action:', message.action, 'targetOptions:', targetOptions);
-
   // 策略1: 先尝试sendMessage
-  chrome.tabs.sendMessage(tab.id, message, targetOptions).then(() => {
-    console.log('LingoFlow BG: Message sent successfully via sendMessage');
-  }).catch((err) => {
-    console.warn('LingoFlow BG: sendMessage failed, trying executeScript fallback:', err.message);
+  chrome.tabs.sendMessage(tab.id, message, targetOptions).catch((err) => {
     // 策略2: sendMessage失败时，使用executeScript注入执行
     handleContextActionViaExecuteScript(tab.id, message, targetOptions);
   });
@@ -130,21 +123,13 @@ function handleContextActionViaExecuteScript(tabId, message, targetOptions) {
       target: targetOptions ? { tabId, ...targetOptions } : { tabId },
       func: performRightClickTranslate,
       args: [text]
-    }).then(() => {
-      console.log('LingoFlow BG: Translation executed via executeScript');
-    }).catch((err) => {
-      console.error('LingoFlow BG: executeScript also failed:', err);
-    });
+    }).catch(() => {});
   } else if (action === 'save_selection') {
     chrome.scripting.executeScript({
       target: targetOptions ? { tabId, ...targetOptions } : { tabId },
       func: performRightClickSave,
       args: [text]
-    }).then(() => {
-      console.log('LingoFlow BG: Save executed via executeScript');
-    }).catch((err) => {
-      console.error('LingoFlow BG: executeScript also failed for save:', err);
-    });
+    }).catch(() => {});
   }
 }
 
@@ -164,7 +149,6 @@ function performRightClickSave(text) {
   if (typeof window !== 'undefined' && window.LingoFlowUI) {
     return window.LingoFlowUI.saveTextWithResolvedResult(text);
   }
-  console.warn('LingoFlow: Cannot save - UI not available');
 }
 
 // 动态创建翻译结果框（独立版本，不依赖content script的完整初始化）
