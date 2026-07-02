@@ -936,6 +936,7 @@ body[data-theme="light"] .settings-section-title {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  flex: 1 1 auto;
   min-width: 0;
   text-align: left;
 }
@@ -959,6 +960,54 @@ body[data-theme="light"] .settings-section-title {
   line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.engine-select-badges,
+.engine-select-option-badges {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.engine-select-badges[hidden],
+.engine-select-option-badges[hidden] {
+  display: none;
+}
+
+.engine-select-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 18px;
+  padding: 0 7px;
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  border-radius: 999px;
+  color: #b9d9ff;
+  background: rgba(59, 130, 246, 0.14);
+  font-size: 9px;
+  font-weight: 860;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.engine-select-badge-desc {
+  color: rgba(214, 217, 255, 0.78);
+  border-color: rgba(184, 173, 255, 0.18);
+  background: rgba(255, 255, 255, 0.055);
+  text-transform: none;
+}
+
+.engine-select-badge-api {
+  color: #c7d2fe;
+  border-color: rgba(129, 140, 248, 0.34);
+  background: rgba(99, 102, 241, 0.18);
 }
 
 .engine-select-chevron {
@@ -1023,7 +1072,7 @@ body[data-theme="light"] .settings-section-title {
 .engine-select-option > span {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 8px;
   flex: 1 1 auto;
   min-width: 0;
@@ -1037,6 +1086,8 @@ body[data-theme="light"] .settings-section-title {
 }
 
 .engine-select-option strong {
+  flex: 1 1 auto;
+  min-width: 0;
   color: #ffffff;
   font-size: 12px;
   font-weight: 820;
@@ -1802,6 +1853,18 @@ body[data-theme="light"] .panel-custom-select-option[aria-selected="true"] {
 body[data-theme="light"] .engine-select-option small {
   border-color: rgba(103, 116, 255, 0.13);
   background: rgba(103, 116, 255, 0.07);
+}
+
+body[data-theme="light"] .engine-select-badge-desc {
+  color: #52637f;
+  border-color: rgba(103, 116, 255, 0.14);
+  background: rgba(103, 116, 255, 0.07);
+}
+
+body[data-theme="light"] .engine-select-badge-api {
+  color: #4f46e5;
+  border-color: rgba(99, 102, 241, 0.2);
+  background: rgba(99, 102, 241, 0.1);
 }
 
 body[data-theme="light"] .model-select-separator {

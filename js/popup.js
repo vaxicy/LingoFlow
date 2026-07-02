@@ -605,6 +605,73 @@ const ENGINE_SELECT_META = {
   baidullm: { label: '百度大模型', description: 'AI 翻译 · 高质量' }
 };
 
+const ENGINE_SELECT_API_REQUIRED = new Set([
+  'microsoft',
+  'siliconflow',
+  'gemini',
+  'deepseek',
+  'youdao',
+  'youdaollm',
+  'baidu',
+  'baidullm'
+]);
+
+function engineRequiresApi(value) {
+  return ENGINE_SELECT_API_REQUIRED.has(value);
+}
+
+function createEngineBadge(text, type) {
+  const badge = document.createElement('span');
+  badge.className = `engine-select-badge engine-select-badge-${type}`;
+  badge.textContent = text;
+  if (type === 'api') badge.title = 'Requires API key';
+  return badge;
+}
+
+function renderEngineBadges(host, value, description) {
+  if (!host) return;
+  host.textContent = '';
+  const hasDescription = !!description;
+  const hasApi = engineRequiresApi(value);
+  host.hidden = !hasDescription && !hasApi;
+  if (!hasDescription && !hasApi) return;
+
+  if (hasDescription) {
+    host.appendChild(createEngineBadge(description, 'desc'));
+  }
+  if (hasApi) {
+    host.appendChild(createEngineBadge('API', 'api'));
+  }
+}
+
+function getOrCreateEngineTriggerBadgeHost() {
+  const trigger = document.getElementById('engine-select-trigger');
+  if (!trigger) return null;
+  let host = document.getElementById('engine-select-badges');
+  if (host) return host;
+
+  host = document.createElement('span');
+  host.id = 'engine-select-badges';
+  host.className = 'engine-select-badges';
+  const chevron = trigger.querySelector('.engine-select-chevron');
+  trigger.insertBefore(host, chevron || null);
+  return host;
+}
+
+function getOrCreateEngineOptionBadgeHost(option) {
+  if (!option) return null;
+  let host = option.querySelector('.engine-select-option-badges');
+  if (host) return host;
+
+  host = document.createElement('span');
+  host.className = 'engine-select-option-badges';
+  const text = option.querySelector(':scope > span');
+  if (text) {
+    text.appendChild(host);
+  }
+  return host;
+}
+
 function initEngineSelect() {
   const nativeSelect = document.getElementById('popup-translation-engine');
   const customSelect = document.getElementById('engine-select');
@@ -669,7 +736,11 @@ function syncEngineSelect(value) {
   const meta = ENGINE_SELECT_META[currentValue] || ENGINE_SELECT_META.mymemory;
 
   if (label) label.textContent = getEngineSelectLabel(currentValue);
-  if (desc) desc.textContent = meta.description;
+  if (desc) {
+    desc.textContent = meta.description;
+    desc.hidden = true;
+  }
+  renderEngineBadges(getOrCreateEngineTriggerBadgeHost(), currentValue, meta.description);
 
   document.querySelectorAll('[data-engine-value]').forEach(option => {
     const selected = option.getAttribute('data-engine-value') === currentValue;
@@ -680,7 +751,8 @@ function syncEngineSelect(value) {
 
     option.setAttribute('aria-selected', String(selected));
     if (optionLabel) optionLabel.textContent = getEngineSelectLabel(optionValue);
-    if (optionDesc) optionDesc.textContent = optionMeta.description;
+    if (optionDesc) optionDesc.hidden = true;
+    renderEngineBadges(getOrCreateEngineOptionBadgeHost(option), optionValue, optionMeta.description);
   });
 }
 
