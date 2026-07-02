@@ -88,32 +88,177 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener((info, tab) => {
+  console.log('LingoFlow BG: Context menu clicked', info.menuItemId, info.selectionText);
   if (!tab || !tab.id) return;
   // Skip chrome:// and other restricted URLs where content scripts can't run
   if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') ||
-      tab.url.startsWith('about:') || tab.url.startsWith('chrome-extension://')) {
+      tab.url.startsWith('about:') || tab.url.startsWith('chrome-extension://') ||
+      tab.url.startsWith('chrome.google.com')) {
+    console.log('LingoFlow BG: Skipping restricted URL', tab.url);
     return;
   }
-  const targetOptions = typeof info.frameId === 'number' && info.frameId >= 0
+
+  const message = {
+    action: info.menuItemId === 'lingoflow-translate' ? 'translate_selection' : 'save_selection',
+    text: info.selectionText
+  };
+
+  // frameId为0时不需要传frameOptions，传了反而可能出错
+  const targetOptions = (typeof info.frameId === 'number' && info.frameId > 0)
     ? { frameId: info.frameId }
     : undefined;
 
-  switch (info.menuItemId) {
-    case 'lingoflow-translate':
-      chrome.tabs.sendMessage(tab.id, {
-        action: 'translate_selection',
-        text: info.selectionText
-      }, targetOptions).catch(() => {});
-      break;
+  console.log('LingoFlow BG: Sending message to tab', tab.id, 'action:', message.action, 'targetOptions:', targetOptions);
 
-    case 'lingoflow-save':
-      chrome.tabs.sendMessage(tab.id, {
-        action: 'save_selection',
-        text: info.selectionText
-      }, targetOptions).catch(() => {});
-      break;
-  }
+  // 策略1: 先尝试sendMessage
+  chrome.tabs.sendMessage(tab.id, message, targetOptions).then(() => {
+    console.log('LingoFlow BG: Message sent successfully via sendMessage');
+  }).catch((err) => {
+    console.warn('LingoFlow BG: sendMessage failed, trying executeScript fallback:', err.message);
+    // 策略2: sendMessage失败时，使用executeScript注入执行
+    handleContextActionViaExecuteScript(tab.id, message, targetOptions);
+  });
 });
+
+// 通过executeScript注入并执行右键菜单操作（当content script未加载时的备用方案）
+function handleContextActionViaExecuteScript(tabId, message, targetOptions) {
+  const action = message.action;
+  const text = message.text;
+
+  if (action === 'translate_selection') {
+    chrome.scripting.executeScript({
+      target: targetOptions ? { tabId, ...targetOptions } : { tabId },
+      func: performRightClickTranslate,
+      args: [text]
+    }).then(() => {
+      console.log('LingoFlow BG: Translation executed via executeScript');
+    }).catch((err) => {
+      console.error('LingoFlow BG: executeScript also failed:', err);
+    });
+  } else if (action === 'save_selection') {
+    chrome.scripting.executeScript({
+      target: targetOptions ? { tabId, ...targetOptions } : { tabId },
+      func: performRightClickSave,
+      args: [text]
+    }).then(() => {
+      console.log('LingoFlow BG: Save executed via executeScript');
+    }).catch((err) => {
+      console.error('LingoFlow BG: executeScript also failed for save:', err);
+    });
+  }
+}
+
+// 在页面中执行的翻译函数（通过executeScript注入）
+function performRightClickTranslate(text) {
+  // 检查页面是否已有LingoFlow UI对象，如果有则复用
+  if (typeof window !== 'undefined' && window.LingoFlowUI) {
+    return window.LingoFlowUI.showResultForText(text);
+  }
+
+  // 否则动态创建结果框
+  createTranslationResultBox(text);
+}
+
+// 在页面中执行的保存函数
+function performRightClickSave(text) {
+  if (typeof window !== 'undefined' && window.LingoFlowUI) {
+    return window.LingoFlowUI.saveTextWithResolvedResult(text);
+  }
+  console.warn('LingoFlow: Cannot save - UI not available');
+}
+
+// 动态创建翻译结果框（独立版本，不依赖content script的完整初始化）
+function createTranslationResultBox(text) {
+  // 移除已有的结果框
+  const existing = document.getElementById('lingoflow-translation-result');
+  if (existing) existing.remove();
+
+  // 创建结果框容器
+  const result = document.createElement('div');
+  result.id = 'lingoflow-translation-result';
+  result.style.cssText = `
+    position: fixed; z-index: 2147483647;
+    background: linear-gradient(180deg, rgba(42,47,84,0.98), rgba(22,27,53,0.98));
+    backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(184,173,255,0.24); border-radius: 18px;
+    box-shadow: 0 18px 44px rgba(2,6,23,0.28), 0 8px 28px rgba(73,109,255,0.16);
+    padding: 13px; min-width: min(360px, calc(100vw - 32px));
+    width: min(560px, calc(100vw - 32px)); max-width: 560px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px; box-sizing: border-box;
+    left: ${Math.max(12, (window.innerWidth / 2) - 200)}px;
+    top: ${Math.max(12, window.innerHeight * 0.3)}px;
+    animation: lingofFadeIn 0.2s ease-out;
+  `;
+
+  result.innerHTML = `
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+      <span style="color:rgba(244,246,255,0.76); font-size:11px; font-weight:850; letter-spacing:0.04em; text-transform:uppercase;">Translate</span>
+      <button id="lf-rbox-close" type="button" style="background:none; border:none; color:rgba(244,246,255,0.88); font-size:18px; cursor:pointer; padding:4px 8px;">&times;</button>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:9px;">
+      <div style="display:-webkit-box; max-height:62px; overflow:hidden; color:rgba(244,246,255,0.72); font-size:12px; font-weight:650; line-height:1.45; -webkit-box-orient:vertical; -webkit-line-clamp:3;" id="lf-rbox-original">${escapeHtml(text)}</div>
+      <div style="max-height:min(220px,calc(100vh-220px)); overflow:auto; color:#fff; font-size:15px; font-weight:760; line-height:1.55;" id="lf-rbox-trans">
+        <span style="color:rgba(244,246,255,0.5)">Translating...</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:7px; margin-top:4px;">
+        <button id="lf-rbox-copy" type="button" style="min-height:30px; border:1px solid rgba(184,173,255,0.18); border-radius:10px; color:rgba(244,246,255,0.88); background:rgba(255,255,255,0.06); font:inherit; font-size:12px; font-weight:750; cursor:pointer; padding:0 10px;">Copy</button>
+        <button id="lf-rbox-save" type="button" style="min-height:30px; border:1px solid rgba(184,173,255,0.18); border-radius:10px; color:rgba(244,246,255,0.88); background:rgba(255,255,255,0.06); font:inherit; font-size:12px; font-weight:750; cursor:pointer; padding:0 10px;">Save</button>
+      </div>
+    </div>
+  `;
+
+  // 注入动画样式
+  if (!document.getElementById('lingoflow-fallback-style')) {
+    const style = document.createElement('style');
+    style.id = 'lingoflow-fallback-style';
+    style.textContent = '@keyframes lingofFadeIn{from{opacity:0; transform:translateY(-4px);}to{opacity:1; transform:translateY(0);}}';
+    document.head.appendChild(style);
+  }
+
+  document.body.appendChild(result);
+
+  // 关闭按钮
+  result.querySelector('#lf-rbox-close').onclick = () => result.remove();
+
+  // 发送翻译请求到background
+  let translatedText = '';
+  chrome.runtime.sendMessage({ action: 'translate', text: text, targetLang: 'zh' }, (response) => {
+    if (chrome.runtime.lastError || !response || !response.translation) {
+      result.querySelector('#lf-rbox-trans').textContent = 'Translation failed. Please try again.';
+      return;
+    }
+    translatedText = response.translation;
+    result.querySelector('#lf-rbox-trans').textContent = translatedText;
+
+    // 复制功能
+    result.querySelector('#lf-rbox-copy').onclick = () => {
+      navigator.clipboard.writeText(text + '\n---\n' + translatedText).then(() => {
+        const btn = result.querySelector('#lf-rbox-copy');
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 1500);
+      });
+    };
+
+    // 保存功能
+    result.querySelector('#lf-rbox-save').onclick = () => {
+      chrome.runtime.sendMessage({
+        action: 'add_to_history',
+        data: { text, translation: translatedText, paragraphs: null, sourceUrl: location.href }
+      }, () => {
+        const btn = result.querySelector('#lf-rbox-save');
+        btn.textContent = 'Saved!';
+        setTimeout(() => btn.textContent = 'Save', 1500);
+      });
+    };
+  });
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }
+}
 
 // Listen for messages from content script or popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {

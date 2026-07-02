@@ -915,9 +915,17 @@
       if (!selectionContext) {
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
+          let paragraphs = null;
+          if (typeof this.extractSelectionParagraphs === 'function') {
+            try {
+              paragraphs = this.extractSelectionParagraphs(selection.getRangeAt(0), text);
+            } catch (e) {
+              console.warn('LingoFlow: extractSelectionParagraphs failed in handleTranslate', e);
+            }
+          }
           selectionContext = {
             text,
-            paragraphs: this.extractSelectionParagraphs(selection.getRangeAt(0), text),
+            paragraphs,
             rect: selection.getRangeAt(0).getBoundingClientRect()
           };
         }
@@ -957,9 +965,18 @@
       if (selection && selection.rangeCount > 0) {
         const rect = selection.getRangeAt(0).getBoundingClientRect();
         if (rect && (rect.width || rect.height)) {
+          // 安全调用 extractSelectionParagraphs，防止运行时报错
+          let paragraphs = null;
+          if (typeof this.extractSelectionParagraphs === 'function') {
+            try {
+              paragraphs = this.extractSelectionParagraphs(selection.getRangeAt(0), text);
+            } catch (e) {
+              console.warn('LingoFlow: extractSelectionParagraphs failed', e);
+            }
+          }
           return {
             text,
-            paragraphs: this.extractSelectionParagraphs(selection.getRangeAt(0), text),
+            paragraphs,
             rect: {
               left: rect.left,
               right: rect.right,
@@ -978,6 +995,7 @@
       const top = Math.max(12, window.innerHeight * 0.32);
       return {
         text,
+        paragraphs: null,
         rect: {
           left,
           right: left + width,
@@ -990,26 +1008,55 @@
     },
 
     async showResultForText(text) {
-      const selectionContext = this.getContextSelectionContext(text);
-      this.showNotification(_getMessage('translation_in_progress', 'Translating...'));
-      const result = await SelectionLookup.resolveWithParagraphs(text, selectionContext && selectionContext.paragraphs);
-      if (!result || result.error || !result.translation) {
-        this.showNotification(statusText('translationFailed'));
+      console.log('LingoFlow: showResultForText called', text);
+      try {
+        // 尝试获取选中位置，如果失败则使用屏幕中间位置
+        let selectionContext = this.getContextSelectionContext(text);
+        
+        // 检查选中位置是否有效（右键翻译时可能丢失选中状态）
+        // 注意：getContextSelectionContext可能返回width=1, height=1的默认位置
+        if (!selectionContext || !selectionContext.rect || 
+            (selectionContext.rect.width <= 1 && selectionContext.rect.height <= 1) ||
+            (selectionContext.rect.width === 0 && selectionContext.rect.height === 0)) {
+          console.log('LingoFlow: Using fallback position for result display');
+          // 使用屏幕中间位置作为备用
+          const width = 300;
+          const height = 200;
+          const left = Math.max(12, (window.innerWidth / 2) - width / 2);
+          const top = Math.max(12, window.innerHeight * 0.3);
+          selectionContext = {
+            text,
+            paragraphs: null,
+            rect: { left, right: left + width, top, bottom: top + height, width, height }
+          };
+        }
+        
+        this.showNotification(_getMessage('translation_in_progress', 'Translating...'));
+        const result = await SelectionLookup.resolveWithParagraphs(text, selectionContext && selectionContext.paragraphs);
+        if (!result || result.error || !result.translation) {
+          // 显示详细的错误信息，持久显示以便用户查看
+          const errorMsg = result && result.error ? result.error : statusText('translationFailed');
+          this.showNotification(errorMsg, true);
+          return false;
+        }
+
+        safeSendMessage({
+          action: 'add_to_history',
+          data: {
+            text,
+            translation: result.translation,
+            paragraphs: Array.isArray(result.paragraphs) ? result.paragraphs : null,
+            sourceUrl: window.location.href
+          }
+        });
+
+        this.showTranslationResult(selectionContext, result);
+        return true;
+      } catch (err) {
+        console.error('LingoFlow: showResultForText error', err);
+        this.showNotification(statusText('translationFailed'), true);
         return false;
       }
-
-      safeSendMessage({
-        action: 'add_to_history',
-        data: {
-          text,
-          translation: result.translation,
-          paragraphs: Array.isArray(result.paragraphs) ? result.paragraphs : null,
-          sourceUrl: window.location.href
-        }
-      });
-
-      this.showTranslationResult(selectionContext, result);
-      return true;
     },
 
     async saveTextWithResolvedResult(text) {
@@ -1157,7 +1204,7 @@
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
         if (!rect || (rect.width === 0 && rect.height === 0)) return;
-        const paragraphs = this.extractSelectionParagraphs(range, selectedText);
+        const paragraphs = UI.extractSelectionParagraphs(range, selectedText);
 
         const selectionKey = `${selectedText}|${Math.round(rect.left)}|${Math.round(rect.top)}|${Math.round(rect.width)}|${Math.round(rect.height)}`;
         if (selectionKey === this.lastSelectionKey && document.getElementById('lingoflow-toolbar')) return;
@@ -1335,6 +1382,7 @@
           break;
 
         case 'translate_selection':
+          console.log('LingoFlow: Received translate_selection message', request.text);
           UI.showResultForText(request.text);
           sendResponse({ received: true });
           break;
