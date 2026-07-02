@@ -574,5 +574,13 @@
   "advanced_settings": {
     "message": "Advanced",
     "description": "Settings section title"
+  },
+  "setup_guide": {
+    "message": "API Setup Guide",
+    "description": "Setup guide link text"
+  },
+  "setup_guide_desc": {
+    "message": "Configure translation engines",
+    "description": "Setup guide link description"
   }
 }

@@ -574,5 +574,13 @@
   "advanced_settings": {
     "message": "高级",
     "description": "设置分组标题"
+  },
+  "setup_guide": {
+    "message": "API 接入教程",
+    "description": "接入教程链接文字"
+  },
+  "setup_guide_desc": {
+    "message": "各翻译引擎配置方法",
+    "description": "接入教程链接说明"
   }
 }

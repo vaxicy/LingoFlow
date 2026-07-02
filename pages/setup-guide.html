@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LingoFlow - 接入教程</title>
+  <style>
+    :root {
+      --lf-blue: #62a8ff;
+      --lf-violet: #7c6cff;
+      --lf-lavender: #b8adff;
+      --lf-bg: #10162b;
+      --lf-bg-2: #171d35;
+      --lf-surface: rgba(31, 36, 67, 0.86);
+      --lf-surface-strong: rgba(42, 47, 84, 0.94);
+      --lf-border: rgba(184, 173, 255, 0.22);
+      --lf-border-strong: rgba(124, 108, 255, 0.56);
+      --lf-text: #f4f6ff;
+      --lf-muted: #b6b9dc;
+      --lf-gradient: linear-gradient(135deg, #7db7ff 0%, #7c6cff 48%, #c8bdff 100%);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background:
+        radial-gradient(circle at 18% 0%, rgba(98, 168, 255, 0.28), transparent 34%),
+        radial-gradient(circle at 88% 10%, rgba(184, 173, 255, 0.2), transparent 30%),
+        radial-gradient(circle at 48% 100%, rgba(73, 109, 255, 0.12), transparent 36%),
+        linear-gradient(160deg, var(--lf-bg) 0%, #17152d 100%);
+      color: var(--lf-text);
+      min-height: 100vh;
+      padding: 32px 16px 48px;
+    }
+
+    body[data-theme="light"] {
+      --lf-bg: #f5f8ff;
+      --lf-surface: rgba(255, 255, 255, 0.78);
+      --lf-surface-strong: rgba(255, 255, 255, 0.94);
+      --lf-border: rgba(103, 116, 255, 0.18);
+      --lf-text: #172033;
+      --lf-muted: #66718d;
+      --lf-gradient: linear-gradient(135deg, #62a8ff 0%, #756cff 54%, #a99cff 100%);
+      background:
+        radial-gradient(circle at 18% 0%, rgba(98, 168, 255, 0.22), transparent 34%),
+        radial-gradient(circle at 88% 10%, rgba(184, 173, 255, 0.24), transparent 30%),
+        radial-gradient(circle at 50% 100%, rgba(117, 108, 255, 0.1), transparent 38%),
+        linear-gradient(160deg, #f8fbff 0%, #edf2ff 100%);
+      color: var(--lf-text);
+    }
+
+    .guide-container {
+      max-width: 640px;
+      margin: 0 auto;
+    }
+
+    /* Header */
+    .guide-header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .guide-header h1 {
+      font-size: 26px;
+      font-weight: 850;
+      background: var(--lf-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+    }
+
+    .guide-header p {
+      color: var(--lf-muted);
+      font-size: 14px;
+      font-weight: 650;
+    }
+
+    /* Card */
+    .guide-card {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)),
+        var(--lf-surface);
+      border: 1px solid var(--lf-border);
+      border-radius: 18px;
+      padding: 22px;
+      margin-bottom: 16px;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .guide-card:hover {
+      border-color: var(--lf-border-strong);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035)),
+        var(--lf-surface-strong);
+    }
+
+    body[data-theme="light"] .guide-card {
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.56)),
+        rgba(244, 247, 255, 0.72);
+      border-color: rgba(103, 116, 255, 0.16);
+    }
+
+    body[data-theme="light"] .guide-card:hover {
+      border-color: rgba(103, 116, 255, 0.36);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.72)),
+        rgba(255, 255, 255, 0.88);
+    }
+
+    .guide-card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .guide-card-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .guide-card-title strong {
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    body[data-theme="light"] .guide-card-title strong {
+      color: #172033;
+    }
+
+    .guide-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border: 1px solid rgba(125, 211, 252, 0.28);
+      border-radius: 999px;
+      color: #b9d9ff;
+      background: rgba(59, 130, 246, 0.14);
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+
+    .guide-badge.free {
+      color: #86efac;
+      border-color: rgba(34, 197, 94, 0.32);
+      background: rgba(22, 163, 74, 0.16);
+    }
+
+    body[data-theme="light"] .guide-badge.free {
+      color: #15803d;
+      border-color: rgba(34, 197, 94, 0.28);
+      background: rgba(187, 247, 208, 0.44);
+    }
+
+    .guide-card-desc {
+      color: var(--lf-muted);
+      font-size: 13px;
+      font-weight: 650;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    /* Steps */
+    .guide-steps {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .guide-step {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .guide-step-num {
+      flex: 0 0 auto;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: linear-gradient(135deg, rgba(98, 168, 255, 0.22), rgba(124, 108, 255, 0.2));
+      color: var(--lf-lavender);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .guide-step-text {
+      flex: 1 1 auto;
+      color: rgba(244, 246, 255, 0.82);
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 1.5;
+      min-width: 0;
+    }
+
+    body[data-theme="light"] .guide-step-text {
+      color: #4b5f7a;
+    }
+
+    .guide-step-text code {
+      display: inline;
+      padding: 2px 6px;
+      border: 1px solid rgba(184, 173, 255, 0.18);
+      border-radius: 6px;
+      background: rgba(124, 108, 255, 0.12);
+      color: #d8d2ff;
+      font-size: 12px;
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
+
+    body[data-theme="light"] .guide-step-text code {
+      color: #4f46e5;
+      border-color: rgba(103, 116, 255, 0.16);
+      background: rgba(103, 116, 255, 0.08);
+    }
+
+    /* CTA Button */
+    .guide-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 40px;
+      padding: 0 18px;
+      border: 1px solid rgba(124, 108, 255, 0.42);
+      border-radius: 13px;
+      background: linear-gradient(135deg, rgba(98, 168, 255, 0.16), rgba(124, 108, 255, 0.18));
+      color: #eef2ff;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 780;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .guide-cta:hover {
+      transform: translateY(-1px);
+      border-color: rgba(124, 108, 255, 0.68);
+      background: linear-gradient(135deg, rgba(98, 168, 255, 0.26), rgba(124, 108, 255, 0.3));
+      box-shadow: 0 14px 32px rgba(92, 117, 255, 0.22);
+      color: #ffffff;
+    }
+
+    .guide-cta svg {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+    }
+
+    body[data-theme="light"] .guide-cta {
+      color: #3730a3;
+      border-color: rgba(103, 116, 255, 0.26);
+      background: rgba(238, 242, 255, 0.82);
+    }
+
+    body[data-theme="light"] .guide-cta:hover {
+      color: #312e81;
+      border-color: rgba(103, 116, 255, 0.46);
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 14px 32px rgba(61, 99, 242, 0.16);
+    }
+
+    /* Footer note */
+    .guide-note {
+      margin-top: 18px;
+      padding: 14px 18px;
+      border: 1px solid rgba(250, 204, 21, 0.22);
+      border-radius: 13px;
+      background: rgba(250, 204, 21, 0.08);
+      color: rgba(253, 224, 71, 0.88);
+      font-size: 12.5px;
+      font-weight: 680;
+      line-height: 1.55;
+    }
+
+    body[data-theme="light"] .guide-note {
+      color: #92400e;
+      border-color: rgba(245, 158, 11, 0.3);
+      background: rgba(255, 251, 235, 0.72);
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      body { padding: 20px 10px 36px; }
+      .guide-header h1 { font-size: 22px; }
+      .guide-card { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="guide-container">
+    <div class="guide-header">
+      <h1>🔌 接入教程</h1>
+      <p>获取各翻译引擎的 API Key，粘贴到 LingoFlow 设置中即可使用</p>
+    </div>
+
+    <!-- 硅基流动 AI -->
+    <div class="guide-card">
+      <div class="guide-card-header">
+        <div class="guide-card-title">
+          <strong>硅基流动 AI</strong>
+          <span class="guide-badge free">有免费模型</span>
+        </div>
+      </div>
+      <div class="guide-card-desc">AI 翻译，支持多种开源模型，免费模型无需付费。</div>
+      <ol class="guide-steps">
+        <li class="guide-step">
+          <span class="guide-step-num">1</span>
+          <span class="guide-step-text">访问硅基流动官网，注册并登录账号</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">2</span>
+          <span class="guide-step-text">进入「API 密钥管理」页面，点击「新建密钥」</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">3</span>
+          <span class="guide-step-text">复制以 <code>sk-</code> 开头的 API Key</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">4</span>
+          <span class="guide-step-text">在 LingoFlow 设置中选择「硅基流动 AI」，粘贴密钥并选择模型</span>
+        </li>
+      </ol>
+      <a href="https://cloud.siliconflow.cn/" target="_blank" rel="noopener" class="guide-cta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+        前往 硅基流动 获取 API Key
+      </a>
+    </div>
+
+    <!-- Gemini AI -->
+    <div class="guide-card">
+      <div class="guide-card-header">
+        <div class="guide-card-title">
+          <strong>Gemini AI</strong>
+          <span class="guide-badge free">有免费额度</span>
+        </div>
+      </div>
+      <div class="guide-card-desc">Google AI Studio 提供 Gemini API，有免费额度，速度快。</div>
+      <ol class="guide-steps">
+        <li class="guide-step">
+          <span class="guide-step-num">1</span>
+          <span class="guide-step-text">访问 Google AI Studio，使用 Google 账号登录</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">2</span>
+          <span class="guide-step-text">点击「Get API key」→「Create API key」</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">3</span>
+          <span class="guide-step-text">复制 API Key</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">4</span>
+          <span class="guide-step-text">在 LingoFlow 设置中选择「Gemini AI」，粘贴密钥并选择模型</span>
+        </li>
+      </ol>
+      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="guide-cta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+        前往 Google AI Studio 获取 API Key
+      </a>
+    </div>
+
+    <!-- DeepSeek AI -->
+    <div class="guide-card">
+      <div class="guide-card-header">
+        <div class="guide-card-title">
+          <strong>DeepSeek AI</strong>
+          <span class="guide-badge">按量付费 · 低价</span>
+        </div>
+      </div>
+      <div class="guide-card-desc">高质量 AI 翻译，价格低廉，推荐使用 DeepSeek V4 Flash。</div>
+      <ol class="guide-steps">
+        <li class="guide-step">
+          <span class="guide-step-num">1</span>
+          <span class="guide-step-text">访问 DeepSeek 开放平台，注册并登录</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">2</span>
+          <span class="guide-step-text">进入「API Keys」页面，点击「Create new API key」</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">3</span>
+          <span class="guide-step-text">复制以 <code>sk-</code> 开头的 API Key（注意：只显示一次）</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">4</span>
+          <span class="guide-step-text">在 LingoFlow 设置中选择「DeepSeek AI」，粘贴密钥并选择模型</span>
+        </li>
+      </ol>
+      <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener" class="guide-cta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+        前往 DeepSeek 开放平台获取 API Key
+      </a>
+    </div>
+
+    <!-- Microsoft Translator -->
+    <div class="guide-card">
+      <div class="guide-card-header">
+        <div class="guide-card-title">
+          <strong>Microsoft Translator</strong>
+          <span class="guide-badge">Azure 付费</span>
+        </div>
+      </div>
+      <div class="guide-card-desc">Azure AI 服务，翻译质量稳定专业，需绑定 Azure 账号。</div>
+      <ol class="guide-steps">
+        <li class="guide-step">
+          <span class="guide-step-num">1</span>
+          <span class="guide-step-text">访问 Azure 门户，登录或注册 Azure 账号</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">2</span>
+          <span class="guide-step-text">创建「Translator」资源，获取密钥（Key）和区域（Region）</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">3</span>
+          <span class="guide-step-text">复制密钥（两个 Key 任意一个均可）</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">4</span>
+          <span class="guide-step-text">在 LingoFlow 设置中选择「Microsoft Translator」，粘贴密钥</span>
+        </li>
+      </ol>
+      <a href="https://portal.azure.com/" target="_blank" rel="noopener" class="guide-cta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+        前往 Azure 门户获取密钥
+      </a>
+    </div>
+
+    <!-- 有道翻译 -->
+    <div class="guide-card">
+      <div class="guide-card-header">
+        <div class="guide-card-title">
+          <strong>有道翻译</strong>
+          <span class="guide-badge">需申请</span>
+        </div>
+      </div>
+      <div class="guide-card-desc">网易有道智云翻译 API，国内速度快，需实名申请。</div>
+      <ol class="guide-steps">
+        <li class="guide-step">
+          <span class="guide-step-num">1</span>
+          <span class="guide-step-text">访问有道智云 AI 开放平台，注册并实名认证</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">2</span>
+          <span class="guide-step-text">进入「应用管理」，创建应用，获取 App Key 和 App Secret</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">3</span>
+          <span class="guide-step-text">复制 App Key（应用 ID）和 App Secret（应用密钥）</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">4</span>
+          <span class="guide-step-text">在 LingoFlow 设置中选择「有道翻译」，分别粘贴 App Key 和 App Secret</span>
+        </li>
+      </ol>
+      <a href="https://ai.youdao.com/" target="_blank" rel="noopener" class="guide-cta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+        前往有道智云获取 App Key
+      </a>
+    </div>
+
+    <!-- 有道大模型 -->
+    <div class="guide-card">
+      <div class="guide-card-header">
+        <div class="guide-card-title">
+          <strong>有道大模型</strong>
+          <span class="guide-badge">AI 翻译</span>
+        </div>
+      </div>
+      <div class="guide-card-desc">有道智云大模型翻译 API，基于 AI，翻译质量更高。</div>
+      <ol class="guide-steps">
+        <li class="guide-step">
+          <span class="guide-step-num">1</span>
+          <span class="guide-step-text">同样在有道智云申请，进入「大模型翻译」服务</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">2</span>
+          <span class="guide-step-text">获取 App Key、App Secret，并选择大模型型号</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">3</span>
+          <span class="guide-step-text">在 LingoFlow 设置中选择「有道大模型」，粘贴密钥并选择模型</span>
+        </li>
+      </ol>
+      <a href="https://ai.youdao.com/" target="_blank" rel="noopener" class="guide-cta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+        前往有道智云
+      </a>
+    </div>
+
+    <!-- 百度翻译 -->
+    <div class="guide-card">
+      <div class="guide-card-header">
+        <div class="guide-card-title">
+          <strong>百度翻译</strong>
+          <span class="guide-badge">需申请</span>
+        </div>
+      </div>
+      <div class="guide-card-desc">百度翻译开放平台，国内稳定，免费额度足够个人使用。</div>
+      <ol class="guide-steps">
+        <li class="guide-step">
+          <span class="guide-step-num">1</span>
+          <span class="guide-step-text">访问百度翻译开放平台，登录百度账号</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">2</span>
+          <span class="guide-step-text">注册开发者，创建通用翻译应用，获取 APP ID 和密钥</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">3</span>
+          <span class="guide-step-text">复制 APP ID（应用 ID）和密钥（Secret Key）</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">4</span>
+          <span class="guide-step-text">在 LingoFlow 设置中选择「百度翻译」，分别粘贴 APP ID 和密钥</span>
+        </li>
+      </ol>
+      <a href="https://api.fanyi.baidu.com/" target="_blank" rel="noopener" class="guide-cta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+        前往百度翻译开放平台
+      </a>
+    </div>
+
+    <!-- 百度大模型 -->
+    <div class="guide-card">
+      <div class="guide-card-header">
+        <div class="guide-card-title">
+          <strong>百度大模型</strong>
+          <span class="guide-badge">AI 翻译</span>
+        </div>
+      </div>
+      <div class="guide-card-desc">百度翻译开放平台的大模型文本翻译 API，高质量 AI 翻译。</div>
+      <ol class="guide-steps">
+        <li class="guide-step">
+          <span class="guide-step-num">1</span>
+          <span class="guide-step-text">访问百度翻译开放平台，进入「大模型文本翻译」</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">2</span>
+          <span class="guide-step-text">在「API Key 管理」中创建 API Key（格式为 <code>bce-v3/ALTAK-...</code>）</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">3</span>
+          <span class="guide-step-text">复制 API Key，粘贴到 LingoFlow 设置中</span>
+        </li>
+      </ol>
+      <a href="https://fanyi-api.baidu.com/" target="_blank" rel="noopener" class="guide-cta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+        前往百度大模型翻译
+      </a>
+    </div>
+
+    <!-- 提示 -->
+    <div class="guide-note">
+      💡 <strong>提示：</strong>MyMemory 和 Google Translate 无需 API Key，直接在设置中选择即可使用，跳过上述步骤。
+    </div>
+  </div>
+
+  <script>
+    // 同步主题与扩展一致
+    (function () {
+      try {
+        const saved = localStorage.getItem('lingoflow_theme') || 'dark';
+        if (saved === 'light') document.body.setAttribute('data-theme', 'light');
+      } catch (_) {}
+    })();
+  </script>
+</body>
+</html>
