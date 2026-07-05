@@ -211,7 +211,7 @@
   // Translation Engine - Pluggable architecture
   const TranslationEngine = {
     // Current active engine (loaded from settings)
-    activeEngine: 'mymemory',
+    activeEngine: 'google',
 
     // Google Translate via background script (bypasses page CSP)
     googleTranslator: {
@@ -1363,7 +1363,7 @@
             state.uiLanguage = s.uiLanguage || 'auto';
             state.targetLanguage = s.targetLanguage || 'zh';
             state.existingBilingualStrategy = s.existingBilingualStrategy || 'skip';
-            TranslationEngine.activeEngine = s.translationEngine || 'mymemory';
+            TranslationEngine.activeEngine = s.translationEngine || 'google';
             if (wasSelectionEnabled && !state.selectionTranslationEnabled) {
               UI.removeFloatingToolbar();
               UI.removeTranslationResult();
@@ -1548,7 +1548,7 @@
     hasBilingualChildren(scope) {
       if (!scope || scope === document.body || scope === document.documentElement) return false;
       const scopeText = this.getElementText(scope);
-      if (scopeText.length > 700 || scope.children.length > 12) return false;
+      if (scopeText.length > 1500 || scope.children.length > 20) return false;
 
       let hasEnglishChild = false;
       let hasChineseChild = false;
@@ -1620,14 +1620,14 @@
       if (!scope || scope === document.body || scope === document.documentElement) return false;
 
       const scopeText = this.getElementText(scope);
-      if (scopeText.length < 6 || scopeText.length > 700) return false;
+      if (scopeText.length < 6 || scopeText.length > 1500) return false;
       if (!this.hasLatinText(scopeText) || !this.hasChineseText(scopeText)) return false;
 
-      const candidates = Array.from(scope.querySelectorAll('p, h1, h2, h3, h4, h5, h6, div, span, strong, b'));
+      const candidates = Array.from(scope.querySelectorAll('p, h1, h2, h3, h4, h5, h6, div, span, strong, b, li, td, th'));
       let hasEnglish = false;
       let hasChinese = false;
 
-      for (const candidate of candidates.slice(0, 30)) {
+      for (const candidate of candidates.slice(0, 50)) {
         if (candidate.matches && candidate.matches('[data-lingoflow], .lingoflow-ui')) continue;
         const text = this.getElementText(candidate);
         if (this.hasLatinText(text)) hasEnglish = true;
@@ -1688,9 +1688,23 @@
       return false;
     },
 
+    hasBilingualParent(container) {
+      const parent = container.parentElement;
+      if (!parent || parent === document.body || parent === document.documentElement) return false;
+
+      const children = Array.from(parent.children).filter(c =>
+        !(c.matches && c.matches('[data-lingoflow], .lingoflow-ui'))
+      );
+
+      const hasEnglish = children.some(c => this.hasLatinText(this.getElementText(c)));
+      const hasChinese = children.some(c => this.hasChineseText(this.getElementText(c)));
+
+      return hasEnglish && hasChinese;
+    },
+
     hasBilingualAncestor(container) {
       let scope = container.parentElement;
-      for (let depth = 0; scope && depth < 5; depth++, scope = scope.parentElement) {
+      for (let depth = 0; scope && depth < 8; depth++, scope = scope.parentElement) {
         if (this.hasBilingualChildren(scope) || this.hasBilingualDescendants(scope)) {
           return true;
         }
@@ -1876,6 +1890,7 @@
       const text = this.getElementText(container);
       if (this.hasLatinText(text) && this.hasChineseText(text)) return true;
       if (this.hasChineseSibling(container)) return true;
+      if (this.hasBilingualParent(container)) return true;
       if (this.isHeadingContainer(container)) return false;
       return this.hasCatalogCardTranslation(container);
     },
@@ -3580,7 +3595,7 @@
           state.uiLanguage = result.lingoflow_settings.uiLanguage || 'auto';
           state.targetLanguage = result.lingoflow_settings.targetLanguage || 'zh';
           state.existingBilingualStrategy = result.lingoflow_settings.existingBilingualStrategy || 'skip';
-          TranslationEngine.activeEngine = result.lingoflow_settings.translationEngine || 'mymemory';
+          TranslationEngine.activeEngine = result.lingoflow_settings.translationEngine || 'google';
         }
       });
 
@@ -3620,7 +3635,7 @@
           state.uiLanguage = settings.uiLanguage || 'auto';
           state.targetLanguage = settings.targetLanguage || 'zh';
           state.existingBilingualStrategy = settings.existingBilingualStrategy || 'skip';
-          TranslationEngine.activeEngine = settings.translationEngine || 'mymemory';
+          TranslationEngine.activeEngine = settings.translationEngine || 'google';
 
           // If selection translation was just turned off, remove any visible toolbar/result
           if (wasSelectionEnabled && !state.selectionTranslationEnabled) {

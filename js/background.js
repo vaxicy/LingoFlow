@@ -41,33 +41,37 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log('LingoFlow: Extension installed');
   setupContextMenus();
 
-  // Initialize default settings
+  // Initialize default settings + migrate old users (mymemory → google)
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
-    if (!result.lingoflow_settings) {
-        chrome.storage.local.set({
-          lingoflow_settings: {
-            translationEngine: 'mymemory',
-            siliconflowApiKey: '',
-            siliconflowModel: 'tencent/Hunyuan-MT-7B',
-            microsoftApiKey: '',
-            geminiApiKey: '',
-            geminiModel: 'gemini-3.1-flash-lite',
-            youdaoAppKey: '',
-            youdaoAppSecret: '',
-            deepseekApiKey: '',
-            deepseekModel: 'deepseek-v4-flash',
-            youdaoLLMModel: '3',
-            baiduLLMApiKey: '',
-            targetLanguage: 'zh',
-            uiLanguage: 'auto',
-            theme: 'light',
-            autoSaveSettings: true,
-            hoverParagraphTranslation: false,
-            existingBilingualStrategy: 'skip',
-            saveHistory: true,
-            historyLimit: 50,
-            activeMode: null
-          }
+    const isNewInstall = !result.lingoflow_settings;
+    const needsMigration = result.lingoflow_settings && result.lingoflow_settings.translationEngine === 'mymemory';
+    if (isNewInstall || needsMigration) {
+      const base = isNewInstall ? {} : result.lingoflow_settings;
+      chrome.storage.local.set({
+        lingoflow_settings: {
+          translationEngine: 'google',
+          siliconflowApiKey: '',
+          siliconflowModel: 'tencent/Hunyuan-MT-7B',
+          microsoftApiKey: '',
+          geminiApiKey: '',
+          geminiModel: 'gemini-3.1-flash-lite',
+          youdaoAppKey: '',
+          youdaoAppSecret: '',
+          deepseekApiKey: '',
+          deepseekModel: 'deepseek-v4-flash',
+          youdaoLLMModel: '3',
+          baiduLLMApiKey: '',
+          targetLanguage: 'zh',
+          uiLanguage: 'auto',
+          theme: 'light',
+          autoSaveSettings: true,
+          hoverParagraphTranslation: false,
+          existingBilingualStrategy: 'skip',
+          saveHistory: true,
+          historyLimit: 50,
+          activeMode: null,
+          ...base
+        }
       });
     }
   });
@@ -461,7 +465,7 @@ function updateSettings(settings, sendResponse) {
 
 function getDefaultSettings(overrides = {}) {
   return {
-    translationEngine: 'mymemory',
+    translationEngine: 'google',
     geminiApiKey: '',
     geminiModel: 'gemini-3.1-flash-lite',
     youdaoAppKey: '',
@@ -625,7 +629,7 @@ function translateTextsForDictionary(texts, targetLang) {
     }
 
     chrome.storage.local.get(['lingoflow_settings'], (result) => {
-      const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'mymemory';
+      const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
       const translations = new Array(list.length);
       let index = 0;
 
@@ -655,7 +659,7 @@ function translateTextsForDictionary(texts, targetLang) {
 function translateText(text, targetLang, sendResponse) {
   // Read engine preference from settings
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
-    const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'mymemory';
+    const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
     console.log('LingoFlow: Selected translation engine:', engine);
         if (engine === 'siliconflow') {
       translateWithSiliconFlow(text, targetLang, sendResponse);
@@ -689,7 +693,7 @@ function translateBatch(texts, targetLang, sendResponse) {
   }
 
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
-    const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'mymemory';
+    const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
     console.log('LingoFlow: Selected batch translation engine:', engine, `(${list.length} items)`);
 
     if (engine === 'gemini') {

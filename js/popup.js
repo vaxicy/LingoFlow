@@ -417,6 +417,11 @@ function initSettingsPanel() {
           updateSettingsFooter();
         });
       }
+      // Fix: auto-save setting itself must always be persisted,
+      // even when auto-save is being turned off (markSettingsChanged would skip saving).
+      if (id === 'popup-auto-save-settings') {
+        persistPopupSettings({ closeOnSuccess: false, auto: true });
+      }
       markSettingsChanged();
     });
   });
@@ -1147,7 +1152,7 @@ function applyPopupSettings(settings) {
   applyPopupTheme(theme);
 
   if (translationEngine) {
-    translationEngine.value = settings.translationEngine || 'mymemory';
+    translationEngine.value = settings.translationEngine || 'google';
     const isSF = translationEngine.value === 'siliconflow';
     const isMS = translationEngine.value === 'microsoft';
     const isGemini = translationEngine.value === 'gemini';
@@ -1237,7 +1242,7 @@ function applyPopupTheme(theme) {
 
 function getPopupSettingsFromUI() {
   return {
-    translationEngine: document.getElementById('popup-translation-engine')?.value || 'mymemory',
+    translationEngine: document.getElementById('popup-translation-engine')?.value || 'google',
     siliconflowApiKey: document.getElementById('popup-siliconflow-key')?.value || '',
     siliconflowModel: document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B',
     microsoftApiKey: document.getElementById('popup-microsoft-key')?.value || '',
@@ -1360,7 +1365,7 @@ function cloneSettings(settings) {
 
 function getDefaultSettings(overrides = {}) {
   return {
-    translationEngine: 'mymemory',
+    translationEngine: 'google',
     siliconflowApiKey: '',
     siliconflowModel: 'tencent/Hunyuan-MT-7B',
     microsoftApiKey: '',
