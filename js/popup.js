@@ -2201,7 +2201,7 @@ function createInlineHandler(initialMessage) {
   }
 
   async function enableTranslationMode() {
-    return runTranslation('translation');
+    return runTranslation('bilingual');
   }
 
   function handleActionInline(msg) {

@@ -1482,6 +1482,65 @@
       return (text || '').replace(/\s+/g, ' ').trim();
     },
 
+    // 常见英文缩写（不在此处断句）
+    _ABBREVIATIONS: new Set([
+      'Mr', 'Mrs', 'Ms', 'Dr', 'Prof', 'Sr', 'Jr', 'Rev', 'Gen', 'Col',
+      'Capt', 'Lt', 'Sgt', 'Rep', 'Sen', 'St', 'Ave', 'Blvd', 'Rd',
+      'Co', 'Inc', 'Ltd', 'Corp', 'vs', 'etc', 'eg', 'ie', 'est',
+      'vol', 'no', 'pp', 'ch', 'fig', 'ref', 'al', 'ed', 'et'
+    ]),
+
+    /**
+     * 将长文本按句子边界拆分为多个句子。
+     * 规则：以 . ! ? 为分隔符，但排除缩写、数字/版本号等误判场景。
+     * 返回拆分后的句子数组；若文本较短或无法拆分则返回 [原文]。
+     */
+    splitIntoSentences(text) {
+      if (!text || text.length < 80) return [text];
+
+      const sentences = [];
+      // 按句末标点 + 后跟空格/大写字母/引号/结尾 来分割
+      const parts = text.split(/(?<=[.!?])\s+(?=[A-Z"'\u201c\u2018]|$)/);
+
+      for (let i = 0; i < parts.length; i++) {
+        let part = this.normalizeText(parts[i]);
+        if (!part) continue;
+
+        // 检查是否是缩写导致的误分割（如 "U.S."）
+        const lastPeriod = part.lastIndexOf('.');
+        if (lastPeriod > 0 && lastPeriod === part.length - 1) {
+          const wordBeforeDot = part.slice(0, lastPeriod).replace(/[^a-zA-Z]+$/, '');
+          if (this._ABBREVIATIONS.has(wordBeforeDot) || /\d/.test(wordBeforeDot)) {
+            // 缩写或数字 → 合并到下一个片段（如果有）
+            if (sentences.length > 0) {
+              sentences[sentences.length - 1] += ' ' + part;
+            } else {
+              sentences.push(part);
+            }
+            continue;
+          }
+        }
+
+        sentences.push(part);
+      }
+
+      // 过滤过短碎片，合并到前一句
+      const merged = [];
+      for (const s of sentences) {
+        if (s.length < 8 && merged.length > 0) {
+          merged[merged.length - 1] += ' ' + s;
+        } else {
+          merged.push(s);
+        }
+      }
+
+      // 只有拆出2+句且每句都够长才返回拆分结果
+      if (merged.length >= 2 && merged.every(s => s.length >= 10)) {
+        return merged;
+      }
+      return [text];
+    },
+
     getTextStats(text) {
       const normalized = this.normalizeText(text);
       const content = normalized.replace(/[\s\d\p{P}\p{S}]/gu, '');
@@ -1516,7 +1575,7 @@
     shouldTranslateText(text) {
       const normalized = this.normalizeText(text);
       if (normalized.length < 3) return false;
-      if (normalized.length > 2000) return false;
+      if (normalized.length > 5000) return false;
       if (/^\d+([.,:/-]\d+)*$/.test(normalized)) return false;
       if (!/[A-Za-z0-9]/.test(normalized.replace(/[^\p{L}\p{N}]/gu, ''))) return false;
       if (isAllCapsShortLabel(normalized)) return false;
@@ -1692,12 +1751,21 @@
       const parent = container.parentElement;
       if (!parent || parent === document.body || parent === document.documentElement) return false;
 
-      const children = Array.from(parent.children).filter(c =>
-        !(c.matches && c.matches('[data-lingoflow], .lingoflow-ui'))
-      );
+      // 过滤掉已翻译的 UI 元素和已处理的元素
+      const children = Array.from(parent.children).filter(c => {
+        if (c.matches && c.matches('[data-lingoflow], .lingoflow-ui')) return false;
+        if (c.dataset && c.dataset.lingoflowProcessed === 'true') return false;
+        return true;
+      });
 
-      const hasEnglish = children.some(c => this.hasLatinText(this.getElementText(c)));
-      const hasChinese = children.some(c => this.hasChineseText(this.getElementText(c)));
+      // 只检查当前容器之前的兄弟元素，避免检测到自己之后插入的翻译
+      const containerIndex = children.indexOf(container);
+      if (containerIndex <= 0) return false; // 没有之前的兄弟元素
+
+      const prevSiblings = children.slice(0, containerIndex);
+
+      const hasEnglish = prevSiblings.some(c => this.hasLatinText(this.getElementText(c)));
+      const hasChinese = prevSiblings.some(c => this.hasChineseText(this.getElementText(c)));
 
       return hasEnglish && hasChinese;
     },
@@ -1887,19 +1955,25 @@
     hasExistingTranslation(container) {
       if (state.existingBilingualStrategy === 'translate_english') return false;
 
+      // Only check the container's OWN text for mixed Chinese+English.
+      // This is the ONLY reliable signal of genuine pre-existing translation.
+      // All sibling/parent/ancestor checks have been removed because they cause
+      // severe self-interference during batch rendering (paragraph N+1 detects
+      // paragraph N's freshly-inserted Chinese translation as "existing bilingual").
       const text = this.getElementText(container);
-      if (this.hasLatinText(text) && this.hasChineseText(text)) return true;
-      if (this.hasChineseSibling(container)) return true;
-      if (this.hasBilingualParent(container)) return true;
-      if (this.isHeadingContainer(container)) return false;
-      return this.hasCatalogCardTranslation(container);
+      return this.hasLatinText(text) && this.hasChineseText(text);
     },
 
     shouldSkipTextNode(node) {
       if (!node || node.nodeType !== Node.TEXT_NODE || !node.parentElement) return true;
 
+      // Block-level content tags are NEVER UI chrome — skip _isUiChromeElement check
+      const blockContentTags = new Set(['P', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+                                        'BLOCKQUOTE', 'TD', 'TH', 'DD', 'DT', 'FIGCAPTION']);
+
       let element = node.parentElement;
-      while (element) {
+      let depth = 0;
+      while (element && depth < 4) {
         if (this.skipTags.has(element.tagName)) return true;
         if (element.matches && element.matches(this.skipSelectors)) return true;
         if (element.isContentEditable) return true;
@@ -1909,9 +1983,12 @@
         // === NEW: Skip text nodes inside UI chrome elements (nav, sidebar, header) ===
         // Check the ancestor chain for UI patterns, so even deeply nested text
         // nodes in navbars/sidebars are caught early.
-        if (this._isUiChromeElement(element)) return true;
+        // NOTE: Skip _isUiChromeElement for known block-level content tags —
+        // they are never UI chrome, and their geometry (wide+short) can cause false positives.
+        if (!blockContentTags.has(element.tagName) && this._isUiChromeElement(element)) return true;
 
         element = element.parentElement;
+        depth++;
       }
 
       return !this.shouldTranslateText(node.textContent);
@@ -1972,7 +2049,16 @@
         // Info box / panel patterns (NEW)
         'info ', ' info-', ' info_',
         'panel ', ' panel-', ' panel_', ' sheet',
-        'container', ' wrapper', ' box', ' frame'
+        'container', ' wrapper', ' box', ' frame',
+        // Doc site callout/note patterns (NEW)
+        'callout', '-callout', '_callout',
+        'note', '-note', '_note',
+        'alert', '-alert', '_alert',
+        'warning', '-warning', '_warning',
+        'tip', '-tip', '_tip',
+        'admonition', '-admonition',
+        'important', '-important',
+        'caution', '-caution'
       ];
       for (const p of cardPatterns) {
         if (clsId.includes(p)) return true;
@@ -2154,30 +2240,31 @@
         ' coursera-', ' coursera_'
       ];
 
-      // Check high-confidence patterns always
-      for (const p of uiPatterns) {
-        if (clsId.includes(p)) return true;
-      }
-
-      // Check low-confidence patterns ONLY when element lacks real content
+      // ONLY check pattern-based UI detection when element lacks real content.
+      // This prevents false positives like "content-panel" or "docs-header" on
+      // elements that clearly contain substantial English text.
       if (!hasRealContent) {
+        for (const p of uiPatterns) {
+          if (clsId.includes(p)) return true;
+        }
         for (const p of lowConfidencePatterns) {
           if (clsId.includes(p)) return true;
         }
+
+        // CSS: fixed/sticky positioning → likely chrome (only when no real content)
+        try {
+          const s = window.getComputedStyle(el);
+          if (s.position === 'fixed' || s.position === 'sticky') return true;
+        } catch (_) {}
+
+        // Geometry: wide+short strip or narrow+tall sidebar
+        // (only when no real content — avoids misclassifying short paragraphs)
+        try {
+          const r = el.getBoundingClientRect();
+          if (r.width > window.innerWidth * 0.5 && r.height > 0 && r.height < 40) return true;
+          if (r.width > 0 && r.width < 280 && r.height > window.innerHeight * 0.3) return true;
+        } catch (_) {}
       }
-
-      // CSS: fixed/sticky positioning → likely chrome
-      try {
-        const s = window.getComputedStyle(el);
-        if (s.position === 'fixed' || s.position === 'sticky') return true;
-      } catch (_) {}
-
-      // Geometry: wide+short strip or narrow+tall sidebar
-      try {
-        const r = el.getBoundingClientRect();
-        if (r.width > window.innerWidth * 0.5 && r.height > 0 && r.height < 80) return true;
-        if (r.width > 0 && r.width < 280 && r.height > window.innerHeight * 0.3) return true;
-      } catch (_) {}
 
       return false;
     },
@@ -2276,44 +2363,48 @@
       const id = ' ' + (container.id || '') + ' ';
       const merged = (cls + id).toLowerCase();
 
-      // HIGH-confidence patterns (almost always indicate UI chrome)
-      const highConfidencePatterns = [
-        // Navigation
-        'nav ', ' nav-', ' nav_', ' navbar', ' nav-bar', ' navitem', ' nav-item',
-        ' gnav', ' gnav-', ' gnav_', ' gb_', ' gb-',
-        // Menu
-        ' menu', ' menu-', ' menu_', ' menubar', ' menu-item', ' menu_item',
-        // Sidebar
-        ' sidebar', ' side-bar', ' side_nav', ' side-nav', ' sidepanel', ' side-panel',
-        // Header / Footer
-        ' header', ' header-', ' header_', ' masthead', ' topbar', ' top-bar', ' toolbar',
-        ' footer', ' footer-', ' footer_', ' foot', ' foot-', ' foot_',
-        // Breadcrumb
-        ' breadcrumb', ' bread-crumb',
-        // Drawer / Panel / Overlay
-        ' drawer', ' panel', ' panel-', ' panel_', ' overlay', ' modal', ' dialog',
-        // Cookie / Consent / Banner
-        ' skip-link', ' skip_to',
-        ' cookie', ' consent',
-        ' advert', ' ad-', ' ad_', ' sponsor', ' sponsor-', ' sponsor_',
-        // Material Design base (high confidence)
-        ' mat-', 'mdc-',
-        // Common frameworks
-        ' wp-', 'wp_', ' elementor-', ' elementor_',
-        ' ant-', ' mui-', ' chakra-', ' bootstrap-',
-        // Generic UI widgets
-        ' widget-', ' widget_', ' component-', ' component_',
-        ' icon-', ' icon_',
-        ' tablist', ' tab-list', ' tab_list'
-      ];
-      for (const pat of highConfidencePatterns) {
-        if (merged.includes(pat)) return true;
-      }
-
-      // LOW-confidence patterns (often appear in legitimate content pages)
-      // Only applied to elements that lack substantial text content
+      // Pattern-based detection: ONLY applied when element lacks substantial content.
+      // This prevents false positives like "content-panel" or "docs-header" on
+      // elements that clearly contain substantial English text.
       const containerTextForCheck = this.getElementText(container);
-      if (!(containerTextForCheck.length > 35 && this.hasLatinText(containerTextForCheck))) {
+      const hasRealContainerContent = containerTextForCheck.length > 35 && this.hasLatinText(containerTextForCheck);
+
+      if (!hasRealContainerContent) {
+        // HIGH-confidence patterns (almost always indicate UI chrome)
+        const highConfidencePatterns = [
+          // Navigation
+          'nav ', ' nav-', ' nav_', ' navbar', ' nav-bar', ' navitem', ' nav-item',
+          ' gnav', ' gnav-', ' gnav_', ' gb_', ' gb-',
+          // Menu
+          ' menu', ' menu-', ' menu_', ' menubar', ' menu-item', ' menu_item',
+          // Sidebar
+          ' sidebar', ' side-bar', ' side_nav', ' side-nav', ' sidepanel', ' side-panel',
+          // Header / Footer
+          ' header', ' header-', ' header_', ' masthead', ' topbar', ' top-bar', ' toolbar',
+          ' footer', ' footer-', ' footer_', ' foot', ' foot-', ' foot_',
+          // Breadcrumb
+          ' breadcrumb', ' bread-crumb',
+          // Drawer / Panel / Overlay
+          ' drawer', ' panel', ' panel-', ' panel_', ' overlay', ' modal', ' dialog',
+          // Cookie / Consent / Banner
+          ' skip-link', ' skip_to',
+          ' cookie', ' consent',
+          ' advert', ' ad-', ' ad_', ' sponsor', ' sponsor-', ' sponsor_',
+          // Material Design base (high confidence)
+          ' mat-', 'mdc-',
+          // Common frameworks
+          ' wp-', 'wp_', ' elementor-', ' elementor_',
+          ' ant-', ' mui-', ' chakra-', ' bootstrap-',
+          // Generic UI widgets
+          ' widget-', ' widget_', ' component-', ' component_',
+          ' icon-', ' icon_',
+          ' tablist', ' tab-list', ' tab_list'
+        ];
+        for (const pat of highConfidencePatterns) {
+          if (merged.includes(pat)) return true;
+        }
+
+        // LOW-confidence patterns (often appear in legitimate content pages)
         const lowConfidencePatterns = [
           ' skip', ' skip-', ' skip_', ' banner', ' banner-', ' banner_',
           ' google', ' google-', ' goog-', ' goog_',
@@ -2331,25 +2422,25 @@
         for (const pat of lowConfidencePatterns) {
           if (merged.includes(pat)) return true;
         }
-      }
 
-      // 4. CSS: position:sticky/fixed → likely a sticky nav/toolbar
-      const style = window.getComputedStyle(container);
-      if (style.position === 'fixed' || style.position === 'sticky') return true;
+        // 4. CSS: position:sticky/fixed → likely a sticky nav/toolbar
+        const style = window.getComputedStyle(container);
+        if (style.position === 'fixed' || style.position === 'sticky') return true;
 
-      // 5. Geometry: very narrow + tall (sidebar) or very wide + short (top bar)
-      const rect = container.getBoundingClientRect();
-      if (rect.width > 0 && rect.height > 0) {
-        // Very wide + short → top navigation bar
-        if (rect.width > window.innerWidth * 0.6 && rect.height < 80) return true;
-        // Very narrow + tall → sidebar
-        if (rect.width < 280 && rect.height > window.innerHeight * 0.4) return true;
-        // Very short + sticky/fixed ancestor → skip
-        if (rect.height < 50) {
-          let el = container.parentElement;
-          for (let i = 0; el && i < 4; i++, el = el.parentElement) {
-            const s = window.getComputedStyle(el);
-            if (s.position === 'fixed' || s.position === 'sticky') return true;
+        // 5. Geometry: very narrow + tall (sidebar) or very wide + short (top bar)
+        const rect = container.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          // Very wide + short → top navigation bar
+          if (rect.width > window.innerWidth * 0.6 && rect.height < 40) return true;
+          // Very narrow + tall → sidebar
+          if (rect.width < 280 && rect.height > window.innerHeight * 0.4) return true;
+          // Very short + sticky/fixed ancestor → skip
+          if (rect.height < 50) {
+            let el = container.parentElement;
+            for (let i = 0; el && i < 4; i++, el = el.parentElement) {
+              const s = window.getComputedStyle(el);
+              if (s.position === 'fixed' || s.position === 'sticky') return true;
+            }
           }
         }
       }
@@ -2410,7 +2501,15 @@
     isLeafDiv(element) {
       if (!element || element.tagName !== 'DIV') return false;
       if (element.children.length === 0) return this.shouldTranslateText(element.textContent);
-      return !Array.from(element.children).some(child => this.nestedBlockTags.has(child.tagName));
+      // 允许"空壳布局容器"：子元素无实质内容时仍视为 leafDiv
+      const hasContentChild = Array.from(element.children).some(child => {
+        if (this.nestedBlockTags.has(child.tagName)) {
+          const ct = this.getElementText(child);
+          return ct.length >= 5 && this.hasLatinText(ct);
+        }
+        return false;
+      });
+      return !hasContentChild;
     },
 
     isTranslationContainer(element) {
@@ -2422,12 +2521,26 @@
 
     findTextContainer(textNode) {
       let element = textNode.parentElement;
+      let lastValid = null;
       while (element && element !== document.body && element !== document.documentElement) {
+        // 透明穿透：<a> 标签不是内容容器，继续向上查找
+        if (element.tagName === 'A') {
+          element = element.parentElement;
+          continue;
+        }
         if (this.skipTags.has(element.tagName)) return null;
         if (element.matches && element.matches(this.skipSelectors)) return null;
         if (element.isContentEditable) return null;
         if (this.isTranslationContainer(element)) return element;
+        // 记录最近的有效父元素（非跳过、非可编辑）
+        if (!this.shouldSkipContainer(element)) {
+          lastValid = element;
+        }
         element = element.parentElement;
+      }
+      // fallback：返回最近的有效父元素，即使不是标准容器
+      if (lastValid && this.shouldTranslateText(textNode.textContent)) {
+        return lastValid;
       }
       return null;
     },
@@ -2528,13 +2641,40 @@
         units.get(container).textParts.push(text);
       }
 
-      return Array.from(units.values())
+
+      const rawUnits = Array.from(units.values())
         .map(unit => ({
           container: unit.container,
           text: this.normalizeText(unit.textParts.join(' ')),
           targetLang: 'zh-CN'  // 页面翻译固定英译中
         }))
         .filter(unit => this.shouldTranslateText(unit.text));
+
+      // 句级拆分：对长文本（>120字符且包含2+个句子）按句子边界拆分
+      const sentenceUnits = [];
+      for (const unit of rawUnits) {
+        const sentences = this.splitIntoSentences(unit.text);
+        if (sentences.length > 1 && unit.text.length > 120) {
+          // 标记为句级单元，保留原始容器引用和分组ID
+          const groupId = this.getOrCreateTranslationId(unit.container);
+          for (let i = 0; i < sentences.length; i++) {
+            sentenceUnits.push({
+              container: unit.container,
+              text: sentences[i],
+              targetLang: 'zh-CN',
+              _isSentence: true,           // 句级单元标记
+              _sentenceIndex: i,          // 句子序号
+              _sentenceTotal: sentences.length,  // 总句数
+              _groupId: groupId,          // 同组ID（同容器）
+              _fullText: unit.text        // 完整原文（渲染时用）
+            });
+          }
+        } else {
+          sentenceUnits.push(unit);
+        }
+      }
+
+      return sentenceUnits;
     },
 
     markProcessed(container) {
@@ -3004,6 +3144,94 @@
       return true;
     },
 
+    /**
+     * 句级双语渲染：将一个容器的多句拆分翻译结果渲染为规范的原文→逐句译文对照块。
+     * 结构：
+     *   <div class="lingoflow-block lingoflow-block-external">
+     *     <div class="lingoflow-original">  ← 原文完整保留（含HTML结构）
+     *     <div class="lingoflow-translation">
+     *       第1句译文<br>第2句译文<br>第3句译文...
+     *   </div>
+     */
+    renderSentenceBilingualUnit(container, fullText, translations, renderMode) {
+      if (!container || !container.parentNode) return false;
+      if (translations.length === 0) return false;
+
+      // translation-only 模式下隐藏原文，只显示句级译文
+      if (renderMode === 'translation') {
+        const range = document.createRange();
+        range.selectNode(container);
+        const marker = document.createComment('lingoflow-sentence-anchor');
+        range.insertNode(marker);
+
+        const block = this.createTranslationOnlyBlock(
+          translations.join('\n')
+        );
+        block.style.maxWidth = '100%';
+        block.style.overflow = 'visible';
+        this.copyLayoutMargins(container, block);
+
+        // 每句翻译用视觉分隔（不使用br标签，用CSS伪元素或margin模拟）
+        // 直接用换行符 + whiteSpace: pre-wrap 效果更好
+        block.style.whiteSpace = 'pre-line';
+
+        marker.replaceWith(block);
+        range.detach();
+        this.hideOriginalContainer(container);
+        this.linkTranslationNode(container, block);
+        return true;
+      }
+
+      // 双语模式：原文完整保留 + 逐句译文
+      const range = document.createRange();
+      range.selectNode(container);
+      const marker = document.createComment('lingoflow-sentence-bilingual-anchor');
+      range.insertNode(marker);
+
+      const block = document.createElement('div');
+      block.className = 'lingoflow-block lingoflow-block-external lingoflow-sentence-block';
+      block.setAttribute('data-lingoflow', 'true');
+      block.setAttribute('data-lingoflow-mode', 'external');
+
+      const originalDiv = document.createElement('div');
+      originalDiv.className = 'lingoflow-original';
+      originalDiv.setAttribute('data-lingoflow', 'true');
+
+      const translatedDiv = document.createElement('div');
+      translatedDiv.className = 'lingoflow-translation';
+      translatedDiv.setAttribute('data-lingoflow', 'true');
+
+      // 译文按句子分行显示
+      if (translations.length > 1) {
+        for (let i = 0; i < translations.length; i++) {
+          if (i > 0) {
+            translatedDiv.appendChild(document.createElement('br'));
+          }
+          const span = document.createElement('span');
+          span.className = 'lingoflow-sentence-trans';
+          span.setAttribute('data-lingoflow', 'true');
+          span.textContent = translations[i];
+          translatedDiv.appendChild(span);
+        }
+      } else {
+        translatedDiv.textContent = translations[0];
+      }
+
+      block.appendChild(originalDiv);
+      block.appendChild(translatedDiv);
+
+      block.style.maxWidth = '100%';
+      block.style.overflow = 'visible';
+      this.copyLayoutMargins(container, block);
+
+      originalDiv.appendChild(container);
+      marker.replaceWith(block);
+      range.detach();
+      this.linkTranslationNode(container, block);
+
+      return true;
+    },
+
     // For very dangerous layouts (tiny buttons, complex positioned widgets),
     // render translation as a tooltip on hover instead of injecting DOM.
     renderTooltipTranslation(container, translation) {
@@ -3187,8 +3415,62 @@
       let stoppedByInvalidContext = false;
       const concurrency = 2;
 
+      // 句级分组：收集同一容器的所有句级翻译结果，统一渲染
+      const sentenceGroups = new Map();  // groupId → { unit, translation }[]
+
+      const flushSentenceGroup = (groupId) => {
+        const group = sentenceGroups.get(groupId);
+        if (!group || !group.length) return;
+        // 按句子序号排序
+        group.sort((a, b) => (a.unit._sentenceIndex || 0) - (b.unit._sentenceIndex || 0));
+        const container = group[0].unit.container;
+        if (!container.isConnected) {
+          sentenceGroups.delete(groupId);
+          return;
+        }
+        this.markProcessed(container);
+
+        const translations = group.map(g => g.translation).filter(Boolean);
+        if (!translations.length) {
+          container.removeAttribute('data-lingoflow-processed');
+          sentenceGroups.delete(groupId);
+          return;
+        }
+
+        const fullText = group[0].unit._fullText || '';
+        console.log('LingoFlow: renderSentenceGroup', translations.length,
+          'sentences, container=', container.tagName, 'mode=', renderMode);
+
+        const rendered = this.renderSentenceBilingualUnit(container, fullText, translations, renderMode);
+        if (rendered) {
+          successCount += translations.length;
+        } else {
+          container.removeAttribute('data-lingoflow-processed');
+          failCount += translations.length;
+        }
+        sentenceGroups.delete(groupId);
+      };
+
       const renderUnit = (unit, translation) => {
         const container = unit.container;
+
+        // 句级单元：收集到分组中，等齐后统一渲染
+        if (unit._isSentence && unit._groupId) {
+          const gid = unit._groupId;
+          if (!sentenceGroups.has(gid)) {
+            sentenceGroups.set(gid, []);
+          }
+          sentenceGroups.get(gid).push({ unit, translation });
+
+          // 检查是否该组全部翻译完毕
+          const total = unit._sentenceTotal || 1;
+          if (sentenceGroups.get(gid).length >= total) {
+            flushSentenceGroup(gid);
+          }
+          return;
+        }
+
+        // 普通单元：原有逻辑
         if (!container.isConnected || container.dataset.lingoflowProcessed === 'true') return;
 
         this.markProcessed(container);
@@ -3246,6 +3528,11 @@
 
       await Promise.all(Array.from({ length: Math.min(concurrency, chunks.length) }, () => worker()));
 
+      // 兜底：处理可能未凑齐的句级分组（部分翻译失败等情况）
+      for (const [groupId] of sentenceGroups) {
+        flushSentenceGroup(groupId);
+      }
+
       return { successCount, failCount, stoppedByInvalidContext };
     },
 
@@ -3287,12 +3574,14 @@
     },
 
     scheduleSecondScan(mode) {
-      window.setTimeout(() => {
-        if (!state.activeTranslationMode || state.isTranslating) return;
-        // Use stored translationRoot (no explicit root = uses state.translationRoot)
-        this.repairTranslationIntegrity();
-        this.runIncrementalTranslation(mode, null, false);
-      }, 800);
+      const delays = [800, 2500, 5000];
+      delays.forEach((delay, i) => {
+        window.setTimeout(() => {
+          if (!state.activeTranslationMode || state.isTranslating) return;
+          this.repairTranslationIntegrity();
+          this.runIncrementalTranslation(mode, null, false);
+        }, delay);
+      });
     },
 
     startDynamicTranslationObserver(mode) {
@@ -3403,7 +3692,7 @@
         // Show persistent notification (won't auto-dismiss until result comes in)
         UI.showNotification(statusText('found', units.length), true);
 
-        const result = await this.translateAndRenderUnits(units, 'translation');
+        const result = await this.translateAndRenderUnits(units, 'bilingual');
         const { successCount, failCount, stoppedByInvalidContext } = result;
 
         if (stoppedByInvalidContext) {
@@ -3415,15 +3704,17 @@
         } else if (failCount > 0) {
           UI.showNotification(statusText('partial', successCount, failCount));
         } else {
-          UI.showNotification(statusText('translationOnlyDone', successCount));
+          UI.showNotification(statusText('done', successCount));
         }
 
         if (successCount > 0) {
           state.isTranslated = true;
-          this.scheduleSecondScan('translation');
-          this.startDynamicTranslationObserver('translation');
+          state.isBilingualMode = true;
+          this.scheduleSecondScan('bilingual');
+          this.startDynamicTranslationObserver('bilingual');
+        } else {
+          state.isBilingualMode = false;
         }
-        state.isBilingualMode = false;
       } catch (err) {
         console.error('LingoFlow: enableTranslationMode error:', err);
         UI.showNotification(statusText('translationFailed'));

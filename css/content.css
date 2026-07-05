@@ -329,6 +329,8 @@
   flex-shrink: 1 !important;
   min-height: 0 !important;
   overflow: visible !important;
+  /* 段落与段落之间增加间距 */
+  margin-bottom: 1em !important;
 }
 
 .lingoflow-block-external {
@@ -382,7 +384,8 @@
   letter-spacing: inherit;
   line-height: inherit;
   text-align: inherit;
-  margin-top: 0.18em !important;
+  margin-top: 0.35em !important;
+  padding-top: 0.2em !important;
   max-height: none !important;
   overflow: visible !important;
   display: block !important;
@@ -436,6 +439,21 @@
   white-space: normal !important;
   writing-mode: horizontal-tb !important;
   text-orientation: mixed !important;
+}
+
+/* Sentence-level bilingual translation block */
+.lingoflow-sentence-block .lingoflow-sentence-trans {
+  display: block;
+  margin-bottom: 0.25em;
+}
+
+.lingoflow-sentence-block .lingoflow-sentence-trans:last-child {
+  margin-bottom: 0;
+}
+
+.lingoflow-sentence-block .lingoflow-translation {
+  /* 每句译文之间有适当间距 */
+  line-height: 1.7 !important;
 }
 
 /* Tooltip for dangerous layouts where inline injection would break the page */
