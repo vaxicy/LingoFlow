@@ -21,7 +21,7 @@
   border-radius: 18px;
   box-shadow: 0 16px 40px rgba(2, 6, 23, 0.24), 0 6px 24px rgba(73, 109, 255, 0.16);
   padding: 7px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif !important;
   font-size: 13px;
   animation: lingoflow-fade-in 0.2s ease-out;
   box-sizing: border-box;
@@ -45,7 +45,7 @@
   font-size: 13px;
   font-weight: 700;
   font-family: inherit;
-  color: rgba(244, 246, 255, 0.86);
+  color: rgba(244, 246, 255, 0.86) !important;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease, opacity 0.15s ease;
   white-space: nowrap;
 }
@@ -100,7 +100,7 @@
   min-width: min(360px, calc(100vw - 32px));
   width: min(560px, calc(100vw - 32px));
   max-width: 560px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif !important;
   font-size: 14px;
   animation: lingoflow-fade-in 0.2s ease-out;
   box-sizing: border-box;
@@ -121,7 +121,7 @@
 }
 
 .lingoflow-result-title {
-  color: rgba(244, 246, 255, 0.76);
+  color: rgba(244, 246, 255, 0.76) !important;
   font-size: 11px;
   font-weight: 850;
   letter-spacing: 0.04em;
@@ -145,7 +145,7 @@
 }
 
 .lingoflow-word-text {
-  color: #ffffff;
+  color: #ffffff !important;
   font-size: 18px;
   font-weight: 850;
   line-height: 1.2;
@@ -186,7 +186,7 @@
   display: flex;
   align-items: flex-start;
   gap: 7px;
-  color: rgba(244, 246, 255, 0.82);
+  color: rgba(244, 246, 255, 0.82) !important;
   font-size: 12.5px;
   font-weight: 650;
   line-height: 1.45;
@@ -211,7 +211,7 @@
   display: -webkit-box;
   max-height: 62px;
   overflow: hidden;
-  color: rgba(244, 246, 255, 0.72);
+  color: rgba(244, 246, 255, 0.72) !important;
   font-size: 12px;
   font-weight: 650;
   line-height: 1.45;
@@ -222,8 +222,8 @@
 .lingoflow-result-translation {
   max-height: min(220px, calc(100vh - 220px));
   overflow: auto;
-  color: #ffffff;
-  font-size: 15px;
+  color: #ffffff !important;
+  font-size: 15px !important;
   font-weight: 760;
   line-height: 1.55;
 }
@@ -294,7 +294,7 @@
   color: #ffffff;
   padding: 12px 24px;
   border-radius: 12px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif !important;
   font-size: 13px;
   font-weight: 500;
   box-shadow: 0 6px 24px rgba(129, 140, 248, 0.35);
@@ -457,7 +457,7 @@
   padding: 10px 14px;
   max-width: 360px;
   min-width: 120px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", sans-serif !important;
   font-size: 13.5px;
   font-weight: 700;
   line-height: 1.5;
@@ -494,12 +494,12 @@
   }
 
   .lingoflow-btn {
-    color: #d1d5db;
+    color: #d1d5db !important;
   }
 
   .lingoflow-btn:hover {
     background: rgba(124, 58, 237, 0.15);
-    color: #c4b5fd;
+    color: #c4b5fd !important;
   }
 
   #lingoflow-translation-result {
@@ -511,12 +511,12 @@
   }
 
   .lingoflow-result-original {
-    color: #a29cc8;
+    color: #a29cc8 !important;
     border-bottom-color: rgba(93, 79, 150, 0.3);
   }
 
   .lingoflow-result-translation {
-    color: #f0eeff;
+    color: #f0eeff !important;
   }
 
   .lingoflow-notification {
@@ -524,6 +524,29 @@
     color: #ffffff;
   }
 
+}
+
+/* Light Mode - 翻译框强制深色主题，不受系统影响 */
+@media (prefers-color-scheme: light) {
+  .lingoflow-btn {
+    color: rgba(244, 246, 255, 0.86) !important;
+  }
+
+  .lingoflow-result-original {
+    color: rgba(244, 246, 255, 0.72) !important;
+  }
+
+  .lingoflow-result-translation {
+    color: #ffffff !important;
+  }
+
+  .lingoflow-word-text {
+    color: #ffffff !important;
+  }
+
+  .lingoflow-meaning-item {
+    color: rgba(244, 246, 255, 0.82) !important;
+  }
 }
 
 /* Animations */

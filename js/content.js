@@ -916,9 +916,9 @@
         const selection = window.getSelection();
         if (selection && selection.rangeCount > 0) {
           let paragraphs = null;
-          if (typeof this.extractSelectionParagraphs === 'function') {
+          if (typeof EventHandlers.extractSelectionParagraphs === 'function') {
             try {
-              paragraphs = this.extractSelectionParagraphs(selection.getRangeAt(0), text);
+              paragraphs = EventHandlers.extractSelectionParagraphs(selection.getRangeAt(0), text);
             } catch (e) {
               console.warn('LingoFlow: extractSelectionParagraphs failed in handleTranslate', e);
             }
@@ -967,9 +967,9 @@
         if (rect && (rect.width || rect.height)) {
           // 安全调用 extractSelectionParagraphs，防止运行时报错
           let paragraphs = null;
-          if (typeof this.extractSelectionParagraphs === 'function') {
+          if (typeof EventHandlers.extractSelectionParagraphs === 'function') {
             try {
-              paragraphs = this.extractSelectionParagraphs(selection.getRangeAt(0), text);
+              paragraphs = EventHandlers.extractSelectionParagraphs(selection.getRangeAt(0), text);
             } catch (e) {
               console.warn('LingoFlow: extractSelectionParagraphs failed', e);
             }
@@ -1200,7 +1200,7 @@
         const range = selection.getRangeAt(0);
         const rect = range.getBoundingClientRect();
         if (!rect || (rect.width === 0 && rect.height === 0)) return;
-        const paragraphs = UI.extractSelectionParagraphs(range, selectedText);
+        const paragraphs = EventHandlers.extractSelectionParagraphs(range, selectedText);
 
         const selectionKey = `${selectedText}|${Math.round(rect.left)}|${Math.round(rect.top)}|${Math.round(rect.width)}|${Math.round(rect.height)}`;
         if (selectionKey === this.lastSelectionKey && document.getElementById('lingoflow-toolbar')) return;
