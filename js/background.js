@@ -445,8 +445,15 @@ function updateSettings(settings, sendResponse) {
 
     console.log('LingoFlow Background: Saving settings', {
       translationEngine: merged.translationEngine,
-      baiduAppId: merged.baiduAppId ? '***' : '',
-      baiduSecretKey: merged.baiduSecretKey ? '***' : ''
+      siliconflowApiKey: merged.siliconflowApiKey ? '***' : '(empty)',
+      microsoftApiKey: merged.microsoftApiKey ? '***' : '(empty)',
+      geminiApiKey: merged.geminiApiKey ? '***' : '(empty)',
+      deepseekApiKey: merged.deepseekApiKey ? '***' : '(empty)',
+      baiduAppId: merged.baiduAppId ? '***' : '(empty)',
+      baiduSecretKey: merged.baiduSecretKey ? '***' : '(empty)',
+      baiduLLMApiKey: merged.baiduLLMApiKey ? '***' : '(empty)',
+      youdaoAppKey: merged.youdaoAppKey ? '***' : '(empty)',
+      youdaoAppSecret: merged.youdaoAppSecret ? '***' : '(empty)'
     });
 
     chrome.storage.local.set({ lingoflow_settings: merged }, () => {
@@ -455,9 +462,18 @@ function updateSettings(settings, sendResponse) {
         sendResponse({ success: false, error: chrome.runtime.lastError.message });
         return;
       }
-      
+
       console.log('LingoFlow Background: Settings saved successfully');
-      // Broadcast is handled by storage.onChanged listener above (covers all write paths)
+      // Explicitly broadcast to all tabs so content scripts pick up engine/key changes immediately
+      try {
+        chrome.tabs.query({}, (tabs) => {
+          (tabs || []).forEach(tab => {
+            try {
+              chrome.tabs.sendMessage(tab.id, { action: 'sync_settings', settings: merged }).catch(() => {});
+            } catch (_) {}
+          });
+        });
+      } catch (_) {}
       sendResponse({ success: true });
     });
   });
@@ -466,12 +482,19 @@ function updateSettings(settings, sendResponse) {
 function getDefaultSettings(overrides = {}) {
   return {
     translationEngine: 'google',
+    siliconflowApiKey: '',
+    siliconflowModel: 'tencent/Hunyuan-MT-7B',
+    microsoftApiKey: '',
     geminiApiKey: '',
     geminiModel: 'gemini-3.1-flash-lite',
+    deepseekApiKey: '',
+    deepseekModel: 'deepseek-v4-flash',
     youdaoAppKey: '',
     youdaoAppSecret: '',
+    youdaoLLMModel: '3',
     baiduAppId: '',
     baiduSecretKey: '',
+    baiduLLMApiKey: '',
     targetLanguage: 'zh',
     uiLanguage: 'auto',
     theme: 'light',
@@ -659,8 +682,9 @@ function translateTextsForDictionary(texts, targetLang) {
 function translateText(text, targetLang, sendResponse) {
   // Read engine preference from settings
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
-    const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
-    console.log('LingoFlow: Selected translation engine:', engine);
+    const settings = getDefaultSettings(result.lingoflow_settings || {});
+    const engine = settings.translationEngine || 'google';
+    console.log('LingoFlow: Selected translation engine:', engine, 'targetLang:', targetLang, 'storedEngine:', result.lingoflow_settings && result.lingoflow_settings.translationEngine);
         if (engine === 'siliconflow') {
       translateWithSiliconFlow(text, targetLang, sendResponse);
     } else if (engine === 'microsoft') {
@@ -693,8 +717,9 @@ function translateBatch(texts, targetLang, sendResponse) {
   }
 
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
-    const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
-    console.log('LingoFlow: Selected batch translation engine:', engine, `(${list.length} items)`);
+    const settings = getDefaultSettings(result.lingoflow_settings || {});
+    const engine = settings.translationEngine || 'google';
+    console.log('LingoFlow: Selected batch translation engine:', engine, `(${list.length} items)`, 'targetLang:', targetLang, 'storedEngine:', result.lingoflow_settings && result.lingoflow_settings.translationEngine);
 
     if (engine === 'gemini') {
       translateBatchWithGemini(list, targetLang, sendResponse);
@@ -799,7 +824,7 @@ const SILICONFLOW_FALLBACK_MODELS = [
   'tencent/Hunyuan-MT-7B',          // ✅ Verified working - dedicated MT model, fast & reliable
   'MiniMaxAI/MiniMax-M2.5',
   'deepseek-ai/DeepSeek-V4-Flash',   // ✅ Fast, cheap, good quality
-  'Pro/deepseek-ai/DeepSeek-V3.2',
+  'deepseek-ai/DeepSeek-V3.2',
   'deepseek-ai/DeepSeek-V3'
 ];
 
@@ -807,7 +832,7 @@ const SILICONFLOW_MODEL_META = {
   'tencent/Hunyuan-MT-7B':        { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'MiniMaxAI/MiniMax-M2.5':       { pricing: 'paid', maxItems: 70, maxChars: 24000, chunkDelay: 60 },
   'deepseek-ai/DeepSeek-V4-Flash': { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 40 },
-  'Pro/deepseek-ai/DeepSeek-V3.2': { pricing: 'paid', maxItems: 70, maxChars: 22000, chunkDelay: 60 },
+  'deepseek-ai/DeepSeek-V3.2':    { pricing: 'paid', maxItems: 70, maxChars: 22000, chunkDelay: 60 },
   'deepseek-ai/DeepSeek-V3':       { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 }
 };
 
@@ -2050,9 +2075,8 @@ function translateWithDeepSeek(text, targetLang) {
         return;
       }
 
-      const targetLangName = targetLang === 'zh' ? '中文' :
-                             targetLang === 'en' ? 'English' : targetLang;
-      const sourceLangName = targetLang === 'zh' ? 'English' : '中文';
+      const targetLangName = targetLang === 'zh' || targetLang === 'zh-CN' ? 'Chinese' :
+                             targetLang === 'en' || targetLang === 'en-US' ? 'English' : targetLang;
 
       const maxLen = 4000;
       const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
@@ -2071,7 +2095,7 @@ function translateWithDeepSeek(text, targetLang) {
           messages: [
             {
               role: 'system',
-              content: `You are a professional translator. Translate the user's input from ${sourceLangName} to ${targetLangName}. Output ONLY the translation, no explanations, no quotes, no extra text.`
+              content: `You are a professional translator. Detect the source language of the user's input, then translate it to ${targetLangName}. Output ONLY the translation, no explanations, no quotes, no extra text.`
             },
             { role: 'user', content: truncated }
           ],
@@ -2084,6 +2108,11 @@ function translateWithDeepSeek(text, targetLang) {
           clearTimeout(timeoutId);
           if (!response.ok) {
             return response.text().then(body => {
+              console.warn('LingoFlow: DeepSeek HTTP error', {
+                status: response.status,
+                statusText: response.statusText,
+                body: body.substring(0, 500)
+              });
               throw new Error(`HTTP ${response.status}: ${body.substring(0, 200)}`);
             });
           }
@@ -2102,6 +2131,8 @@ function translateWithDeepSeek(text, targetLang) {
         })
         .catch(error => {
           clearTimeout(timeoutId);
+          const message = error && error.message ? error.message : String(error);
+          console.warn('LingoFlow: DeepSeek request failed:', message, error);
           reject(error);
         });
     });
@@ -2166,6 +2197,8 @@ function translateBatchWithDeepSeek(texts, targetLang, sendResponse) {
 
   runNext();
 }
+
+
 
 function translateBatchWithYoudaoLLM(texts, targetLang, sendResponse) {
   const list = Array.isArray(texts) ? texts.filter(t => typeof t === 'string' && t.trim()) : [];

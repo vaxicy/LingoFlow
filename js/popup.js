@@ -4,6 +4,29 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('LingoFlow: Popup loaded');
   applyPopupTheme('light');
 
+  // Preload saved settings to avoid losing data on force-save.
+  // Also pre-fill all hidden API key inputs so they have correct values
+  // even if the settings panel hasn't been opened yet.
+  chrome.runtime.sendMessage({ action: 'get_settings' }, (response) => {
+    if (response && response.settings) {
+      panelState.savedSettings = cloneSettings(response.settings);
+      // Pre-fill hidden inputs to prevent force-save from overwriting keys
+      prefillHiddenInputs(response.settings);
+      console.log('LingoFlow: Preloaded settings', {
+        translationEngine: panelState.savedSettings.translationEngine,
+        hasSiliconflowKey: !!panelState.savedSettings.siliconflowApiKey,
+        hasMicrosoftKey: !!panelState.savedSettings.microsoftApiKey,
+        hasGeminiKey: !!panelState.savedSettings.geminiApiKey,
+        hasDeepseekKey: !!panelState.savedSettings.deepseekApiKey,
+        hasBaiduAppId: !!panelState.savedSettings.baiduAppId,
+        hasBaiduSecretKey: !!panelState.savedSettings.baiduSecretKey,
+        hasBaiduLLMKey: !!panelState.savedSettings.baiduLLMApiKey,
+        hasYoudaoAppKey: !!panelState.savedSettings.youdaoAppKey,
+        hasYoudaoAppSecret: !!panelState.savedSettings.youdaoAppSecret
+      });
+    }
+  });
+
   // Initialize mode switches + buttons
   initModeSwitches();
   initPanels();
@@ -234,7 +257,7 @@ function resetUnsavedSettingsPreview(nextPanelId) {
   applyPopupSettings(panelState.savedSettings);
   if (typeof setLanguage === 'function') {
     setLanguage(panelState.savedSettings.uiLanguage || 'auto');
-    syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'mymemory');
+    syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
   }
   setSettingsDirty(false);
 }
@@ -245,7 +268,7 @@ function loadPopupLanguage() {
     if (settings && typeof setLanguage === 'function') {
       applyPopupTheme(settings.theme || 'light');
       setLanguage(settings.uiLanguage || 'auto');
-      syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'mymemory');
+      syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
     }
   });
 }
@@ -274,8 +297,15 @@ function openSettingsPanel() {
     
     console.log('LingoFlow: Loading settings', {
       translationEngine: settings.translationEngine,
-      baiduAppId: settings.baiduAppId ? '***' : '',
-      baiduSecretKey: settings.baiduSecretKey ? '***' : ''
+      siliconflowApiKey: settings.siliconflowApiKey ? '***' : '(empty)',
+      microsoftApiKey: settings.microsoftApiKey ? '***' : '(empty)',
+      geminiApiKey: settings.geminiApiKey ? '***' : '(empty)',
+      deepseekApiKey: settings.deepseekApiKey ? '***' : '(empty)',
+      baiduAppId: settings.baiduAppId ? '***' : '(empty)',
+      baiduSecretKey: settings.baiduSecretKey ? '***' : '(empty)',
+      baiduLLMApiKey: settings.baiduLLMApiKey ? '***' : '(empty)',
+      youdaoAppKey: settings.youdaoAppKey ? '***' : '(empty)',
+      youdaoAppSecret: settings.youdaoAppSecret ? '***' : '(empty)'
     });
     
     panelState.savedSettings = cloneSettings(settings);
@@ -294,14 +324,6 @@ const SILICONFLOW_MODELS = [
     descZh: '翻译专用 · 默认推荐',
     descEn: 'Translation · Default'
   },
-  // 付费模型 - MiniMax
-  {
-    id: 'MiniMaxAI/MiniMax-M2.5',
-    name: 'MiniMax-M2.5',
-    badge: 'paid',
-    descZh: 'MiniMax · 长文本',
-    descEn: 'MiniMax · Long context'
-  },
   // 付费模型 - DeepSeek
   {
     id: 'deepseek-ai/DeepSeek-V4-Flash',
@@ -311,6 +333,7 @@ const SILICONFLOW_MODELS = [
     descEn: 'Fast · Cost-effective'
   },
   {
+    id: 'deepseek-ai/DeepSeek-V3.2',
     name: 'DeepSeek-V3.2',
     badge: 'paid',
     descZh: '最新 · 高性能',
@@ -322,6 +345,14 @@ const SILICONFLOW_MODELS = [
     badge: 'paid',
     descZh: '稳定 · 高性价比',
     descEn: 'Stable · Cost-effective'
+  },
+  // 付费模型 - MiniMax
+  {
+    id: 'MiniMaxAI/MiniMax-M2.5',
+    name: 'MiniMax-M2.5',
+    badge: 'paid',
+    descZh: 'MiniMax · 长文本',
+    descEn: 'MiniMax · Long context'
   }
 ];
 
@@ -411,7 +442,7 @@ function initSettingsPanel() {
       }
       if (id === 'popup-ui-language' && typeof setLanguage === 'function') {
         Promise.resolve(setLanguage(control.value || 'auto')).then(() => {
-          syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'mymemory');
+          syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
           syncSiliconFlowModelSelect(document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B');
           syncPanelCustomSelects();
           updateSettingsFooter();
@@ -528,7 +559,7 @@ function initSettingsPanel() {
         applyPopupSettings(panelState.savedSettings);
         if (typeof setLanguage === 'function') {
           setLanguage(panelState.savedSettings.uiLanguage || 'auto');
-          syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'mymemory');
+          syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
         }
       }
       setSettingsDirty(false);
@@ -538,31 +569,52 @@ function initSettingsPanel() {
 
   // Force-save unsaved settings before popup closes (handles outside-click dismiss)
   // Chrome destroys popups immediately on outside-click; visibilitychange fires first,
-  // pagehide is the last chance. We save directly to storage (no async round-trip).
+  // pagehide is the last chance.
+  // IMPORTANT: We must read existing storage first, then merge with UI values.
+  // Otherwise hidden API key inputs (for non-active engines) will have empty values,
+  // and directly saving from UI will overwrite those keys with empty strings.
   let forceSaveDone = false;
   const forceSaveOnClose = () => {
     if (forceSaveDone) return;
     forceSaveDone = true;
     clearTimeout(settingsAutoSaveTimer);
     
-    const current = getPopupSettingsFromUI();
-    const base = panelState.savedSettings || getDefaultSettings();
-    const merged = getDefaultSettings({ ...base, ...current });
+    // Only save if settings have actually been modified
+    if (!panelState.settingsDirty) {
+      console.log('LingoFlow: No unsaved settings, skipping force save');
+      return;
+    }
     
-    console.log('LingoFlow: Force saving settings before close', {
-      translationEngine: merged.translationEngine,
-      isDirty: panelState.settingsDirty
+    // Read existing storage first, then merge UI values on top.
+    // This preserves API keys for hidden (inactive) engine inputs.
+    chrome.storage.local.get(['lingoflow_settings'], (result) => {
+      const existing = result.lingoflow_settings || {};
+      const current = getPopupSettingsFromUI();
+      const merged = getDefaultSettings({ ...existing, ...current });
+      
+      console.log('LingoFlow: Force saving settings before close', {
+        translationEngine: merged.translationEngine,
+        hasSiliconflowKey: !!merged.siliconflowApiKey,
+        hasMicrosoftKey: !!merged.microsoftApiKey,
+        hasGeminiKey: !!merged.geminiApiKey,
+        hasDeepseekKey: !!merged.deepseekApiKey,
+        hasBaiduAppId: !!merged.baiduAppId,
+        hasBaiduSecretKey: !!merged.baiduSecretKey,
+        hasBaiduLLMKey: !!merged.baiduLLMApiKey,
+        hasYoudaoAppKey: !!merged.youdaoAppKey,
+        hasYoudaoAppSecret: !!merged.youdaoAppSecret
+      });
+      
+      chrome.storage.local.set({ lingoflow_settings: merged }, () => {
+        if (chrome.runtime.lastError) {
+          console.error('LingoFlow: Force save failed', chrome.runtime.lastError);
+        } else {
+          console.log('LingoFlow: Force save succeeded');
+        }
+      });
+      
+      panelState.settingsDirty = false;
     });
-    
-    chrome.storage.local.set({ lingoflow_settings: merged }, () => {
-      if (chrome.runtime.lastError) {
-        console.error('LingoFlow: Force save failed', chrome.runtime.lastError);
-      } else {
-        console.log('LingoFlow: Force save succeeded');
-      }
-    });
-    
-    panelState.settingsDirty = false;
   };
 
   document.addEventListener('visibilitychange', () => {
@@ -690,7 +742,7 @@ function initEngineSelect() {
 
   menu.querySelectorAll('[data-engine-value]').forEach(option => {
     option.addEventListener('click', () => {
-      const value = option.getAttribute('data-engine-value') || 'mymemory';
+      const value = option.getAttribute('data-engine-value') || 'google';
       nativeSelect.value = value;
       nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
       setEngineSelectOpen(false);
@@ -709,7 +761,7 @@ function initEngineSelect() {
     }
   });
 
-  syncEngineSelect(nativeSelect.value || 'mymemory');
+  syncEngineSelect(nativeSelect.value || 'google');
 }
 
 function setEngineSelectOpen(open) {
@@ -730,15 +782,15 @@ function setEngineSelectOpen(open) {
 function getEngineSelectLabel(value) {
   const nativeSelect = document.getElementById('popup-translation-engine');
   const nativeOption = nativeSelect && nativeSelect.querySelector(`option[value="${value}"]`);
-  const meta = ENGINE_SELECT_META[value] || ENGINE_SELECT_META.mymemory;
+  const meta = ENGINE_SELECT_META[value] || ENGINE_SELECT_META.google;
   return (nativeOption && nativeOption.textContent.trim()) || meta.label;
 }
 
 function syncEngineSelect(value) {
-  const currentValue = value || 'mymemory';
+  const currentValue = value || 'google';
   const label = document.getElementById('engine-select-label');
   const desc = document.getElementById('engine-select-desc');
-  const meta = ENGINE_SELECT_META[currentValue] || ENGINE_SELECT_META.mymemory;
+  const meta = ENGINE_SELECT_META[currentValue] || ENGINE_SELECT_META.google;
 
   if (label) label.textContent = getEngineSelectLabel(currentValue);
   if (desc) {
@@ -749,10 +801,10 @@ function syncEngineSelect(value) {
 
   document.querySelectorAll('[data-engine-value]').forEach(option => {
     const selected = option.getAttribute('data-engine-value') === currentValue;
-    const optionValue = option.getAttribute('data-engine-value') || 'mymemory';
+    const optionValue = option.getAttribute('data-engine-value') || 'google';
     const optionLabel = option.querySelector('strong');
     const optionDesc = option.querySelector('small');
-    const optionMeta = ENGINE_SELECT_META[optionValue] || ENGINE_SELECT_META.mymemory;
+    const optionMeta = ENGINE_SELECT_META[optionValue] || ENGINE_SELECT_META.google;
 
     option.setAttribute('aria-selected', String(selected));
     if (optionLabel) optionLabel.textContent = getEngineSelectLabel(optionValue);
@@ -1304,7 +1356,7 @@ function persistPopupSettings(options = {}) {
     setSettingsSaveState('saved');
     if (typeof setLanguage === 'function') {
       Promise.resolve(setLanguage(settings.uiLanguage || 'auto')).then(() => {
-        syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'mymemory');
+        syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
         syncSiliconFlowModelSelect(document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B');
         syncPanelCustomSelects();
         updateSettingsFooter();
@@ -1371,11 +1423,14 @@ function getDefaultSettings(overrides = {}) {
     microsoftApiKey: '',
     geminiApiKey: '',
     geminiModel: 'gemini-3.1-flash-lite',
+    deepseekApiKey: '',
+    deepseekModel: 'deepseek-v4-flash',
     youdaoAppKey: '',
     youdaoAppSecret: '',
     youdaoLLMModel: '3',
     baiduAppId: '',
     baiduSecretKey: '',
+    baiduLLMApiKey: '',
     targetLanguage: 'zh',
     uiLanguage: 'auto',
     theme: 'light',
@@ -1388,6 +1443,39 @@ function getDefaultSettings(overrides = {}) {
     activeMode: null,
     ...overrides
   };
+}
+
+// Pre-fill hidden API key inputs with saved values.
+// This is critical: when popup opens, only the active engine's inputs are visible.
+// Hidden inputs still hold their values in DOM, but on fresh popup load they are empty.
+// If force-save fires before settings panel is opened, it would read empty strings
+// from hidden inputs and overwrite storage. This function prevents that.
+function prefillHiddenInputs(settings) {
+  const fields = [
+    { id: 'popup-siliconflow-key', key: 'siliconflowApiKey' },
+    { id: 'popup-siliconflow-model', key: 'siliconflowModel' },
+    { id: 'popup-microsoft-key', key: 'microsoftApiKey' },
+    { id: 'popup-gemini-key', key: 'geminiApiKey' },
+    { id: 'popup-gemini-model', key: 'geminiModel' },
+    { id: 'popup-deepseek-key', key: 'deepseekApiKey' },
+    { id: 'popup-deepseek-model', key: 'deepseekModel' },
+    { id: 'popup-baidu-app-id', key: 'baiduAppId' },
+    { id: 'popup-baidu-secret-key', key: 'baiduSecretKey' },
+    { id: 'popup-baidullm-ak', key: 'baiduLLMApiKey' },
+    { id: 'popup-youdao-app-key', key: 'youdaoAppKey' },
+    { id: 'popup-youdao-app-secret', key: 'youdaoAppSecret' },
+    { id: 'popup-youdao-llm-model', key: 'youdaoLLMModel' }
+  ];
+  fields.forEach(({ id, key }) => {
+    const el = document.getElementById(id);
+    if (el && settings[key] !== undefined) {
+      if (el.type === 'checkbox') {
+        el.checked = !!settings[key];
+      } else {
+        el.value = settings[key] || '';
+      }
+    }
+  });
 }
 
 function renderHistoryPanel() {
