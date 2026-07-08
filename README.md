@@ -69,7 +69,7 @@ LingoFlow/
 - **API Key 仅存本地** — 绝不发送至我们的服务器
 - 翻译文本仅直接发送至你选定的翻译引擎服务商
 
-详见 [隐私权政策](pages/privacy.html)。
+详见 [隐私权政策](https://vaxicy.github.io/LingoFlow/pages/privacy.html)。
 
 ## 技术栈
 
@@ -90,4 +90,4 @@ LingoFlow is a lightweight browser extension for reading foreign-language websit
 
 **Highlights:** selection translation, full-page translation, bilingual mode, hover paragraph translation, vocabulary book (export CSV/JSON), translation history, multiple translation engines (free & paid), and light/dark themes.
 
-All data stays on your device. No account required, no tracking, no server communication. See the [Privacy Policy](pages/privacy.html) for details.
+All data stays on your device. No account required, no tracking, no server communication. See the [Privacy Policy](https://vaxicy.github.io/LingoFlow/pages/privacy.html) for details.
