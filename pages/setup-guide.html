@@ -568,14 +568,6 @@
     </div>
   </div>
 
-  <script>
-    // 同步主题与扩展一致
-    (function () {
-      try {
-        const saved = localStorage.getItem('lingoflow_theme') || 'dark';
-        if (saved === 'light') document.body.setAttribute('data-theme', 'light');
-      } catch (_) {}
-    })();
-  </script>
+  <script src="setup-guide.js"></script>
 </body>
 </html>
