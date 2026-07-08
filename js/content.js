@@ -10,6 +10,11 @@
   // =========================================================================
   let _dispatchMessage = null; // Set after EventHandlers is defined below
 
+  if (typeof chrome === 'undefined' || !chrome.runtime || !chrome.runtime.onMessage) {
+    console.warn('LingoFlow: chrome.runtime unavailable in this context, content script inactive');
+    return;
+  }
+
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     try {
       if (_dispatchMessage) {
