@@ -843,6 +843,7 @@ function initPanelCustomSelects() {
   document.querySelectorAll('select.panel-select').forEach(select => {
     if (select.id === 'popup-translation-engine') return;
     if (select.id === 'popup-siliconflow-model') return;
+    if (select.id === 'popup-bailian-model') return;
     if (select.dataset.customSelectReady === 'true') return;
 
     select.dataset.customSelectReady = 'true';
