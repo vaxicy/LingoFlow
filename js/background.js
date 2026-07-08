@@ -1329,8 +1329,8 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
 // OpenAI-compatible endpoint
 const BAILIAN_FALLBACK_MODELS = [
   'qwen3.7-plus',    // ✅ Free quota available
-  'qwen-max-latest', // High quality
-  'qwen-turbo',      // Fast, cheap
+  'qwen-turbo',      // Fast, cheap (tried early: most workspaces have it)
+  'qwen-max-latest', // High quality (some workspaces lack permission -> 403)
   'qwen-plus'        // Balanced
 ];
 
@@ -1399,7 +1399,7 @@ function translateWithBailian(text, targetLang, sendResponse) {
       const label = isPrimary ? `[primary] ${model}` : `[${index}/${fallbackModels.length-1}] ${model}`;
       console.log(`LingoFlow: Bailian trying ${label}`);
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), isPrimary ? 8000 : 3000);
+      const timeoutId = setTimeout(() => controller.abort(), isPrimary ? 5000 : 3000);
       fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
