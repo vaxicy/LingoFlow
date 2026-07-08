@@ -423,6 +423,10 @@
     "message": "Baidu LLM",
     "description": "Baidu LLM translation engine option"
   },
+  "engine_bailian": {
+    "message": "Alibaba Bailian (Qwen)",
+    "description": "Alibaba Bailian translation engine option"
+  },
   "baidullm_api_key_label": {
     "message": "Baidu LLM API Key",
     "description": "Baidu LLM translation API Key label"
@@ -430,6 +434,14 @@
   "baidullm_api_key_desc": {
     "message": "API Key from API Key Management page (used for Bearer Token auth)",
     "description": "Baidu LLM API key description"
+  },
+  "bailian_api_key_label": {
+    "message": "Bailian API Key",
+    "description": "Alibaba Bailian API Key label"
+  },
+  "bailian_api_key_desc": {
+    "message": "Alibaba Bailian API key (free quota at aliyun.com)",
+    "description": "Alibaba Bailian API key description"
   },
   "baidu_app_id_label": {
     "message": "Baidu APP ID",

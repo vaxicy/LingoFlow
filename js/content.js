@@ -339,6 +339,7 @@
         case 'deepseek':
         case 'baidu':
         case 'baidullm':
+        case 'bailian':
           // All non-Google engines delegate to background.js which has the real API logic
           return await this.backgroundTranslator.translate(text, targetLang);
 

@@ -356,6 +356,13 @@ const SILICONFLOW_MODELS = [
   }
 ];
 
+const BAILIAN_MODELS = [
+  { id: 'qwen3.7-plus', name: 'Qwen3.7 Plus', badge: 'free', descZh: '通用 · 免费额度', descEn: 'General · Free quota' },
+  { id: 'qwen-max-latest', name: 'Qwen Max', badge: 'free', descZh: '最高质量', descEn: 'Highest quality' },
+  { id: 'qwen-turbo', name: 'Qwen Turbo', badge: 'free', descZh: '极速', descEn: 'Fastest' },
+  { id: 'qwen-plus', name: 'Qwen Plus', badge: 'free', descZh: '均衡', descEn: 'Balanced' }
+];
+
 const GEMINI_MODELS = [
   { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite（推荐·500次/天）' },
   { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash（备用）' },
@@ -394,6 +401,8 @@ function initSettingsPanel() {
     'popup-translation-engine',
     'popup-siliconflow-key',
     'popup-siliconflow-model',
+    'popup-bailian-key',
+    'popup-bailian-model',
     'popup-microsoft-key',
     'popup-gemini-key',
     'popup-gemini-model',
@@ -426,8 +435,10 @@ function initSettingsPanel() {
         const isDeepSeek = control.value === 'deepseek';
         const isBaidu = control.value === 'baidu';
         const isBaiduLLM = control.value === 'baidullm';
+        const isBailian = control.value === 'bailian';
         toggleApiKeyRow(isSF);
         toggleModelRow(isSF);
+        toggleBailianRows(isBailian);
         toggleMicrosoftRow(isMS);
         toggleGeminiRows(isGemini);
         toggleYoudaoRows(isYoudao);
@@ -514,12 +525,20 @@ function initSettingsPanel() {
       markSettingsChanged();
     });
   }
+  const bailianKeyInput = document.getElementById('popup-bailian-key');
+  if (bailianKeyInput) {
+    bailianKeyInput.addEventListener('input', () => {
+      markSettingsChanged();
+    });
+  }
+
 
   // Populate model selector options
   populateModelSelect('popup-siliconflow-model');
   populateGeminiModelSelect('popup-gemini-model');
   populateYoudaoLLMModelSelect('popup-youdao-llm-model');
   initSiliconFlowModelSelect();
+  initBailianModelSelect();
   initPanelCustomSelects();
 
   document.querySelectorAll('[data-popup-theme]').forEach(button => {
@@ -920,7 +939,7 @@ function refreshPanelCustomSelect(select) {
 function setPanelCustomSelectOpen(customSelect, open) {
   if (!customSelect) return;
   if (open) setEngineSelectOpen(false);
-  if (open) setSiliconFlowModelSelectOpen(false);
+  if (open) { setSiliconFlowModelSelectOpen(false); setBailianModelSelectOpen(false); }
   closePanelCustomSelects(customSelect);
 
   const trigger = customSelect.querySelector('.panel-custom-select-trigger');
@@ -1013,6 +1032,7 @@ function setSiliconFlowModelSelectOpen(open) {
 
   if (open) {
     setEngineSelectOpen(false);
+    setBailianModelSelectOpen(false);
     closePanelCustomSelects();
   }
 
@@ -1101,6 +1121,152 @@ function syncSiliconFlowModelSelect(value) {
   });
 }
 
+function populateBailianModelSelect(selectId) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  select.textContent = '';
+  BAILIAN_MODELS.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.id;
+    opt.textContent = m.name;
+    select.appendChild(opt);
+  });
+}
+
+function getBailianModelMeta(value) {
+  return BAILIAN_MODELS.find(model => model.id === value) || BAILIAN_MODELS[0];
+}
+
+function getBailianModelDescription(model) {
+  const lang = document.getElementById('popup-ui-language')?.value || 'auto';
+  if (lang === 'en') return model.descEn || model.descZh || '';
+  return model.descZh || model.descEn || '';
+}
+
+function initBailianModelSelect() {
+  const nativeSelect = document.getElementById('popup-bailian-model');
+  const trigger = document.getElementById('bailian-model-trigger');
+  const menu = document.getElementById('bailian-model-menu');
+  if (!nativeSelect || !trigger || !menu) return;
+
+  populateBailianModelSelect('popup-bailian-model');
+
+  trigger.addEventListener('click', () => {
+    setBailianModelSelectOpen(!document.getElementById('bailian-model-select').classList.contains('open'));
+  });
+
+  nativeSelect.addEventListener('change', () => {
+    syncBailianModelSelect(nativeSelect.value || 'qwen3.7-plus');
+  });
+
+  document.addEventListener('click', (event) => {
+    const customSelect = document.getElementById('bailian-model-select');
+    if (customSelect && !customSelect.contains(event.target)) {
+      setBailianModelSelectOpen(false);
+    }
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') setBailianModelSelectOpen(false);
+  });
+
+  syncBailianModelSelect(nativeSelect.value || 'qwen3.7-plus');
+}
+
+function setBailianModelSelectOpen(open) {
+  const customSelect = document.getElementById('bailian-model-select');
+  const trigger = document.getElementById('bailian-model-trigger');
+  const menu = document.getElementById('bailian-model-menu');
+  if (!customSelect || !trigger || !menu) return;
+  if (open) {
+    setEngineSelectOpen(false);
+    setSiliconFlowModelSelectOpen(false);
+    closePanelCustomSelects();
+  }
+  customSelect.classList.toggle('open', open);
+  trigger.setAttribute('aria-expanded', String(open));
+  menu.hidden = !open;
+}
+
+function syncBailianModelSelect(value) {
+  const nativeSelect = document.getElementById('popup-bailian-model');
+  const menu = document.getElementById('bailian-model-menu');
+  const label = document.getElementById('bailian-model-label');
+  const badge = document.getElementById('bailian-model-badge');
+  const desc = document.getElementById('bailian-model-desc');
+  if (!nativeSelect || !menu || !label || !badge || !desc) return;
+
+  const currentValue = value || nativeSelect.value || 'qwen3.7-plus';
+  const currentModel = getBailianModelMeta(currentValue);
+  label.textContent = currentModel.name;
+  desc.textContent = getBailianModelDescription(currentModel);
+  badge.textContent = getModelBadgeText(currentModel.badge);
+  badge.className = `model-select-badge model-select-badge-${currentModel.badge === 'paid' ? 'paid' : 'free'}`;
+  menu.textContent = '';
+
+  let lastBadgeType = null;
+
+  BAILIAN_MODELS.forEach((model, index) => {
+    if (index > 0 && lastBadgeType !== model.badge) {
+      const separator = document.createElement('div');
+      separator.className = 'model-select-separator';
+      separator.setAttribute('role', 'separator');
+      const separatorText = document.createElement('span');
+      separatorText.textContent = model.badge === 'paid' ? getMessage('paid_models') : getMessage('free_models');
+      separator.appendChild(separatorText);
+      menu.appendChild(separator);
+    }
+    lastBadgeType = model.badge;
+
+    const option = document.createElement('button');
+    option.className = 'model-select-option';
+    option.type = 'button';
+    option.setAttribute('role', 'option');
+    option.setAttribute('aria-selected', String(model.id === currentValue));
+    option.dataset.modelValue = model.id;
+
+    const text = document.createElement('span');
+    text.className = 'model-select-option-text';
+
+    const top = document.createElement('span');
+    top.className = 'model-select-title-row';
+
+    const title = document.createElement('strong');
+    title.textContent = model.name;
+
+    const optionBadge = document.createElement('span');
+    optionBadge.className = `model-select-badge model-select-badge-${model.badge === 'paid' ? 'paid' : 'free'}`;
+    optionBadge.textContent = getModelBadgeText(model.badge);
+
+    const optionDesc = document.createElement('small');
+    optionDesc.textContent = getBailianModelDescription(model);
+
+    const check = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    check.setAttribute('class', 'model-select-check');
+    check.setAttribute('width', '16');
+    check.setAttribute('height', '16');
+    check.setAttribute('viewBox', '0 0 24 24');
+    check.setAttribute('fill', 'none');
+    check.setAttribute('stroke', 'currentColor');
+    check.setAttribute('stroke-width', '2.4');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', 'M20 6 9 17l-5-5');
+    check.appendChild(path);
+
+    top.append(title, optionBadge);
+    text.append(top, optionDesc);
+    option.append(text, check);
+
+    option.addEventListener('click', () => {
+      nativeSelect.value = model.id;
+      nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      setBailianModelSelectOpen(false);
+    });
+
+    menu.appendChild(option);
+  });
+}
+
 function populateGeminiModelSelect(selectId) {
   const select = document.getElementById(selectId);
   if (!select) return;
@@ -1176,6 +1342,13 @@ function toggleDeepSeekRows(show) {
   if (modelRow) modelRow.hidden = !show;
 }
 
+function toggleBailianRows(show) {
+  const keyRow = document.getElementById('popup-bailian-key-row');
+  const modelRow = document.getElementById('popup-bailian-model-row');
+  if (keyRow) keyRow.hidden = !show;
+  if (modelRow) modelRow.hidden = !show;
+}
+
 function toggleBaiduRows(show) {
   const appIdRow = document.getElementById('popup-baidu-app-id-row');
   const secretKeyRow = document.getElementById('popup-baidu-secret-key-row');
@@ -1212,6 +1385,7 @@ function applyPopupSettings(settings) {
     const isDeepSeek = translationEngine.value === 'deepseek';
     const isBaidu = translationEngine.value === 'baidu';
     const isBaiduLLM = translationEngine.value === 'baidullm';
+    const isBailian = translationEngine.value === 'bailian';
     toggleApiKeyRow(isSF);
     toggleModelRow(isSF);
     toggleMicrosoftRow(isMS);
@@ -1223,6 +1397,7 @@ function applyPopupSettings(settings) {
       document.getElementById('popup-baidu-app-id-row').hidden = false;
     }
     toggleBaiduLLMRows(isBaiduLLM);
+    toggleBailianRows(isBailian);
     syncEngineSelect(translationEngine.value);
   }
   if (apiKeyInput) apiKeyInput.value = settings.siliconflowApiKey || '';
@@ -1230,6 +1405,14 @@ function applyPopupSettings(settings) {
     modelSelect.value = settings.siliconflowModel || 'tencent/Hunyuan-MT-7B';
     if (!modelSelect.value) modelSelect.value = 'tencent/Hunyuan-MT-7B';
     syncSiliconFlowModelSelect(modelSelect.value);
+  }
+  const bailianKeyInput = document.getElementById('popup-bailian-key');
+  if (bailianKeyInput) bailianKeyInput.value = settings.bailianApiKey || '';
+  const bailianModelSelect = document.getElementById('popup-bailian-model');
+  if (bailianModelSelect) {
+    bailianModelSelect.value = settings.bailianModel || 'qwen3.7-plus';
+    if (!bailianModelSelect.value) bailianModelSelect.value = 'qwen3.7-plus';
+    syncBailianModelSelect(bailianModelSelect.value);
   }
   if (microsoftKeyInput) microsoftKeyInput.value = settings.microsoftApiKey || '';
   if (geminiKeyInput) geminiKeyInput.value = settings.geminiApiKey || '';
@@ -1297,6 +1480,8 @@ function getPopupSettingsFromUI() {
     translationEngine: document.getElementById('popup-translation-engine')?.value || 'google',
     siliconflowApiKey: document.getElementById('popup-siliconflow-key')?.value || '',
     siliconflowModel: document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B',
+    bailianApiKey: document.getElementById('popup-bailian-key')?.value || '',
+    bailianModel: document.getElementById('popup-bailian-model')?.value || 'qwen3.7-plus',
     microsoftApiKey: document.getElementById('popup-microsoft-key')?.value || '',
     geminiApiKey: document.getElementById('popup-gemini-key')?.value || '',
     geminiModel: document.getElementById('popup-gemini-model')?.value || 'gemini-3.1-flash-lite',
@@ -1420,6 +1605,8 @@ function getDefaultSettings(overrides = {}) {
     translationEngine: 'google',
     siliconflowApiKey: '',
     siliconflowModel: 'tencent/Hunyuan-MT-7B',
+    bailianApiKey: '',
+    bailianModel: 'qwen3.7-plus',
     microsoftApiKey: '',
     geminiApiKey: '',
     geminiModel: 'gemini-3.1-flash-lite',
@@ -1454,6 +1641,8 @@ function prefillHiddenInputs(settings) {
   const fields = [
     { id: 'popup-siliconflow-key', key: 'siliconflowApiKey' },
     { id: 'popup-siliconflow-model', key: 'siliconflowModel' },
+    { id: 'popup-bailian-key', key: 'bailianApiKey' },
+    { id: 'popup-bailian-model', key: 'bailianModel' },
     { id: 'popup-microsoft-key', key: 'microsoftApiKey' },
     { id: 'popup-gemini-key', key: 'geminiApiKey' },
     { id: 'popup-gemini-model', key: 'geminiModel' },

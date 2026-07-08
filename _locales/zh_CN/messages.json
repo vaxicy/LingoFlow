@@ -423,6 +423,10 @@
     "message": "百度大模型",
     "description": "百度大模型翻译引擎选项"
   },
+  "engine_bailian": {
+    "message": "阿里百炼（通义千问）",
+    "description": "阿里百炼翻译引擎选项"
+  },
   "baidullm_api_key_label": {
     "message": "百度大模型 API Key",
     "description": "百度大模型翻译 API Key 标签"
@@ -430,6 +434,14 @@
   "baidullm_api_key_desc": {
     "message": "翻译开放平台 → 我的服务 → 大模型文本翻译 → API Key管理 创建的 Key（用于身份认证）",
     "description": "百度大模型 API Key 说明"
+  },
+  "bailian_api_key_label": {
+    "message": "百炼 API 密钥",
+    "description": "阿里百炼 API 密钥标签"
+  },
+  "bailian_api_key_desc": {
+    "message": "阿里百炼 API 密钥（阿里云免费额度）",
+    "description": "阿里百炼 API 密钥说明"
   },
   "baidu_app_id_label": {
     "message": "百度 APP ID",

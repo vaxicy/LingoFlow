@@ -193,6 +193,7 @@
             <option value="microsoft" data-i18n="engine_microsoft">Microsoft Translator</option>
             <option value="gemini" data-i18n="engine_gemini">Gemini AI</option>
             <option value="siliconflow" data-i18n="engine_siliconflow">硅基流动 AI</option>
+            <option value="bailian" data-i18n="engine_bailian">阿里百炼</option>
             <option value="deepseek" data-i18n="engine_deepseek">DeepSeek AI</option>
             <option value="youdao" data-i18n="engine_youdao">有道翻译</option>
             <option value="youdaollm" data-i18n="engine_youdaollm">有道大模型</option>
@@ -250,6 +251,15 @@
                 <span>
                   <strong>硅基流动 AI</strong>
                   <small>AI 翻译 · 有免费模型</small>
+                </span>
+                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </button>
+              <button class="engine-select-option" type="button" role="option" data-engine-value="bailian" aria-selected="false">
+                <span>
+                  <strong>阿里百炼</strong>
+                  <small>通义千问 · 有免费额度</small>
                 </span>
                 <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                   <path d="M20 6 9 17l-5-5"/>
@@ -347,6 +357,39 @@
               </svg>
             </button>
             <div class="model-select-menu" id="siliconflow-model-menu" role="listbox" aria-label="SiliconFlow model" hidden></div>
+          </div>
+        </div>
+
+        <div class="settings-row settings-row-stack" id="popup-bailian-key-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="bailian_api_key_label">百炼 API 密钥</strong>
+            <span data-i18n="bailian_api_key_desc">阿里百炼 API 密钥（阿里云免费额度）</span>
+          </div>
+          <input type="password" class="panel-input" id="popup-bailian-key" placeholder="sk-..." autocomplete="off">
+        </div>
+
+        <div class="settings-row settings-row-stack" id="popup-bailian-model-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="model_label">AI 模型</strong>
+            <span data-i18n="model_desc">选择用于翻译的免费 AI 模型</span>
+          </div>
+          <select class="panel-select native-select-hidden" id="popup-bailian-model" aria-hidden="true" tabindex="-1">
+            <!-- Options populated by JS -->
+          </select>
+          <div class="model-select" id="bailian-model-select">
+            <button class="model-select-trigger" id="bailian-model-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+              <span class="model-select-text">
+                <span class="model-select-title-row">
+                  <strong id="bailian-model-label">Qwen3.7 Plus</strong>
+                  <span class="model-select-badge model-select-badge-free" id="bailian-model-badge">Free</span>
+                </span>
+                <small id="bailian-model-desc">通用翻译</small>
+              </span>
+              <svg class="model-select-chevron" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m6 9 6 6 6-6"/>
+              </svg>
+            </button>
+            <div class="model-select-menu" id="bailian-model-menu" role="listbox" aria-label="Bailian model" hidden></div>
           </div>
         </div>
 

@@ -52,6 +52,8 @@ chrome.runtime.onInstalled.addListener(() => {
           translationEngine: 'google',
           siliconflowApiKey: '',
           siliconflowModel: 'tencent/Hunyuan-MT-7B',
+          bailianApiKey: '',
+          bailianModel: 'qwen3.7-plus',
           microsoftApiKey: '',
           geminiApiKey: '',
           geminiModel: 'gemini-3.1-flash-lite',
@@ -484,6 +486,8 @@ function getDefaultSettings(overrides = {}) {
     translationEngine: 'google',
     siliconflowApiKey: '',
     siliconflowModel: 'tencent/Hunyuan-MT-7B',
+    bailianApiKey: '',
+    bailianModel: 'qwen3.7-plus',
     microsoftApiKey: '',
     geminiApiKey: '',
     geminiModel: 'gemini-3.1-flash-lite',
@@ -687,6 +691,8 @@ function translateText(text, targetLang, sendResponse) {
     console.log('LingoFlow: Selected translation engine:', engine, 'targetLang:', targetLang, 'storedEngine:', result.lingoflow_settings && result.lingoflow_settings.translationEngine);
         if (engine === 'siliconflow') {
       translateWithSiliconFlow(text, targetLang, sendResponse);
+    } else if (engine === 'bailian') {
+      translateWithBailian(text, targetLang, sendResponse);
     } else if (engine === 'microsoft') {
       translateWithMicrosoft(text, targetLang, sendResponse);
     } else if (engine === 'gemini') {
@@ -806,6 +812,8 @@ function translateOneForBatch(text, targetLang, engine) {
 
     if (engine === 'siliconflow') {
       translateWithSiliconFlow(text, targetLang, respond);
+    } else if (engine === 'bailian') {
+      translateWithBailian(text, targetLang, respond);
     } else if (engine === 'microsoft') {
       translateWithMicrosoft(text, targetLang, respond);
     } else if (engine === 'gemini') {
@@ -1313,6 +1321,108 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
           tryNextModel(index + 1);
         });
     }
+  });
+}
+
+// ===== Alibaba Bailian (Tongyi Qianwen) Translation =====
+// OpenAI-compatible endpoint
+const BAILIAN_FALLBACK_MODELS = [
+  'qwen3.7-plus',    // ✅ Free quota available
+  'qwen-max-latest', // High quality
+  'qwen-turbo',      // Fast, cheap
+  'qwen-plus'        // Balanced
+];
+
+function getBailianTargetName(targetLang) {
+  return (targetLang === 'zh' || targetLang === 'zh-CN') ? 'Simplified Chinese'
+       : (targetLang === 'en') ? 'English' : 'Simplified Chinese';
+}
+
+// Bailian single-text translation (model fallback, then Google)
+function translateWithBailian(text, targetLang, sendResponse) {
+  const tl = getBailianTargetName(targetLang);
+  const overallTimeoutMs = 18000;
+  let overallTimer = setTimeout(() => {
+    console.warn('LingoFlow: Bailian overall timeout, falling back to Google');
+    translateWithGoogle(text, targetLang, sendResponse);
+  }, overallTimeoutMs);
+  let responseSent = false;
+
+  function done(result) {
+    if (responseSent) return;
+    responseSent = true;
+    clearTimeout(overallTimer);
+    if (result !== undefined) sendResponse({ success: true, translation: result });
+  }
+
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const settings = result.lingoflow_settings || {};
+    const apiKey = settings.bailianApiKey || '';
+    const selectedModel = settings.bailianModel || 'qwen3.7-plus';
+    const cached = getCachedTranslation('bailian', selectedModel, targetLang, text);
+    if (cached) { sendResponse({ success: true, translation: cached }); return; }
+    if (!apiKey) {
+      done();
+      console.warn('LingoFlow: Bailian API key not set, falling back to Google');
+      translateWithGoogle(text, targetLang, sendResponse);
+      return;
+    }
+
+    const maxLen = 2000;
+    const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
+    const fallbackModels = [selectedModel];
+    BAILIAN_FALLBACK_MODELS.forEach(m => { if (m !== selectedModel) fallbackModels.push(m); });
+
+    (function tryNextModel(index) {
+      if (responseSent) return;
+      if (index >= fallbackModels.length) {
+        done();
+        console.warn('LingoFlow: All Bailian models failed, falling back to Google');
+        translateWithGoogle(text, targetLang, sendResponse);
+        return;
+      }
+      const model = fallbackModels[index];
+      const isPrimary = index === 0;
+      const url = 'https://ws-qs3nf4dw21t7cnw9.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions';
+      const body = {
+        model,
+        messages: [
+          { role: 'system', content: `You are a professional translator. Translate the following text to ${tl}. Only output the translated text, no explanations, no notes.` },
+          { role: 'user', content: truncated }
+        ],
+        temperature: 0.2,
+        top_p: 0.9,
+        max_tokens: Math.min(truncated.length * 4, 2000)
+      };
+      const label = isPrimary ? `[primary] ${model}` : `[${index}/${fallbackModels.length-1}] ${model}`;
+      console.log(`LingoFlow: Bailian trying ${label}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), isPrimary ? 8000 : 3000);
+      fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      })
+        .then(res => { clearTimeout(timeoutId); if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+        .then(data => {
+          if (responseSent) return;
+          clearTimeout(timeoutId);
+          if (data && data.choices && data.choices[0] && data.choices[0].message) {
+            const t = data.choices[0].message.content.trim();
+            if (!t.length) { console.warn(`LingoFlow: Bailian ${model} empty, next...`); tryNextModel(index + 1); return; }
+            console.log(`LingoFlow: Bailian ${label} succeeded (${t.length} chars)`);
+            setCachedTranslation('bailian', selectedModel, targetLang, text, t);
+            done(t);
+          } else { console.warn(`LingoFlow: Bailian ${model} invalid, next...`); tryNextModel(index + 1); }
+        })
+        .catch(error => {
+          clearTimeout(timeoutId);
+          if (responseSent) return;
+          console.warn(`LingoFlow: Bailian ${model}: ${error && error.message ? error.message : error}, next...`);
+          tryNextModel(index + 1);
+        });
+    })(0);
   });
 }
 
