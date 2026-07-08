@@ -8,7 +8,7 @@
     "description": "Extension short name"
   },
   "description": {
-    "message": "Foreign Web Reader with selection & full-page translation. Supports 10+ engines (Gemini, DeepSeek, Baidu, etc.). Custom UI.",
+    "message": "Foreign Web Reader with selection & full-page translation. Supports multiple translation engines with customizable UI themes.",
     "description": "Extension description (English)"
   },
   "app_name": {
