@@ -487,6 +487,7 @@ function getDefaultSettings(overrides = {}) {
     siliconflowApiKey: '',
     siliconflowModel: 'tencent/Hunyuan-MT-7B',
     bailianApiKey: '',
+    bailianApiHost: 'https://ws-qs3nf4dw21t7cnw9.cn-beijing.maas.aliyuncs.com',
     bailianModel: 'qwen3.7-plus',
     microsoftApiKey: '',
     geminiApiKey: '',
@@ -1276,7 +1277,7 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
 
       const controller = new AbortController();
       // Primary model gets more time (8s), backup models get less (3s)
-      const timeoutMs = isPrimary ? 8000 : 3000;
+      const timeoutMs = isPrimary ? 15000 : 8000;
       const timeoutId = setTimeout(() => {
         controller.abort();
       }, timeoutMs);
@@ -1341,7 +1342,7 @@ function getBailianTargetName(targetLang) {
 // Bailian single-text translation (model fallback, then Google)
 function translateWithBailian(text, targetLang, sendResponse) {
   const tl = getBailianTargetName(targetLang);
-  const overallTimeoutMs = 18000;
+  const overallTimeoutMs = 30000;
   let overallTimer = setTimeout(() => {
     console.warn('LingoFlow: Bailian overall timeout, falling back to Google');
     translateWithGoogle(text, targetLang, sendResponse);
@@ -1359,6 +1360,7 @@ function translateWithBailian(text, targetLang, sendResponse) {
     const settings = result.lingoflow_settings || {};
     const apiKey = settings.bailianApiKey || '';
     const selectedModel = settings.bailianModel || 'qwen3.7-plus';
+    const host = (settings.bailianApiHost || 'https://dashscope.aliyuncs.com').replace(/\/+$/, '');
     const cached = getCachedTranslation('bailian', selectedModel, targetLang, text);
     if (cached) { sendResponse({ success: true, translation: cached }); return; }
     if (!apiKey) {
@@ -1383,7 +1385,7 @@ function translateWithBailian(text, targetLang, sendResponse) {
       }
       const model = fallbackModels[index];
       const isPrimary = index === 0;
-      const url = 'https://ws-qs3nf4dw21t7cnw9.cn-beijing.maas.aliyuncs.com/compatible-mode/v1/chat/completions';
+      const url = `${host}/compatible-mode/v1/chat/completions`;
       const body = {
         model,
         messages: [

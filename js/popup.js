@@ -402,6 +402,7 @@ function initSettingsPanel() {
     'popup-siliconflow-key',
     'popup-siliconflow-model',
     'popup-bailian-key',
+    'popup-bailian-host',
     'popup-bailian-model',
     'popup-microsoft-key',
     'popup-gemini-key',
@@ -528,6 +529,12 @@ function initSettingsPanel() {
   const bailianKeyInput = document.getElementById('popup-bailian-key');
   if (bailianKeyInput) {
     bailianKeyInput.addEventListener('input', () => {
+      markSettingsChanged();
+    });
+  }
+  const bailianHostInput = document.getElementById('popup-bailian-host');
+  if (bailianHostInput) {
+    bailianHostInput.addEventListener('input', () => {
       markSettingsChanged();
     });
   }
@@ -1344,8 +1351,10 @@ function toggleDeepSeekRows(show) {
 
 function toggleBailianRows(show) {
   const keyRow = document.getElementById('popup-bailian-key-row');
+  const hostRow = document.getElementById('popup-bailian-host-row');
   const modelRow = document.getElementById('popup-bailian-model-row');
   if (keyRow) keyRow.hidden = !show;
+  if (hostRow) hostRow.hidden = !show;
   if (modelRow) modelRow.hidden = !show;
 }
 
@@ -1408,6 +1417,8 @@ function applyPopupSettings(settings) {
   }
   const bailianKeyInput = document.getElementById('popup-bailian-key');
   if (bailianKeyInput) bailianKeyInput.value = settings.bailianApiKey || '';
+  const bailianHostInput = document.getElementById('popup-bailian-host');
+  if (bailianHostInput) bailianHostInput.value = settings.bailianApiHost || '';
   const bailianModelSelect = document.getElementById('popup-bailian-model');
   if (bailianModelSelect) {
     bailianModelSelect.value = settings.bailianModel || 'qwen3.7-plus';
@@ -1481,6 +1492,7 @@ function getPopupSettingsFromUI() {
     siliconflowApiKey: document.getElementById('popup-siliconflow-key')?.value || '',
     siliconflowModel: document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B',
     bailianApiKey: document.getElementById('popup-bailian-key')?.value || '',
+    bailianApiHost: document.getElementById('popup-bailian-host')?.value || '',
     bailianModel: document.getElementById('popup-bailian-model')?.value || 'qwen3.7-plus',
     microsoftApiKey: document.getElementById('popup-microsoft-key')?.value || '',
     geminiApiKey: document.getElementById('popup-gemini-key')?.value || '',
@@ -1606,6 +1618,7 @@ function getDefaultSettings(overrides = {}) {
     siliconflowApiKey: '',
     siliconflowModel: 'tencent/Hunyuan-MT-7B',
     bailianApiKey: '',
+    bailianApiHost: 'https://ws-qs3nf4dw21t7cnw9.cn-beijing.maas.aliyuncs.com',
     bailianModel: 'qwen3.7-plus',
     microsoftApiKey: '',
     geminiApiKey: '',
@@ -1642,6 +1655,7 @@ function prefillHiddenInputs(settings) {
     { id: 'popup-siliconflow-key', key: 'siliconflowApiKey' },
     { id: 'popup-siliconflow-model', key: 'siliconflowModel' },
     { id: 'popup-bailian-key', key: 'bailianApiKey' },
+    { id: 'popup-bailian-host', key: 'bailianApiHost' },
     { id: 'popup-bailian-model', key: 'bailianModel' },
     { id: 'popup-microsoft-key', key: 'microsoftApiKey' },
     { id: 'popup-gemini-key', key: 'geminiApiKey' },

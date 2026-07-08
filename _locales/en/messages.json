@@ -443,6 +443,14 @@
     "message": "Alibaba Bailian API key (free quota at aliyun.com)",
     "description": "Alibaba Bailian API key description"
   },
+  "bailian_api_host_label": {
+    "message": "Bailian API Host",
+    "description": "Alibaba Bailian compatible endpoint label"
+  },
+  "bailian_api_host_desc": {
+    "message": "Bailian OpenAI-compatible Host (leave empty to use default dashscope.aliyuncs.com; fill in your workspace console address)",
+    "description": "Alibaba Bailian API Host description"
+  },
   "baidu_app_id_label": {
     "message": "Baidu APP ID",
     "description": "Baidu Translate APP ID label"

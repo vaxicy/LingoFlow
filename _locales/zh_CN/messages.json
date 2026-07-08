@@ -443,6 +443,14 @@
     "message": "阿里百炼 API 密钥（阿里云免费额度）",
     "description": "阿里百炼 API 密钥说明"
   },
+  "bailian_api_host_label": {
+    "message": "百炼 API Host",
+    "description": "阿里百炼兼容接口地址标签"
+  },
+  "bailian_api_host_desc": {
+    "message": "百炼 OpenAI 兼容接口 Host（留空使用默认 dashscope.aliyuncs.com，专属工作空间请填控制台地址）",
+    "description": "阿里百炼 API Host 说明"
+  },
   "baidu_app_id_label": {
     "message": "百度 APP ID",
     "description": "百度翻译 APP ID 标签"
