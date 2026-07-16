@@ -172,13 +172,13 @@ def large_promo():
         draw.ellipse((cx + dx, cy + 18, cx + dx + 11, cy + 29), fill=color)
     draw.rounded_rectangle((cx + 75, cy + 14, cx + cw - 20, cy + 34), radius=12, fill="#e9edf7")
 
-    # content
+    # content (compact spacing to fit inside the card without overflow)
     tx, ty = cx + 44, cy + bar_h + 34
     f_title = font(28, bold=True)
     f_body = font(20, chinese=True)
     f_trans = font(20, chinese=True)
     draw.text((tx, ty), "How will OpenAI compete?", fill=COLORS["ink"], font=f_title)
-    ty += f_title.size + 20
+    ty += f_title.size + 16
 
     body_lines = [
         "Great products start with clear thinking, patient",
@@ -186,15 +186,15 @@ def large_promo():
     ]
     for line in body_lines:
         draw.text((tx, ty), line, fill="#233047", font=f_body)
-        ty += f_body.size + 10
-    ty += 6
+        ty += f_body.size + 6
+    ty += 3
 
     draw.rectangle((tx, ty, tx + 4, ty + f_body.size + 10), fill=COLORS["violet"])
     trans_lines = ["优秀产品始于清晰思考、耐心迭代，", "以及对用户真实需求的敏锐理解。"]
     for line in trans_lines:
         draw.text((tx + 16, ty), line, fill="#6875b5", font=f_trans)
-        ty += f_trans.size + 8
-    ty += 20
+        ty += f_trans.size + 5
+    ty += 6
 
     body_lines2 = [
         "The best tools feel quiet in your workflow, but",
@@ -202,13 +202,13 @@ def large_promo():
     ]
     for line in body_lines2:
         draw.text((tx, ty), line, fill="#233047", font=f_body)
-        ty += f_body.size + 10
-    ty += 6
+        ty += f_body.size + 6
+    ty += 3
     draw.rectangle((tx, ty, tx + 4, ty + f_body.size + 10), fill=COLORS["violet"])
     trans_lines2 = ["最好的工具会安静地融入工作流，", "并在你需要时刚好发挥力量。"]
     for line in trans_lines2:
         draw.text((tx + 16, ty), line, fill="#6875b5", font=f_trans)
-        ty += f_trans.size + 8
+        ty += f_trans.size + 5
 
     img.save(OUT / "top-promo-1400x560.png")
 

@@ -275,13 +275,27 @@ def screenshot_02_selection():
     cy += 10
     draw.rectangle((cx, cy, cx + 3, cy + F["small"].size + 10), fill="#b9b0ff")
     draw.text((cx + 14, cy), "\"The role demands strong problem-solving skills.\"", fill="#bdb7df", font=F["small"])
-    # toolbar
+    # toolbar — dynamic width and vertically centered text
     tx, ty = 120, 620
-    rounded_rect(draw, (tx, ty, tx + 230, ty + 54), "#29254e", radius=18)
-    for i, label in enumerate(["Translate", "Copy", "Save"]):
-        lx = tx + 14 + i * 76
-        draw.rounded_rectangle((lx, ty + 12, lx + 68, ty + 42), radius=12, fill="#7468ff")
-        draw.text((lx + 34, ty + 20), label, fill="white", font=F["small"], anchor="ma")
+    labels = ["Translate", "Copy", "Save"]
+    f_btn = F["small"]
+    btn_h = 30
+    pad_x = 14
+    gap = 10
+    side = 14
+    x = tx + side
+    buttons = []
+    for label in labels:
+        lw = int(draw.textlength(label, font=f_btn))
+        bw = lw + pad_x * 2
+        buttons.append((x, bw, label))
+        x += bw + gap
+    toolbar_w = x - gap + side
+    rounded_rect(draw, (tx, ty, tx + toolbar_w, ty + 54), "#29254e", radius=18)
+    for bx, bw, label in buttons:
+        by = ty + 12
+        rounded_rect(draw, (bx, by, bx + bw, by + btn_h), radius=12, fill="#7468ff")
+        draw.text((bx + bw // 2, by + btn_h // 2), label, fill="white", font=f_btn, anchor="mm")
     img.save(OUT / "02-selection-translation.png")
 
 
@@ -409,7 +423,7 @@ def screenshot_05_support():
     bw, bh = 220, 54
     bx = x + 28
     draw.rounded_rectangle((bx, by, bx + bw, by + bh), radius=16, fill=COLORS["blue"])
-    draw.text((bx + bw // 2, by + 16), "Start Foreign Reading", fill="white", font=F["small"], anchor="ma")
+    draw.text((bx + bw // 2, by + bh // 2), "Start Foreign Reading", fill="white", font=F["small"], anchor="mm")
     img.save(OUT / "05-privacy-support.png")
 
 
