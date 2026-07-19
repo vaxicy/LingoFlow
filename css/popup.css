@@ -376,6 +376,32 @@ body[data-theme="light"] .settings-section-title {
   color: #dcd6ff;
 }
 
+.data-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(124, 108, 255, 0.18);
+  background: #ffffff;
+  color: #3a3e5c;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.data-action-btn:hover {
+  background: #f1edff;
+  color: #6d5ef0;
+  border-color: rgba(124, 108, 255, 0.35);
+}
+
+.data-action-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
 .popup-status {
   display: flex;
   align-items: center;

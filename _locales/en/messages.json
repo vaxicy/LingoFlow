@@ -603,6 +603,46 @@
     "message": "Data & History",
     "description": "Settings section title"
   },
+  "backup_settings": {
+    "message": "Backup & Restore",
+    "description": "Backup section title"
+  },
+  "backup_export": {
+    "message": "Export Backup",
+    "description": "Export backup button / row title"
+  },
+  "backup_export_desc": {
+    "message": "Export all settings, history and vocabulary",
+    "description": "Export backup description"
+  },
+  "backup_import": {
+    "message": "Import Backup",
+    "description": "Import backup button / row title"
+  },
+  "backup_import_desc": {
+    "message": "Restore all data from a backup file",
+    "description": "Import backup description"
+  },
+  "import_invalid": {
+    "message": "Invalid backup file",
+    "description": "Import error: file not a valid backup"
+  },
+  "import_confirm": {
+    "message": "Importing will overwrite current settings, history and vocabulary. Continue?",
+    "description": "Import confirmation prompt"
+  },
+  "import_success": {
+    "message": "Backup imported",
+    "description": "Import success message"
+  },
+  "import_failed": {
+    "message": "Import failed",
+    "description": "Import failure message"
+  },
+  "export_success": {
+    "message": "Backup exported",
+    "description": "Export success message"
+  },
   "advanced_settings": {
     "message": "Advanced",
     "description": "Settings section title"

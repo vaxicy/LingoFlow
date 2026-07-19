@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize mode switches + buttons
   initModeSwitches();
   initPanels();
+  initBackup();
   loadPopupLanguage();
 
   // Restore active mode state from storage
@@ -2545,6 +2546,132 @@ function updateStatus() {
       }
     }
   });
+}
+
+// ======================== Backup & Restore (full data) ========================
+
+function initBackup() {
+  const exportBtn = document.getElementById('popup-export-data');
+  const importBtn = document.getElementById('popup-import-data');
+  if (exportBtn) exportBtn.addEventListener('click', exportAllData);
+  if (importBtn) importBtn.addEventListener('click', triggerImportData);
+}
+
+function exportAllData() {
+  chrome.storage.local.get(
+    ['lingoflow_settings', 'lingoflow_history', 'lingoflow_vocabulary'],
+    (result) => {
+      const payload = {
+        app: 'LingoFlow',
+        schemaVersion: 1,
+        exportedAt: new Date().toISOString(),
+        settings: result.lingoflow_settings || null,
+        history: result.lingoflow_history || [],
+        vocabulary: result.lingoflow_vocabulary || []
+      };
+      const json = JSON.stringify(payload, null, 2);
+      const stamp = new Date().toISOString().slice(0, 10);
+      const filename = 'lingoflow-backup-' + stamp + '.json';
+      const url = 'data:application/json;charset=utf-8,' + encodeURIComponent(json);
+      fallbackDownload(url, filename);
+      showStatus(getMessage('export_success'), 'success');
+    }
+  );
+}
+
+let _importFileInput = null;
+function triggerImportData() {
+  if (!_importFileInput) {
+    _importFileInput = document.createElement('input');
+    _importFileInput.type = 'file';
+    _importFileInput.accept = 'application/json,.json';
+    _importFileInput.style.display = 'none';
+    _importFileInput.addEventListener('change', onImportFileSelected);
+    document.body.appendChild(_importFileInput);
+  }
+  _importFileInput.value = '';
+  _importFileInput.click();
+}
+
+function onImportFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    let parsed;
+    try {
+      parsed = JSON.parse(reader.result);
+    } catch (_) {
+      showStatus(getMessage('import_invalid'), 'error');
+      return;
+    }
+    if (!parsed || typeof parsed !== 'object') {
+      showStatus(getMessage('import_invalid'), 'error');
+      return;
+    }
+    // Accept both wrapped shape {settings,history,vocabulary} and flat lingoflow_* shape
+    const hasWrapped = ('settings' in parsed) || ('history' in parsed) || ('vocabulary' in parsed);
+    const hasFlat = ('lingoflow_settings' in parsed) || ('lingoflow_history' in parsed) || ('lingoflow_vocabulary' in parsed);
+    if (!hasWrapped && !hasFlat) {
+      showStatus(getMessage('import_invalid'), 'error');
+      return;
+    }
+    if (!confirm(getMessage('import_confirm'))) return;
+
+    const settings = parsed.settings !== undefined ? parsed.settings : parsed.lingoflow_settings;
+    const history = parsed.history !== undefined ? parsed.history : parsed.lingoflow_history;
+    const vocabulary = parsed.vocabulary !== undefined ? parsed.vocabulary : parsed.lingoflow_vocabulary;
+
+    const toSet = {};
+    if (settings !== undefined && settings !== null) toSet.lingoflow_settings = settings;
+    if (Array.isArray(history)) toSet.lingoflow_history = history;
+    if (Array.isArray(vocabulary)) toSet.lingoflow_vocabulary = vocabulary;
+
+    chrome.storage.local.set(toSet, () => {
+      if (chrome.runtime.lastError) {
+        showStatus(getMessage('import_failed'), 'error');
+        return;
+      }
+      chrome.storage.local.get(
+        ['lingoflow_settings', 'lingoflow_history', 'lingoflow_vocabulary'],
+        (res) => {
+          const s = res.lingoflow_settings || {};
+          panelState.history = (res.lingoflow_history || []).slice();
+          panelState.vocabulary = (res.lingoflow_vocabulary || []).slice();
+          panelState.savedSettings = cloneSettings(s);
+          applyPopupSettings(s);
+          if (typeof setLanguage === 'function') {
+            Promise.resolve(setLanguage(s.uiLanguage || 'auto')).then(() => {
+              syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+              syncSiliconFlowModelSelect(document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B');
+              syncPanelCustomSelects();
+              updateSettingsFooter();
+            });
+          }
+          setSettingsDirty(false);
+          const historyPanel = document.getElementById('history-panel');
+          const vocabPanel = document.getElementById('vocabulary-panel');
+          if (historyPanel && !historyPanel.hidden) renderHistoryPanel();
+          if (vocabPanel && !vocabPanel.hidden) renderVocabularyPanel();
+          showStatus(getMessage('import_success'), 'success');
+        }
+      );
+    });
+  };
+  reader.onerror = () => showStatus(getMessage('import_failed'), 'error');
+  reader.readAsText(file);
+}
+
+function fallbackDownload(url, filename) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    if (a.parentNode) document.body.removeChild(a);
+  }, 1000);
 }
 
 // Show status

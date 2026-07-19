@@ -603,6 +603,46 @@
     "message": "数据与历史",
     "description": "设置分组标题"
   },
+  "backup_settings": {
+    "message": "备份与恢复",
+    "description": "备份分组标题"
+  },
+  "backup_export": {
+    "message": "导出备份",
+    "description": "导出备份按钮 / 行标题"
+  },
+  "backup_export_desc": {
+    "message": "导出全部设置、历史记录与生词本",
+    "description": "导出备份说明"
+  },
+  "backup_import": {
+    "message": "导入备份",
+    "description": "导入备份按钮 / 行标题"
+  },
+  "backup_import_desc": {
+    "message": "从备份文件恢复全部数据",
+    "description": "导入备份说明"
+  },
+  "import_invalid": {
+    "message": "备份文件无效",
+    "description": "导入错误：文件不是有效备份"
+  },
+  "import_confirm": {
+    "message": "导入将覆盖当前设置、历史记录与生词本，是否继续？",
+    "description": "导入确认提示"
+  },
+  "import_success": {
+    "message": "备份已导入",
+    "description": "导入成功提示"
+  },
+  "import_failed": {
+    "message": "导入失败",
+    "description": "导入失败提示"
+  },
+  "export_success": {
+    "message": "备份已导出",
+    "description": "导出成功提示"
+  },
   "advanced_settings": {
     "message": "高级",
     "description": "设置分组标题"
