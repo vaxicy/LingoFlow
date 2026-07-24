@@ -1,93 +1,197 @@
-# LingoFlow
+# LingoFlow 🌐 Foreign Web Reader
 
-**一款轻量的浏览器扩展，让你轻松阅读外文网站。**
+**一款轻量的 Chrome 扩展，助你轻松阅读外文网站。**  
+A lightweight Chrome Extension for reading foreign-language websites with ease.
 
-[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-Publishing-blue)](https://chrome.google.com/webstore/) [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-v1.0.2-blue)](https://chrome.google.com/webstore/) [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
 
-## 功能特性
+---
 
-| 功能 | 说明 |
-|------|------|
-| **划词翻译** | 在网页上选中文本，即出现浮动工具栏显示译文 |
-| **全文翻译** | 一键翻译整页内容 |
-| **双语模式** | 在原文下方显示译文，对照阅读 |
-| **悬停段落翻译** | 鼠标悬停在段落上即可预览双语结果 |
-| **生词本** | 收藏单词和句子，支持导出 CSV/JSON |
-| **翻译历史** | 浏览历史翻译，支持搜索与筛选 |
-| **多翻译引擎** | 提供免费与付费引擎可选 |
-| **浅色 / 深色主题** | 匹配你的浏览偏好 |
+## Features / 功能特性
 
-## 安装
+### Core Translation / 核心翻译
 
-### 从 Chrome 网上应用店安装（推荐）
+| Feature | Description |
+|---------|-------------|
+| **Selection Translation** | Select text on any webpage — a floating toolbar instantly shows the translation |
+| **Full Page Translation** | One-click translate the entire page into your target language |
+| **Bilingual Mode** | Show translations below each paragraph — read side by side with the original |
+| **Hover Paragraph Translation** | Hover over any paragraph to preview a bilingual translation without clicking |
+| **Restore Original** | Instantly revert the page back to its original state |
 
-> 敬请期待，稍后上线！
+### Data Management / 数据管理
 
-### 加载已解压的扩展（开发者）
+| Feature | Description |
+|---------|-------------|
+| **Vocabulary Book** | Save words and sentences from any page; filter by type, search, and export as CSV or JSON |
+| **Translation History** | Automatic history log with search, filtering, and deletion; configurable limit |
+| **Full Data Backup** | Export/Import all settings, history, and vocabulary as a single JSON backup file |
 
-1. 打开 Chrome，访问 `chrome://extensions/`
-2. 开启右上角的 **开发者模式**
-3. 点击 **加载已解压的扩展程序**
-4. 选择本（`LingoFlow`）文件夹
-5. 将扩展固定到工具栏
+### Supported Translation Engines / 支持的翻译引擎
 
-## 使用
+| Engine | Type | Key Required |
+|--------|------|-------------|
+| Google Translate | Free (web scraping) | No |
+| MyMemory | Free (with quota) | No |
+| SiliconFlow AI | API key | Yes |
+| Gemini AI | API key | Yes |
+| Microsoft Translator (Azure) | API key | Yes |
+| Youdao Translate | API key | Yes |
+| Youdao LLM | API key | Yes |
+| Baidu Translate | API key | Yes |
+| Baidu LLM | API key | Yes |
+| Alibaba Bailian (Qwen) | API key | Yes |
 
-1. **选中文本** — 任意网页选中文字，浮动工具栏提供翻译 / 复制 / 收藏
-2. **右键菜单** — 选中文字后右键可快速操作
-3. 点击工具栏的 **LingoFlow 图标**：
-   - 全文翻译 / 切换双语模式
-   - 生词本 / 翻译历史
-   - 设置（翻译引擎、主题、语言等）
+### Interface & Customization / 界面与个性化
 
-## 项目结构
+- **Light & Dark themes** — matches your browser preference
+- **UI Language** — English or Chinese (follows system or manual selection)
+- **Auto-save** — changes take effect immediately
+- **Toolbar Position** — choose where the selection toolbar appears (above or below selection)
+- **Existing bilingual content handling** — skip, or English-only fallback
+
+### Other / 其他
+
+- **Right-click context menu** — translate selection, save to vocabulary, copy text
+- **Keyboard shortcuts supported** — use Chrome's built-in shortcut manager
+- **Privacy-first** — no account, no tracking, all data stays in your browser
+- **Manifest V3** — latest Chrome extension architecture
+
+---
+
+## Installation / 安装
+
+### From Chrome Web Store (Recommended)
+
+Download from the [Chrome Web Store](https://chrome.google.com/webstore/) — *coming soon.*
+
+### Developer Mode (Manual)
+
+1. Open Chrome and go to `chrome://extensions/`
+2. Enable **Developer mode** (top right)
+3. Click **Load unpacked**
+4. Select the `LingoFlow` folder
+5. Pin the extension to the toolbar for easy access
+
+---
+
+## Usage / 使用说明
+
+1. **Select text** on any webpage — a floating toolbar appears with Translate / Copy / Save buttons
+2. **Right-click** selected text for quick actions via the context menu
+3. Click the **LingoFlow icon** in the toolbar:
+   - Choose a display mode: `Translate Page` / `Bilingual Mode` / `Restore Original`
+   - Open **History** to browse past translations
+   - Open **Vocabulary** to review saved words and sentences
+   - Open **Settings** to configure translation engines, themes, language, and backup data
+
+### Setting Up Translation Engines
+
+- **Free engines** (Google, MyMemory) work out of the box — no configuration needed.
+- **API-key engines** require you to obtain an API key from the respective provider. See the **API Setup Guide** in the Settings panel for step-by-step instructions for each engine.
+
+---
+
+## Privacy / 隐私保护
+
+- **No account required** — no login, no registration
+- **No data collection** — no analytics, no tracking, no telemetry
+- **All data stays local** — stored in `chrome.storage.local` on your device
+- **API keys stay local** — never sent to any server other than the translation service you configure
+- **Translated text** is sent directly to your chosen translation engine — LingoFlow never proxies or stores it
+
+See the full [Privacy Policy](https://vaxicy.github.io/LingoFlow/pages/privacy.html).
+
+---
+
+## Project Structure / 项目结构
 
 ```
 LingoFlow/
 ├── manifest.json              # Manifest V3
-├── popup.html / .js / .css    # 弹窗界面
+├── popup.html / .css / .js    # Popup UI
 ├── js/
 │   ├── background.js          # Service Worker
-│   ├── content.js             # 内容脚本（注入页面）
-│   ├── popup.js               # 弹窗逻辑
-│   ├── options.js             # 设置页
-│   ├── vocabulary.js          # 生词本
-│   └── history.js             # 翻译历史
-├── css/                       # 样式文件
-├── pages/                     # 设置、生词本、历史、隐私权政策
-├── icons/                     # 扩展图标
-├── assets/                    # 静态资源
-├── _locales/                  # 国际化（en、zh_CN）
-└── store-assets/              # Chrome 应用店上架素材
+│   ├── content.js             # Content script (injected into pages)
+│   ├── popup.js               # Popup logic
+│   ├── vocabulary.js          # Vocabulary book
+│   ├── history.js             # Translation history
+│   └── i18n.js                # Internationalization helpers
+├── css/                       # Stylesheets
+├── pages/                     # Settings, Vocabulary, History, Privacy, Support
+│   ├── vocabulary.html        # Vocabulary book page
+│   ├── history.html           # Translation history page
+│   ├── privacy.html           # Privacy policy
+│   ├── support.html           # Donation / support page
+│   ├── setup-guide.html       # API setup guide
+│   └── setup-guide.js         # Setup guide interactivity
+├── icons/                     # Extension icons (16/48/128 px)
+├── assets/                    # Static resources (donation QR codes)
+├── _locales/                  # i18n (en, zh_CN)
+│   ├── en/
+│   │   └── messages.json
+│   └── zh_CN/
+│       └── messages.json
+├── store-assets/              # Chrome Web Store listing assets
+└── scripts/                   # Development / automation scripts
 ```
-
-## 隐私
-
-- **无需账号**，不登录
-- **不收集数据**，无追踪、无分析统计
-- **数据均存于本地** 浏览器（`chrome.storage.local`）
-- **API Key 仅存本地** — 绝不发送至我们的服务器
-- 翻译文本仅直接发送至你选定的翻译引擎服务商
-
-详见 [隐私权政策](https://vaxicy.github.io/LingoFlow/pages/privacy.html)。
-
-## 技术栈
-
-- **Manifest V3**（Chrome 扩展）
-- **原生 JavaScript**（无框架）
-- **Chrome Storage API** 本地存储
-- **i18n** 通过 `_locales`（中文 + 英文）
-
-## 开源协议
-
-[MIT](LICENSE)
 
 ---
 
-## English
+## Tech Stack / 技术栈
 
-LingoFlow is a lightweight browser extension for reading foreign-language websites with ease.
+- **Manifest V3** — Chrome Extension platform
+- **Vanilla JavaScript** — no framework, no dependencies
+- **Chrome Storage API** — local data persistence
+- **`chrome.i18n`** — internationalization via `_locales` (English + Chinese)
+- **CSS custom properties** — light / dark theming
+- **`chrome.downloads` / data URL fallback** — backup export
+- **`contextMenus`** — right-click integration
 
-**Highlights:** selection translation, full-page translation, bilingual mode, hover paragraph translation, vocabulary book (export CSV/JSON), translation history, multiple translation engines (free & paid), and light/dark themes.
+---
 
-All data stays on your device. No account required, no tracking, no server communication. See the [Privacy Policy](https://vaxicy.github.io/LingoFlow/pages/privacy.html) for details.
+## Development / 开发
+
+```bash
+# Clone the repo
+git clone https://github.com/vaxicy/LingoFlow.git
+
+# Load unpacked in Chrome (see Installation section above)
+
+# Make changes and reload the extension
+```
+
+### Packaging
+
+```bash
+# Create a clean zip for Chrome Web Store upload
+# (excludes .git, .codebuddy, scripts/, store-assets/, dev docs)
+cd LingoFlow && zip -r ../LingoFlow-v1.0.2.zip . \
+  -x ".git/*" ".codebuddy/*" "scripts/*" "store-assets/*" \
+  -x "create-icons.html" "README.md" "INSTALL.md" "I18N_COMPLETE.md"
+```
+
+---
+
+## License / 开源协议
+
+[Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)](LICENSE)
+
+You are free to **share** and **adapt** the material for non-commercial purposes, provided you give appropriate credit. Commercial use requires prior permission.
+
+---
+
+## Support / 支持
+
+If LingoFlow helps you read foreign-language websites more comfortably, you can support its development:
+
+- [WeChat / PayPal donation](https://vaxicy.github.io/LingoFlow/pages/support.html)
+- Report issues or suggest features via [GitHub Issues](https://github.com/vaxicy/LingoFlow/issues)
+
+Thank you for helping keep LingoFlow free and improving!
+
+---
+
+<p align="center">
+  Made with ❤️ for effortless cross-language reading.
+</p>
