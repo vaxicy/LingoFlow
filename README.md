@@ -3,7 +3,7 @@
 **一款轻量的 Chrome 扩展，助你轻松阅读外文网站。**  
 A lightweight Chrome Extension for reading foreign-language websites with ease.
 
-[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-v1.0.2-blue)](https://chrome.google.com/webstore/) [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-v1.0.2-blue)](https://chromewebstore.google.com/detail/lingoflow-%F0%9F%8C%90-foreign-web/fkloicgbhpomiadliefangbfegkccmlh) [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
 
 ---
 
@@ -63,7 +63,7 @@ A lightweight Chrome Extension for reading foreign-language websites with ease.
 
 ### From Chrome Web Store (Recommended)
 
-Download from the [Chrome Web Store](https://chrome.google.com/webstore/) — *coming soon.*
+Download from the [Chrome Web Store](https://chromewebstore.google.com/detail/lingoflow-%F0%9F%8C%90-foreign-web/fkloicgbhpomiadliefangbfegkccmlh).
 
 ### Developer Mode (Manual)
 
