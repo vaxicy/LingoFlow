@@ -541,6 +541,24 @@ function initSettingsPanel() {
       markSettingsChanged();
     });
   }
+  const customKeyInput = document.getElementById('popup-custom-key');
+  if (customKeyInput) {
+    customKeyInput.addEventListener('input', () => {
+      markSettingsChanged();
+    });
+  }
+  const customHostInput = document.getElementById('popup-custom-host');
+  if (customHostInput) {
+    customHostInput.addEventListener('input', () => {
+      markSettingsChanged();
+    });
+  }
+  const customModelInput = document.getElementById('popup-custom-model');
+  if (customModelInput) {
+    customModelInput.addEventListener('input', () => {
+      markSettingsChanged();
+    });
+  }
 
 
   // Populate model selector options
