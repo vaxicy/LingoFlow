@@ -824,7 +824,7 @@
     "description": "SiliconFlow CTA"
   },
   "guide_nim_desc": {
-    "message": "NVIDIA NIM provides 57+ free inference endpoints including the riva-translate model, with OpenAI-compatible APIs.",
+    "message": "NVIDIA NIM provides 57+ free inference endpoints with an OpenAI-compatible API, covering many open-source models.",
     "description": "NVIDIA NIM setup guide description"
   },
   "guide_nim_s1": {
@@ -832,19 +832,19 @@
     "description": "NVIDIA NIM step 1"
   },
   "guide_nim_s2": {
-    "message": "Filter <code>Free Endpoint</code> on the Models page and search for <code>riva-translate</code> or other models",
+    "message": "Go to the <code>Models</code> page, filter <code>Free Endpoint</code>, and click into any free model you want to use",
     "description": "NVIDIA NIM step 2"
   },
   "guide_nim_s3": {
-    "message": "Open the model detail page and get an API Key (or use the embedded playground)",
+    "message": "On the model detail page, click <strong>Generate API Key</strong> in the top-right corner of the code sample area and copy the key (only shown once)",
     "description": "NVIDIA NIM step 3"
   },
   "guide_nim_s4": {
-    "message": "Copy the Base URL (usually <code>https://integrate.api.nvidia.com/v1</code>) and the API Key",
+    "message": "In the same code sample, find the <strong>Base URL</strong> (usually <code>https://integrate.api.nvidia.com/v1</code>) and the <strong>model name</strong> (e.g. <code>z-ai/glm-5.2</code>)",
     "description": "NVIDIA NIM step 4"
   },
   "guide_nim_s5": {
-    "message": "Back in LingoFlow settings, choose \"Custom (OpenAI Compatible)\" and fill in the Host / Key / Model name",
+    "message": "Back in LingoFlow settings, choose \"Custom (OpenAI Compatible)\" and fill in Host / API Key / Model",
     "description": "NVIDIA NIM step 5"
   },
   "guide_go_nim": {

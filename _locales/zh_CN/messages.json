@@ -824,7 +824,7 @@
     "description": "硅基流动 CTA"
   },
   "guide_nim_desc": {
-    "message": "英伟达 NIM 提供 57+ 个免费推理端点，含翻译模型 riva-translate，支持 OpenAI 兼容接口。",
+    "message": "英伟达 NIM 提供 57+ 个免费推理端点，支持 OpenAI 兼容接口，可接入多种开源模型。",
     "description": "NVIDIA NIM 接入教程描述"
   },
   "guide_nim_s1": {
@@ -832,19 +832,19 @@
     "description": "NVIDIA NIM 步骤 1"
   },
   "guide_nim_s2": {
-    "message": "在 Models 页筛选 <code>Free Endpoint</code>，搜索 <code>riva-translate</code> 或其它模型",
+    "message": "进入「Models」页，筛选 <code>Free Endpoint</code>，找到想要使用的免费模型并点进详情页",
     "description": "NVIDIA NIM 步骤 2"
   },
   "guide_nim_s3": {
-    "message": "进入模型详情页，获取 API Key（或使用页面内嵌的测试界面）",
+    "message": "在模型详情页右侧代码示例区域右上角点「<strong>Generate API Key</strong>」创建并复制 API Key（仅首次会显示完整密钥）",
     "description": "NVIDIA NIM 步骤 3"
   },
   "guide_nim_s4": {
-    "message": "复制 Base URL（通常为 <code>https://integrate.api.nvidia.com/v1</code>）和 API Key",
+    "message": "同一页的代码示例里找到 <strong>Base URL</strong>（通常为 <code>https://integrate.api.nvidia.com/v1</code>）和 <strong>模型名称</strong>（如 <code>z-ai/glm-5.2</code>）",
     "description": "NVIDIA NIM 步骤 4"
   },
   "guide_nim_s5": {
-    "message": "回到 LingoFlow 设置，选择「自定义 (OpenAI 兼容)」，填写 Host / Key / Model 名称",
+    "message": "回到 LingoFlow 设置，选择「自定义 (OpenAI 兼容)」，分别填入 Host / API Key / Model",
     "description": "NVIDIA NIM 步骤 5"
   },
   "guide_go_nim": {
