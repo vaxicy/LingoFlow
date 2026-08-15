@@ -10,8 +10,14 @@
   <main class="support-shell">
     <header class="support-hero">
       <img src="../icons/icon-128.png" alt="LingoFlow" class="support-logo">
-      <div>
-        <h1 data-i18n="support_page_title">Support LingoFlow</h1>
+      <div class="support-hero-text">
+        <div class="support-hero-top">
+          <h1 data-i18n="support_page_title">Support LingoFlow</h1>
+          <div class="lang-switch" role="group" aria-label="Language">
+            <button type="button" data-lang="zh">中文</button>
+            <button type="button" data-lang="en" class="active">English</button>
+          </div>
+        </div>
         <p data-i18n="support_page_intro">
           LingoFlow is free to use. If it helps you read foreign-language websites more comfortably, you can support its development.
         </p>
@@ -77,20 +83,67 @@
 
   <script src="../js/i18n.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    // Sync theme with the extension
+    (function () {
       try {
-        chrome.storage.local.get(['lingoflow_settings'], (result) => {
-          const settings = result && result.lingoflow_settings;
-          const theme = settings && settings.theme === 'dark' ? 'dark' : 'light';
+        chrome.storage.local.get(['lingoflow_settings'], function (result) {
+          var settings = result && result.lingoflow_settings;
+          var theme = settings && settings.theme === 'dark' ? 'dark' : 'light';
           document.body.setAttribute('data-theme', theme);
-          if (settings && typeof setLanguage === 'function') {
-            setLanguage(settings.uiLanguage || 'auto');
-          }
         });
       } catch (_) {
         document.body.setAttribute('data-theme', 'light');
       }
-    });
+    })();
+
+    // Language switcher — kept in sync with the popup's UI language setting
+    // (popup writes to localStorage['lingoflow_ui_lang'] when saving settings,
+    //  so opening support.html in a tab reflects the user's last popup choice).
+    (function () {
+      var STORAGE_KEY = 'lingoflow_ui_lang';
+      var buttons = document.querySelectorAll('.lang-switch button');
+
+      function applyLang(lang) {
+        if (!lang) return;
+        var dir = lang === 'zh' || (lang || '').startsWith('zh') ? 'zh_CN' : 'en';
+        return fetch(chrome.runtime.getURL('_locales/' + dir + '/messages.json'))
+          .then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+          })
+          .then(function (messages) {
+            var els = document.querySelectorAll('[data-i18n]');
+            els.forEach(function (el) {
+              var key = el.getAttribute('data-i18n');
+              var msg = messages[key] && messages[key].message;
+              if (msg) el.innerHTML = msg;
+            });
+            buttons.forEach(function (b) {
+              b.classList.toggle('active', b.getAttribute('data-lang') === lang);
+            });
+            try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) {}
+            document.documentElement.lang = lang === 'zh' ? 'zh' : 'en';
+          })
+          .catch(function (err) { console.warn('LingoFlow support: failed to load locale', dir, err); });
+      }
+
+      function detectLang() {
+        try {
+          var saved = localStorage.getItem(STORAGE_KEY);
+          if (saved === 'zh' || saved === 'en') return saved;
+        } catch (e) {}
+        var nav = (navigator.language || navigator.userLanguage || 'zh').toLowerCase();
+        return nav.startsWith('zh') ? 'zh' : 'en';
+      }
+
+      buttons.forEach(function (b) {
+        b.addEventListener('click', function () {
+          applyLang(b.getAttribute('data-lang'));
+        });
+      });
+
+      applyLang(detectLang());
+    })();
   </script>
 </body>
 </html>

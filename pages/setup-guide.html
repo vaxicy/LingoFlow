@@ -381,6 +381,35 @@
       </a>
     </div>
 
+    <!-- 自定义 OpenAI 兼容接口 -->
+    <div class="guide-card">
+      <div class="guide-card-header">
+        <div class="guide-card-title">
+          <strong data-i18n="guide_custom_title">自定义接口</strong>
+          <span class="guide-badge" data-i18n="guide_generic">通用</span>
+        </div>
+      </div>
+      <div class="guide-card-desc" data-i18n="guide_custom_desc">任何提供 OpenAI <code>/v1/chat/completions</code> 兼容接口的服务均可接入，包括智谱 AI、Ollama 本地部署、OpenRouter 等。</div>
+      <ol class="guide-steps">
+        <li class="guide-step">
+          <span class="guide-step-num">1</span>
+          <span class="guide-step-text" data-i18n="guide_custom_s1">确认你的 API 服务商提供 OpenAI 兼容的 chat completions 接口</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">2</span>
+          <span class="guide-step-text" data-i18n="guide_custom_s2">从服务商处获取 Base URL（如 <code>https://open.bigmodel.cn/api/paas/v4</code>）和 API Key</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">3</span>
+          <span class="guide-step-text" data-i18n="guide_custom_s3">确认要使用的模型名称（如 <code>glm-4-flash</code>）</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">4</span>
+          <span class="guide-step-text" data-i18n="guide_custom_s4">在 LingoFlow 设置中选择「自定义 (OpenAI 兼容)」，分别填入 Host / API Key / Model</span>
+        </li>
+      </ol>
+    </div>
+
     <!-- 硅基流动 AI（免费） -->
     <div class="guide-card">
       <div class="guide-card-header">
@@ -411,39 +440,6 @@
       <a href="https://cloud.siliconflow.cn/" target="_blank" rel="noopener" class="guide-cta">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
         <span data-i18n="guide_go_siliconflow">前往 硅基流动 获取 API Key</span>
-      </a>
-    </div>
-
-    <!-- 阿里百炼 AI（免费） -->
-    <div class="guide-card">
-      <div class="guide-card-header">
-        <div class="guide-card-title">
-          <strong data-i18n="engine_bailian">阿里百炼 AI</strong>
-          <span class="guide-badge free" data-i18n="guide_free_quota">有免费额度</span>
-        </div>
-      </div>
-      <div class="guide-card-desc" data-i18n="guide_bailian_desc">阿里云百炼（通义千问）提供 OpenAI 兼容接口，有免费额度，速度快。</div>
-      <ol class="guide-steps">
-        <li class="guide-step">
-          <span class="guide-step-num">1</span>
-          <span class="guide-step-text" data-i18n="guide_bailian_s1">访问阿里云百炼控制台，使用阿里云账号登录</span>
-        </li>
-        <li class="guide-step">
-          <span class="guide-step-num">2</span>
-          <span class="guide-step-text" data-i18n="guide_bailian_s2">进入「API-KEY 管理」，点击「创建新的 API-KEY」</span>
-        </li>
-        <li class="guide-step">
-          <span class="guide-step-num">3</span>
-          <span class="guide-step-text" data-i18n="guide_bailian_s3">复制以 <code>sk-</code> 开头的 API Key</span>
-        </li>
-        <li class="guide-step">
-          <span class="guide-step-num">4</span>
-          <span class="guide-step-text" data-i18n="guide_bailian_s4">在 LingoFlow 设置中选择「阿里百炼」，粘贴密钥、选择模型，如用专属工作空间请在 Host 填写控制台地址</span>
-        </li>
-      </ol>
-      <a href="https://bailian.console.aliyun.com/" target="_blank" rel="noopener" class="guide-cta">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
-        <span data-i18n="guide_go_bailian">前往 阿里百炼 获取 API Key</span>
       </a>
     </div>
 
@@ -480,33 +476,70 @@
       </a>
     </div>
 
-    <!-- 自定义 OpenAI 兼容接口 -->
+    <!-- 阿里百炼 AI（免费） -->
     <div class="guide-card">
       <div class="guide-card-header">
         <div class="guide-card-title">
-          <strong data-i18n="guide_custom_title">自定义接口</strong>
-          <span class="guide-badge" data-i18n="guide_generic">通用</span>
+          <strong data-i18n="engine_bailian">阿里百炼 AI</strong>
+          <span class="guide-badge free" data-i18n="guide_free_quota">有免费额度</span>
         </div>
       </div>
-      <div class="guide-card-desc" data-i18n="guide_custom_desc">任何提供 OpenAI <code>/v1/chat/completions</code> 兼容接口的服务均可接入，包括智谱 AI、Ollama 本地部署、OpenRouter 等。</div>
+      <div class="guide-card-desc" data-i18n="guide_bailian_desc">阿里云百炼（通义千问）提供 OpenAI 兼容接口，有免费额度，速度快。</div>
       <ol class="guide-steps">
         <li class="guide-step">
           <span class="guide-step-num">1</span>
-          <span class="guide-step-text" data-i18n="guide_custom_s1">确认你的 API 服务商提供 OpenAI 兼容的 chat completions 接口</span>
+          <span class="guide-step-text" data-i18n="guide_bailian_s1">访问阿里云百炼控制台，使用阿里云账号登录</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">2</span>
-          <span class="guide-step-text" data-i18n="guide_custom_s2">从服务商处获取 Base URL（如 <code>https://open.bigmodel.cn/api/paas/v4</code>）和 API Key</span>
+          <span class="guide-step-text" data-i18n="guide_bailian_s2">进入「API-KEY 管理」，点击「创建新的 API-KEY」</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">3</span>
-          <span class="guide-step-text" data-i18n="guide_custom_s3">确认要使用的模型名称（如 <code>glm-4-flash</code>）</span>
+          <span class="guide-step-text" data-i18n="guide_bailian_s3">复制以 <code>sk-</code> 开头的 API Key</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">4</span>
-          <span class="guide-step-text" data-i18n="guide_custom_s4">在 LingoFlow 设置中选择「自定义 (OpenAI 兼容)」，分别填入 Host / API Key / Model</span>
+          <span class="guide-step-text" data-i18n="guide_bailian_s4">在 LingoFlow 设置中选择「阿里百炼」，粘贴密钥、选择模型，如用专属工作空间请在 Host 填写控制台地址</span>
         </li>
       </ol>
+      <a href="https://bailian.console.aliyun.com/" target="_blank" rel="noopener" class="guide-cta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+        <span data-i18n="guide_go_bailian">前往 阿里百炼 获取 API Key</span>
+      </a>
+    </div>
+
+    <!-- Gemini AI（免费） -->
+    <div class="guide-card">
+      <div class="guide-card-header">
+        <div class="guide-card-title">
+          <strong data-i18n="engine_gemini">Gemini AI</strong>
+          <span class="guide-badge free" data-i18n="guide_free_quota">有免费额度</span>
+        </div>
+      </div>
+      <div class="guide-card-desc" data-i18n="guide_gemini_desc">Google AI Studio 提供 Gemini API，有免费额度，速度快。</div>
+      <ol class="guide-steps">
+        <li class="guide-step">
+          <span class="guide-step-num">1</span>
+          <span class="guide-step-text" data-i18n="guide_gemini_s1">访问 Google AI Studio，使用 Google 账号登录</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">2</span>
+          <span class="guide-step-text" data-i18n="guide_gemini_s2">点击「Get API key」→「Create API key」</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">3</span>
+          <span class="guide-step-text" data-i18n="guide_gemini_s3">复制 API Key</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">4</span>
+          <span class="guide-step-text" data-i18n="guide_gemini_s4">在 LingoFlow 设置中选择「Gemini AI」，粘贴密钥并选择模型</span>
+        </li>
+      </ol>
+      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="guide-cta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+        <span data-i18n="guide_go_gemini">前往 Google AI Studio 获取 API Key</span>
+      </a>
     </div>
 
     <!-- DeepSeek AI -->
@@ -663,39 +696,6 @@
       <a href="https://fanyi-api.baidu.com/" target="_blank" rel="noopener" class="guide-cta">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
         <span data-i18n="guide_go_baidullm">前往百度大模型翻译</span>
-      </a>
-    </div>
-
-    <!-- Gemini AI（免费） -->
-    <div class="guide-card">
-      <div class="guide-card-header">
-        <div class="guide-card-title">
-          <strong data-i18n="engine_gemini">Gemini AI</strong>
-          <span class="guide-badge free" data-i18n="guide_free_quota">有免费额度</span>
-        </div>
-      </div>
-      <div class="guide-card-desc" data-i18n="guide_gemini_desc">Google AI Studio 提供 Gemini API，有免费额度，速度快。</div>
-      <ol class="guide-steps">
-        <li class="guide-step">
-          <span class="guide-step-num">1</span>
-          <span class="guide-step-text" data-i18n="guide_gemini_s1">访问 Google AI Studio，使用 Google 账号登录</span>
-        </li>
-        <li class="guide-step">
-          <span class="guide-step-num">2</span>
-          <span class="guide-step-text" data-i18n="guide_gemini_s2">点击「Get API key」→「Create API key」</span>
-        </li>
-        <li class="guide-step">
-          <span class="guide-step-num">3</span>
-          <span class="guide-step-text" data-i18n="guide_gemini_s3">复制 API Key</span>
-        </li>
-        <li class="guide-step">
-          <span class="guide-step-num">4</span>
-          <span class="guide-step-text" data-i18n="guide_gemini_s4">在 LingoFlow 设置中选择「Gemini AI」，粘贴密钥并选择模型</span>
-        </li>
-      </ol>
-      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="guide-cta">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
-        <span data-i18n="guide_go_gemini">前往 Google AI Studio 获取 API Key</span>
       </a>
     </div>
 

@@ -1594,6 +1594,11 @@ function persistPopupSettings(options = {}) {
     panelState.savedSettings = cloneSettings(settings);
     setSettingsDirty(false);
     setSettingsSaveState('saved');
+    // Mirror UI language to localStorage so pages opened in their own tab
+    // (setup guide, support) can pick up the popup's language choice on next load.
+    try {
+      localStorage.setItem('lingoflow_ui_lang', settings.uiLanguage || 'auto');
+    } catch (e) {}
     if (typeof setLanguage === 'function') {
       Promise.resolve(setLanguage(settings.uiLanguage || 'auto')).then(() => {
         syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');

@@ -60,15 +60,30 @@ body[data-theme="dark"] {
   filter: drop-shadow(0 16px 30px rgba(89, 113, 255, 0.28));
 }
 
+.support-hero-text {
+  min-width: 0;
+}
+
+.support-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
 .support-hero h1 {
-  margin: 0 0 8px;
-  font-size: clamp(30px, 5vw, 48px);
-  line-height: 1.04;
+  margin: 0;
+  font-size: clamp(26px, 4.5vw, 42px);
+  line-height: 1.1;
   letter-spacing: 0;
   background: var(--lf-gradient);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .support-hero p:last-child {
@@ -78,6 +93,42 @@ body[data-theme="dark"] {
   font-size: 15px;
   font-weight: 650;
   line-height: 1.65;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Language switcher — matches setup-guide page styling */
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--lf-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
+
+body[data-theme="dark"] .lang-switch {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.lang-switch button {
+  border: none;
+  background: transparent;
+  color: var(--lf-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  padding: 6px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.lang-switch button.active {
+  color: #ffffff;
+  background: var(--lf-gradient);
 }
 
 .support-grid {
