@@ -372,6 +372,72 @@
       </a>
     </div>
 
+    <!-- NVIDIA NIM -->
+    <div class="guide-card">
+      <div class="guide-card-header">
+        <div class="guide-card-title">
+          <strong>NVIDIA NIM</strong>
+          <span class="guide-badge free">Free Endpoint</span>
+        </div>
+      </div>
+      <div class="guide-card-desc">英伟达 NIM 提供 57+ 个免费推理端点，含翻译模型 riva-translate，支持 OpenAI 兼容接口。</div>
+      <ol class="guide-steps">
+        <li class="guide-step">
+          <span class="guide-step-num">1</span>
+          <span class="guide-step-text">访问 build.nvidia.com，注册或登录 NVIDIA 账号（支持 Google / GitHub 登录）</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">2</span>
+          <span class="guide-step-text">在 Models 页筛选 <code>Free Endpoint</code>，搜索 <code>riva-translate</code> 或其它模型</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">3</span>
+          <span class="guide-step-text">进入模型详情页，获取 API Key（或使用页面内嵌的测试界面）</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">4</span>
+          <span class="guide-step-text">复制 Base URL（通常为 <code>https://integrate.api.nvidia.com/v1</code>）和 API Key</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">5</span>
+          <span class="guide-step-text">回到 LingoFlow 设置，选择「自定义 (OpenAI 兼容)」，填写 Host / Key / Model 名称</span>
+        </li>
+      </ol>
+      <a href="https://build.nvidia.com/models" target="_blank" rel="noopener" class="guide-cta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
+        前往 NVIDIA NIM 获取免费端点
+      </a>
+    </div>
+
+    <!-- 自定义 OpenAI 兼容接口 -->
+    <div class="guide-card">
+      <div class="guide-card-header">
+        <div class="guide-card-title">
+          <strong>自定义接口</strong>
+          <span class="guide-badge">通用</span>
+        </div>
+      </div>
+      <div class="guide-card-desc">任何提供 OpenAI <code>/v1/chat/completions</code> 兼容接口的服务均可接入，包括智谱 AI、Ollama 本地部署、OpenRouter 等。</div>
+      <ol class="guide-steps">
+        <li class="guide-step">
+          <span class="guide-step-num">1</span>
+          <span class="guide-step-text">确认你的 API 服务商提供 OpenAI 兼容的 chat completions 接口</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">2</span>
+          <span class="guide-step-text">从服务商处获取 Base URL（如 <code>https://open.bigmodel.cn/api/paas/v4</code>）和 API Key</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">3</span>
+          <span class="guide-step-text">确认要使用的模型名称（如 <code>glm-4-flash</code>）</span>
+        </li>
+        <li class="guide-step">
+          <span class="guide-step-num">4</span>
+          <span class="guide-step-text">在 LingoFlow 设置中选择「自定义 (OpenAI 兼容)」，分别填入 Host / API Key / Model</span>
+        </li>
+      </ol>
+    </div>
+
     <!-- Gemini AI -->
     <div class="guide-card">
       <div class="guide-card-header">
