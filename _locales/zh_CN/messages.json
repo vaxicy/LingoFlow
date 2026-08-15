@@ -738,5 +738,305 @@
   "support_footer": {
     "message": "感谢你帮助 LingoFlow 保持免费并继续变好。",
     "description": "支持页底部文案"
+  },
+  "setup_guide_title": {
+    "message": "🔌 接入教程",
+    "description": "接入教程页标题"
+  },
+  "setup_guide_subtitle": {
+    "message": "获取各翻译引擎的 API Key，粘贴到 LingoFlow 设置中即可使用",
+    "description": "接入教程页副标题"
+  },
+  "guide_free_quota": {
+    "message": "有免费额度",
+    "description": "接入教程徽章：有免费额度"
+  },
+  "guide_free_models": {
+    "message": "有免费模型",
+    "description": "接入教程徽章：有免费模型"
+  },
+  "guide_generic": {
+    "message": "通用",
+    "description": "接入教程徽章：通用"
+  },
+  "guide_low_price": {
+    "message": "按量付费 · 低价",
+    "description": "接入教程徽章：低价"
+  },
+  "guide_azure_paid": {
+    "message": "Azure 付费",
+    "description": "接入教程徽章：Azure 付费"
+  },
+  "guide_need_apply": {
+    "message": "需申请",
+    "description": "接入教程徽章：需申请"
+  },
+  "guide_ai_translate": {
+    "message": "AI 翻译",
+    "description": "接入教程徽章：AI 翻译"
+  },
+  "guide_bailian_desc": {
+    "message": "阿里云百炼（通义千问）提供 OpenAI 兼容接口，有免费额度，速度快。",
+    "description": "阿里百炼接入教程描述"
+  },
+  "guide_bailian_s1": {
+    "message": "访问阿里云百炼控制台，使用阿里云账号登录",
+    "description": "阿里百炼步骤 1"
+  },
+  "guide_bailian_s2": {
+    "message": "进入「API-KEY 管理」，点击「创建新的 API-KEY」",
+    "description": "阿里百炼步骤 2"
+  },
+  "guide_bailian_s3": {
+    "message": "复制以 <code>sk-</code> 开头的 API Key",
+    "description": "阿里百炼步骤 3"
+  },
+  "guide_bailian_s4": {
+    "message": "在 LingoFlow 设置中选择「阿里百炼」，粘贴密钥、选择模型，如用专属工作空间请在 Host 填写控制台地址",
+    "description": "阿里百炼步骤 4"
+  },
+  "guide_go_bailian": {
+    "message": "前往 阿里百炼 获取 API Key",
+    "description": "阿里百炼 CTA"
+  },
+  "guide_siliconflow_desc": {
+    "message": "AI 翻译，支持多种开源模型，免费模型无需付费。",
+    "description": "硅基流动接入教程描述"
+  },
+  "guide_siliconflow_s1": {
+    "message": "访问硅基流动官网，注册并登录账号",
+    "description": "硅基流动步骤 1"
+  },
+  "guide_siliconflow_s2": {
+    "message": "进入「API 密钥管理」页面，点击「新建密钥」",
+    "description": "硅基流动步骤 2"
+  },
+  "guide_siliconflow_s3": {
+    "message": "复制以 <code>sk-</code> 开头的 API Key",
+    "description": "硅基流动步骤 3"
+  },
+  "guide_siliconflow_s4": {
+    "message": "在 LingoFlow 设置中选择「硅基流动 AI」，粘贴密钥并选择模型",
+    "description": "硅基流动步骤 4"
+  },
+  "guide_go_siliconflow": {
+    "message": "前往 硅基流动 获取 API Key",
+    "description": "硅基流动 CTA"
+  },
+  "guide_nim_desc": {
+    "message": "英伟达 NIM 提供 57+ 个免费推理端点，含翻译模型 riva-translate，支持 OpenAI 兼容接口。",
+    "description": "NVIDIA NIM 接入教程描述"
+  },
+  "guide_nim_s1": {
+    "message": "访问 build.nvidia.com，注册或登录 NVIDIA 账号（支持 Google / GitHub 登录）",
+    "description": "NVIDIA NIM 步骤 1"
+  },
+  "guide_nim_s2": {
+    "message": "在 Models 页筛选 <code>Free Endpoint</code>，搜索 <code>riva-translate</code> 或其它模型",
+    "description": "NVIDIA NIM 步骤 2"
+  },
+  "guide_nim_s3": {
+    "message": "进入模型详情页，获取 API Key（或使用页面内嵌的测试界面）",
+    "description": "NVIDIA NIM 步骤 3"
+  },
+  "guide_nim_s4": {
+    "message": "复制 Base URL（通常为 <code>https://integrate.api.nvidia.com/v1</code>）和 API Key",
+    "description": "NVIDIA NIM 步骤 4"
+  },
+  "guide_nim_s5": {
+    "message": "回到 LingoFlow 设置，选择「自定义 (OpenAI 兼容)」，填写 Host / Key / Model 名称",
+    "description": "NVIDIA NIM 步骤 5"
+  },
+  "guide_go_nim": {
+    "message": "前往 NVIDIA NIM 获取免费端点",
+    "description": "NVIDIA NIM CTA"
+  },
+  "guide_gemini_desc": {
+    "message": "Google AI Studio 提供 Gemini API，有免费额度，速度快。",
+    "description": "Gemini 接入教程描述"
+  },
+  "guide_gemini_s1": {
+    "message": "访问 Google AI Studio，使用 Google 账号登录",
+    "description": "Gemini 步骤 1"
+  },
+  "guide_gemini_s2": {
+    "message": "点击「Get API key」→「Create API key」",
+    "description": "Gemini 步骤 2"
+  },
+  "guide_gemini_s3": {
+    "message": "复制 API Key",
+    "description": "Gemini 步骤 3"
+  },
+  "guide_gemini_s4": {
+    "message": "在 LingoFlow 设置中选择「Gemini AI」，粘贴密钥并选择模型",
+    "description": "Gemini 步骤 4"
+  },
+  "guide_go_gemini": {
+    "message": "前往 Google AI Studio 获取 API Key",
+    "description": "Gemini CTA"
+  },
+  "guide_baidu_desc": {
+    "message": "百度翻译开放平台，国内稳定，免费额度足够个人使用。",
+    "description": "百度翻译接入教程描述"
+  },
+  "guide_baidu_s1": {
+    "message": "访问百度翻译开放平台，登录百度账号",
+    "description": "百度翻译步骤 1"
+  },
+  "guide_baidu_s2": {
+    "message": "注册开发者，创建通用翻译应用，获取 APP ID 和密钥",
+    "description": "百度翻译步骤 2"
+  },
+  "guide_baidu_s3": {
+    "message": "复制 APP ID（应用 ID）和密钥（Secret Key）",
+    "description": "百度翻译步骤 3"
+  },
+  "guide_baidu_s4": {
+    "message": "在 LingoFlow 设置中选择「百度翻译」，分别粘贴 APP ID 和密钥",
+    "description": "百度翻译步骤 4"
+  },
+  "guide_go_baidu": {
+    "message": "前往百度翻译开放平台",
+    "description": "百度翻译 CTA"
+  },
+  "guide_custom_title": {
+    "message": "自定义接口",
+    "description": "自定义接口卡片标题"
+  },
+  "guide_custom_desc": {
+    "message": "任何提供 OpenAI <code>/v1/chat/completions</code> 兼容接口的服务均可接入，包括智谱 AI、Ollama 本地部署、OpenRouter 等。",
+    "description": "自定义接口描述"
+  },
+  "guide_custom_s1": {
+    "message": "确认你的 API 服务商提供 OpenAI 兼容的 chat completions 接口",
+    "description": "自定义接口步骤 1"
+  },
+  "guide_custom_s2": {
+    "message": "从服务商处获取 Base URL（如 <code>https://open.bigmodel.cn/api/paas/v4</code>）和 API Key",
+    "description": "自定义接口步骤 2"
+  },
+  "guide_custom_s3": {
+    "message": "确认要使用的模型名称（如 <code>glm-4-flash</code>）",
+    "description": "自定义接口步骤 3"
+  },
+  "guide_custom_s4": {
+    "message": "在 LingoFlow 设置中选择「自定义 (OpenAI 兼容)」，分别填入 Host / API Key / Model",
+    "description": "自定义接口步骤 4"
+  },
+  "guide_deepseek_desc": {
+    "message": "高质量 AI 翻译，价格低廉，推荐使用 DeepSeek V4 Flash。",
+    "description": "DeepSeek 接入教程描述"
+  },
+  "guide_deepseek_s1": {
+    "message": "访问 DeepSeek 开放平台，注册并登录",
+    "description": "DeepSeek 步骤 1"
+  },
+  "guide_deepseek_s2": {
+    "message": "进入「API Keys」页面，点击「Create new API key」",
+    "description": "DeepSeek 步骤 2"
+  },
+  "guide_deepseek_s3": {
+    "message": "复制以 <code>sk-</code> 开头的 API Key（注意：只显示一次）",
+    "description": "DeepSeek 步骤 3"
+  },
+  "guide_deepseek_s4": {
+    "message": "在 LingoFlow 设置中选择「DeepSeek AI」，粘贴密钥并选择模型",
+    "description": "DeepSeek 步骤 4"
+  },
+  "guide_go_deepseek": {
+    "message": "前往 DeepSeek 开放平台获取 API Key",
+    "description": "DeepSeek CTA"
+  },
+  "guide_microsoft_desc": {
+    "message": "Azure AI 服务，翻译质量稳定专业，需绑定 Azure 账号。",
+    "description": "Microsoft Translator 接入教程描述"
+  },
+  "guide_microsoft_s1": {
+    "message": "访问 Azure 门户，登录或注册 Azure 账号",
+    "description": "Microsoft Translator 步骤 1"
+  },
+  "guide_microsoft_s2": {
+    "message": "创建「Translator」资源，获取密钥（Key）和区域（Region）",
+    "description": "Microsoft Translator 步骤 2"
+  },
+  "guide_microsoft_s3": {
+    "message": "复制密钥（两个 Key 任意一个均可）",
+    "description": "Microsoft Translator 步骤 3"
+  },
+  "guide_microsoft_s4": {
+    "message": "在 LingoFlow 设置中选择「Microsoft Translator」，粘贴密钥",
+    "description": "Microsoft Translator 步骤 4"
+  },
+  "guide_go_microsoft": {
+    "message": "前往 Azure 门户获取密钥",
+    "description": "Microsoft Translator CTA"
+  },
+  "guide_youdao_desc": {
+    "message": "网易有道智云翻译 API，国内速度快，需实名申请。",
+    "description": "有道翻译接入教程描述"
+  },
+  "guide_youdao_s1": {
+    "message": "访问有道智云 AI 开放平台，注册并实名认证",
+    "description": "有道翻译步骤 1"
+  },
+  "guide_youdao_s2": {
+    "message": "进入「应用管理」，创建应用，获取 App Key 和 App Secret",
+    "description": "有道翻译步骤 2"
+  },
+  "guide_youdao_s3": {
+    "message": "复制 App Key（应用 ID）和 App Secret（应用密钥）",
+    "description": "有道翻译步骤 3"
+  },
+  "guide_youdao_s4": {
+    "message": "在 LingoFlow 设置中选择「有道翻译」，分别粘贴 App Key 和 App Secret",
+    "description": "有道翻译步骤 4"
+  },
+  "guide_go_youdao": {
+    "message": "前往有道智云获取 App Key",
+    "description": "有道翻译 CTA"
+  },
+  "guide_youdaollm_desc": {
+    "message": "有道智云大模型翻译 API，基于 AI，翻译质量更高。",
+    "description": "有道大模型接入教程描述"
+  },
+  "guide_youdaollm_s1": {
+    "message": "同样在有道智云申请，进入「大模型翻译」服务",
+    "description": "有道大模型步骤 1"
+  },
+  "guide_youdaollm_s2": {
+    "message": "获取 App Key、App Secret，并选择大模型型号",
+    "description": "有道大模型步骤 2"
+  },
+  "guide_youdaollm_s3": {
+    "message": "在 LingoFlow 设置中选择「有道大模型」，粘贴密钥并选择模型",
+    "description": "有道大模型步骤 3"
+  },
+  "guide_go_youdaollm": {
+    "message": "前往有道智云",
+    "description": "有道大模型 CTA"
+  },
+  "guide_baidullm_desc": {
+    "message": "百度翻译开放平台的大模型文本翻译 API，高质量 AI 翻译。",
+    "description": "百度大模型接入教程描述"
+  },
+  "guide_baidullm_s1": {
+    "message": "访问百度翻译开放平台，进入「大模型文本翻译」",
+    "description": "百度大模型步骤 1"
+  },
+  "guide_baidullm_s2": {
+    "message": "在「API Key 管理」中创建 API Key（格式为 <code>bce-v3/ALTAK-...</code>）",
+    "description": "百度大模型步骤 2"
+  },
+  "guide_baidullm_s3": {
+    "message": "复制 API Key，粘贴到 LingoFlow 设置中",
+    "description": "百度大模型步骤 3"
+  },
+  "guide_go_baidullm": {
+    "message": "前往百度大模型翻译",
+    "description": "百度大模型 CTA"
+  },
+  "guide_note": {
+    "message": "💡 <strong>提示：</strong>MyMemory 和 Google Translate 无需 API Key，直接在设置中选择即可使用，跳过上述步骤。",
+    "description": "接入教程底部提示"
   }
 }

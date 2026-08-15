@@ -738,5 +738,305 @@
   "support_footer": {
     "message": "Thank you for helping keep LingoFlow free and improving.",
     "description": "Support page footer"
+  },
+  "setup_guide_title": {
+    "message": "🔌 Setup Guide",
+    "description": "Setup guide page title"
+  },
+  "setup_guide_subtitle": {
+    "message": "Get an API key for each translation engine and paste it into LingoFlow settings",
+    "description": "Setup guide page subtitle"
+  },
+  "guide_free_quota": {
+    "message": "Free Quota",
+    "description": "Setup guide badge: free quota"
+  },
+  "guide_free_models": {
+    "message": "Free Models",
+    "description": "Setup guide badge: free models"
+  },
+  "guide_generic": {
+    "message": "Generic",
+    "description": "Setup guide badge: generic"
+  },
+  "guide_low_price": {
+    "message": "Pay-as-you-go · Low Cost",
+    "description": "Setup guide badge: low cost"
+  },
+  "guide_azure_paid": {
+    "message": "Azure Paid",
+    "description": "Setup guide badge: Azure paid"
+  },
+  "guide_need_apply": {
+    "message": "Application Required",
+    "description": "Setup guide badge: application required"
+  },
+  "guide_ai_translate": {
+    "message": "AI Translation",
+    "description": "Setup guide badge: AI translation"
+  },
+  "guide_bailian_desc": {
+    "message": "Alibaba Cloud Bailian (Qwen) offers an OpenAI-compatible API with a free quota and fast speed.",
+    "description": "Alibaba Bailian setup guide description"
+  },
+  "guide_bailian_s1": {
+    "message": "Visit the Alibaba Cloud Bailian console and sign in with your Alibaba Cloud account",
+    "description": "Alibaba Bailian step 1"
+  },
+  "guide_bailian_s2": {
+    "message": "Go to \"API-KEY Management\" and click \"Create new API-KEY\"",
+    "description": "Alibaba Bailian step 2"
+  },
+  "guide_bailian_s3": {
+    "message": "Copy the API Key that starts with <code>sk-</code>",
+    "description": "Alibaba Bailian step 3"
+  },
+  "guide_bailian_s4": {
+    "message": "In LingoFlow settings, choose \"Alibaba Bailian\", paste the key and pick a model. For a dedicated workspace, fill in the console address in the Host field",
+    "description": "Alibaba Bailian step 4"
+  },
+  "guide_go_bailian": {
+    "message": "Go to Alibaba Bailian to get an API Key",
+    "description": "Alibaba Bailian CTA"
+  },
+  "guide_siliconflow_desc": {
+    "message": "AI translation with multiple open-source models. Free models need no payment.",
+    "description": "SiliconFlow setup guide description"
+  },
+  "guide_siliconflow_s1": {
+    "message": "Visit the SiliconFlow website, sign up and sign in",
+    "description": "SiliconFlow step 1"
+  },
+  "guide_siliconflow_s2": {
+    "message": "Go to \"API Key Management\" and click \"Create new key\"",
+    "description": "SiliconFlow step 2"
+  },
+  "guide_siliconflow_s3": {
+    "message": "Copy the API Key that starts with <code>sk-</code>",
+    "description": "SiliconFlow step 3"
+  },
+  "guide_siliconflow_s4": {
+    "message": "In LingoFlow settings, choose \"SiliconFlow AI\", paste the key and select a model",
+    "description": "SiliconFlow step 4"
+  },
+  "guide_go_siliconflow": {
+    "message": "Go to SiliconFlow to get an API Key",
+    "description": "SiliconFlow CTA"
+  },
+  "guide_nim_desc": {
+    "message": "NVIDIA NIM provides 57+ free inference endpoints including the riva-translate model, with OpenAI-compatible APIs.",
+    "description": "NVIDIA NIM setup guide description"
+  },
+  "guide_nim_s1": {
+    "message": "Visit build.nvidia.com, sign up or sign in with an NVIDIA account (supports Google / GitHub sign-in)",
+    "description": "NVIDIA NIM step 1"
+  },
+  "guide_nim_s2": {
+    "message": "Filter <code>Free Endpoint</code> on the Models page and search for <code>riva-translate</code> or other models",
+    "description": "NVIDIA NIM step 2"
+  },
+  "guide_nim_s3": {
+    "message": "Open the model detail page and get an API Key (or use the embedded playground)",
+    "description": "NVIDIA NIM step 3"
+  },
+  "guide_nim_s4": {
+    "message": "Copy the Base URL (usually <code>https://integrate.api.nvidia.com/v1</code>) and the API Key",
+    "description": "NVIDIA NIM step 4"
+  },
+  "guide_nim_s5": {
+    "message": "Back in LingoFlow settings, choose \"Custom (OpenAI Compatible)\" and fill in the Host / Key / Model name",
+    "description": "NVIDIA NIM step 5"
+  },
+  "guide_go_nim": {
+    "message": "Go to NVIDIA NIM to get a free endpoint",
+    "description": "NVIDIA NIM CTA"
+  },
+  "guide_gemini_desc": {
+    "message": "Google AI Studio offers the Gemini API with a free quota and fast speed.",
+    "description": "Gemini setup guide description"
+  },
+  "guide_gemini_s1": {
+    "message": "Visit Google AI Studio and sign in with your Google account",
+    "description": "Gemini step 1"
+  },
+  "guide_gemini_s2": {
+    "message": "Click \"Get API key\" → \"Create API key\"",
+    "description": "Gemini step 2"
+  },
+  "guide_gemini_s3": {
+    "message": "Copy the API Key",
+    "description": "Gemini step 3"
+  },
+  "guide_gemini_s4": {
+    "message": "In LingoFlow settings, choose \"Gemini AI\", paste the key and select a model",
+    "description": "Gemini step 4"
+  },
+  "guide_go_gemini": {
+    "message": "Go to Google AI Studio to get an API Key",
+    "description": "Gemini CTA"
+  },
+  "guide_baidu_desc": {
+    "message": "Baidu Translate open platform, stable in China, with enough free quota for personal use.",
+    "description": "Baidu Translate setup guide description"
+  },
+  "guide_baidu_s1": {
+    "message": "Visit the Baidu Translate open platform and sign in with your Baidu account",
+    "description": "Baidu Translate step 1"
+  },
+  "guide_baidu_s2": {
+    "message": "Register as a developer, create a general translation app, and get the APP ID and secret key",
+    "description": "Baidu Translate step 2"
+  },
+  "guide_baidu_s3": {
+    "message": "Copy the APP ID (application ID) and Secret Key",
+    "description": "Baidu Translate step 3"
+  },
+  "guide_baidu_s4": {
+    "message": "In LingoFlow settings, choose \"Baidu Translate\", and paste the APP ID and secret key",
+    "description": "Baidu Translate step 4"
+  },
+  "guide_go_baidu": {
+    "message": "Go to the Baidu Translate open platform",
+    "description": "Baidu Translate CTA"
+  },
+  "guide_custom_title": {
+    "message": "Custom Endpoint",
+    "description": "Custom endpoint card title"
+  },
+  "guide_custom_desc": {
+    "message": "Any service exposing an OpenAI <code>/v1/chat/completions</code>-compatible API can be connected, including Zhipu AI, local Ollama, OpenRouter, and more.",
+    "description": "Custom endpoint description"
+  },
+  "guide_custom_s1": {
+    "message": "Confirm your API provider exposes an OpenAI-compatible chat completions endpoint",
+    "description": "Custom endpoint step 1"
+  },
+  "guide_custom_s2": {
+    "message": "Get the Base URL (e.g. <code>https://open.bigmodel.cn/api/paas/v4</code>) and the API Key from your provider",
+    "description": "Custom endpoint step 2"
+  },
+  "guide_custom_s3": {
+    "message": "Confirm the model name to use (e.g. <code>glm-4-flash</code>)",
+    "description": "Custom endpoint step 3"
+  },
+  "guide_custom_s4": {
+    "message": "In LingoFlow settings, choose \"Custom (OpenAI Compatible)\" and fill in Host / API Key / Model",
+    "description": "Custom endpoint step 4"
+  },
+  "guide_deepseek_desc": {
+    "message": "High-quality AI translation at a low price. DeepSeek V4 Flash is recommended.",
+    "description": "DeepSeek setup guide description"
+  },
+  "guide_deepseek_s1": {
+    "message": "Visit the DeepSeek open platform, sign up and sign in",
+    "description": "DeepSeek step 1"
+  },
+  "guide_deepseek_s2": {
+    "message": "Go to the \"API Keys\" page and click \"Create new API key\"",
+    "description": "DeepSeek step 2"
+  },
+  "guide_deepseek_s3": {
+    "message": "Copy the API Key that starts with <code>sk-</code> (note: shown only once)",
+    "description": "DeepSeek step 3"
+  },
+  "guide_deepseek_s4": {
+    "message": "In LingoFlow settings, choose \"DeepSeek AI\", paste the key and select a model",
+    "description": "DeepSeek step 4"
+  },
+  "guide_go_deepseek": {
+    "message": "Go to the DeepSeek open platform to get an API Key",
+    "description": "DeepSeek CTA"
+  },
+  "guide_microsoft_desc": {
+    "message": "Azure AI service with stable, professional translation quality. Requires an Azure account.",
+    "description": "Microsoft Translator setup guide description"
+  },
+  "guide_microsoft_s1": {
+    "message": "Visit the Azure portal, sign in or sign up for an Azure account",
+    "description": "Microsoft Translator step 1"
+  },
+  "guide_microsoft_s2": {
+    "message": "Create a \"Translator\" resource and get the key and region",
+    "description": "Microsoft Translator step 2"
+  },
+  "guide_microsoft_s3": {
+    "message": "Copy the key (either of the two keys works)",
+    "description": "Microsoft Translator step 3"
+  },
+  "guide_microsoft_s4": {
+    "message": "In LingoFlow settings, choose \"Microsoft Translator\" and paste the key",
+    "description": "Microsoft Translator step 4"
+  },
+  "guide_go_microsoft": {
+    "message": "Go to the Azure portal to get the key",
+    "description": "Microsoft Translator CTA"
+  },
+  "guide_youdao_desc": {
+    "message": "NetEase Youdao Zhiyun translation API, fast in China. Requires real-name verification.",
+    "description": "Youdao Translate setup guide description"
+  },
+  "guide_youdao_s1": {
+    "message": "Visit the Youdao Zhiyun AI open platform, sign up and complete real-name verification",
+    "description": "Youdao Translate step 1"
+  },
+  "guide_youdao_s2": {
+    "message": "Go to \"App Management\", create an app, and get the App Key and App Secret",
+    "description": "Youdao Translate step 2"
+  },
+  "guide_youdao_s3": {
+    "message": "Copy the App Key (application ID) and App Secret (application secret)",
+    "description": "Youdao Translate step 3"
+  },
+  "guide_youdao_s4": {
+    "message": "In LingoFlow settings, choose \"Youdao Translate\" and paste the App Key and App Secret",
+    "description": "Youdao Translate step 4"
+  },
+  "guide_go_youdao": {
+    "message": "Go to Youdao Zhiyun to get the App Key",
+    "description": "Youdao Translate CTA"
+  },
+  "guide_youdaollm_desc": {
+    "message": "Youdao Zhiyun large-model translation API, AI-based with higher translation quality.",
+    "description": "Youdao LLM setup guide description"
+  },
+  "guide_youdaollm_s1": {
+    "message": "Apply on Youdao Zhiyun as well and enter the \"Large Model Translation\" service",
+    "description": "Youdao LLM step 1"
+  },
+  "guide_youdaollm_s2": {
+    "message": "Get the App Key and App Secret, and choose the large-model variant",
+    "description": "Youdao LLM step 2"
+  },
+  "guide_youdaollm_s3": {
+    "message": "In LingoFlow settings, choose \"Youdao LLM\", paste the key and select a model",
+    "description": "Youdao LLM step 3"
+  },
+  "guide_go_youdaollm": {
+    "message": "Go to Youdao Zhiyun",
+    "description": "Youdao LLM CTA"
+  },
+  "guide_baidullm_desc": {
+    "message": "Baidu Translate open platform large-model text translation API, high-quality AI translation.",
+    "description": "Baidu LLM setup guide description"
+  },
+  "guide_baidullm_s1": {
+    "message": "Visit the Baidu Translate open platform and enter \"Large Model Text Translation\"",
+    "description": "Baidu LLM step 1"
+  },
+  "guide_baidullm_s2": {
+    "message": "Create an API Key in \"API Key Management\" (format: <code>bce-v3/ALTAK-...</code>)",
+    "description": "Baidu LLM step 2"
+  },
+  "guide_baidullm_s3": {
+    "message": "Copy the API Key and paste it into LingoFlow settings",
+    "description": "Baidu LLM step 3"
+  },
+  "guide_go_baidullm": {
+    "message": "Go to Baidu LLM translation",
+    "description": "Baidu LLM CTA"
+  },
+  "guide_note": {
+    "message": "💡 <strong>Tip:</strong> MyMemory and Google Translate need no API key — just select them in settings and skip the steps above.",
+    "description": "Setup guide footer note"
   }
 }

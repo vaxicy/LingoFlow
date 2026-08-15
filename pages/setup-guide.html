@@ -55,6 +55,40 @@
       margin: 0 auto;
     }
 
+    /* Language switcher */
+    .lang-switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px;
+      border: 1px solid var(--lf-border);
+      border-radius: 999px;
+      background: var(--lf-surface);
+      margin-bottom: 18px;
+    }
+
+    .lang-switch button {
+      border: none;
+      background: transparent;
+      color: var(--lf-muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 750;
+      padding: 6px 16px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: color 0.18s ease, background 0.18s ease;
+    }
+
+    .lang-switch button.active {
+      color: #ffffff;
+      background: linear-gradient(135deg, #62a8ff 0%, #7c6cff 100%);
+    }
+
+    body[data-theme="light"] .lang-switch button.active {
+      color: #ffffff;
+    }
+
     /* Header */
     .guide-header {
       text-align: center;
@@ -302,40 +336,44 @@
 <body>
   <div class="guide-container">
     <div class="guide-header">
-      <h1>🔌 接入教程</h1>
-      <p>获取各翻译引擎的 API Key，粘贴到 LingoFlow 设置中即可使用</p>
+      <div class="lang-switch" role="group" aria-label="Language">
+        <button type="button" data-lang="zh" class="active">中文</button>
+        <button type="button" data-lang="en">English</button>
+      </div>
+      <h1 data-i18n="setup_guide_title">🔌 接入教程</h1>
+      <p data-i18n="setup_guide_subtitle">获取各翻译引擎的 API Key，粘贴到 LingoFlow 设置中即可使用</p>
     </div>
 
     <!-- 阿里百炼 AI（免费） -->
     <div class="guide-card">
       <div class="guide-card-header">
         <div class="guide-card-title">
-          <strong>阿里百炼 AI</strong>
-          <span class="guide-badge free">有免费额度</span>
+          <strong data-i18n="engine_bailian">阿里百炼 AI</strong>
+          <span class="guide-badge free" data-i18n="guide_free_quota">有免费额度</span>
         </div>
       </div>
-      <div class="guide-card-desc">阿里云百炼（通义千问）提供 OpenAI 兼容接口，有免费额度，速度快。</div>
+      <div class="guide-card-desc" data-i18n="guide_bailian_desc">阿里云百炼（通义千问）提供 OpenAI 兼容接口，有免费额度，速度快。</div>
       <ol class="guide-steps">
         <li class="guide-step">
           <span class="guide-step-num">1</span>
-          <span class="guide-step-text">访问阿里云百炼控制台，使用阿里云账号登录</span>
+          <span class="guide-step-text" data-i18n="guide_bailian_s1">访问阿里云百炼控制台，使用阿里云账号登录</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">2</span>
-          <span class="guide-step-text">进入「API-KEY 管理」，点击「创建新的 API-KEY」</span>
+          <span class="guide-step-text" data-i18n="guide_bailian_s2">进入「API-KEY 管理」，点击「创建新的 API-KEY」</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">3</span>
-          <span class="guide-step-text">复制以 <code>sk-</code> 开头的 API Key</span>
+          <span class="guide-step-text" data-i18n="guide_bailian_s3">复制以 <code>sk-</code> 开头的 API Key</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">4</span>
-          <span class="guide-step-text">在 LingoFlow 设置中选择「阿里百炼」，粘贴密钥、选择模型，如用专属工作空间请在 Host 填写控制台地址</span>
+          <span class="guide-step-text" data-i18n="guide_bailian_s4">在 LingoFlow 设置中选择「阿里百炼」，粘贴密钥、选择模型，如用专属工作空间请在 Host 填写控制台地址</span>
         </li>
       </ol>
       <a href="https://bailian.console.aliyun.com/" target="_blank" rel="noopener" class="guide-cta">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
-        前往 阿里百炼 获取 API Key
+        <span data-i18n="guide_go_bailian">前往 阿里百炼 获取 API Key</span>
       </a>
     </div>
 
@@ -343,32 +381,32 @@
     <div class="guide-card">
       <div class="guide-card-header">
         <div class="guide-card-title">
-          <strong>硅基流动 AI</strong>
-          <span class="guide-badge free">有免费模型</span>
+          <strong data-i18n="engine_siliconflow">硅基流动 AI</strong>
+          <span class="guide-badge free" data-i18n="guide_free_models">有免费模型</span>
         </div>
       </div>
-      <div class="guide-card-desc">AI 翻译，支持多种开源模型，免费模型无需付费。</div>
+      <div class="guide-card-desc" data-i18n="guide_siliconflow_desc">AI 翻译，支持多种开源模型，免费模型无需付费。</div>
       <ol class="guide-steps">
         <li class="guide-step">
           <span class="guide-step-num">1</span>
-          <span class="guide-step-text">访问硅基流动官网，注册并登录账号</span>
+          <span class="guide-step-text" data-i18n="guide_siliconflow_s1">访问硅基流动官网，注册并登录账号</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">2</span>
-          <span class="guide-step-text">进入「API 密钥管理」页面，点击「新建密钥」</span>
+          <span class="guide-step-text" data-i18n="guide_siliconflow_s2">进入「API 密钥管理」页面，点击「新建密钥」</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">3</span>
-          <span class="guide-step-text">复制以 <code>sk-</code> 开头的 API Key</span>
+          <span class="guide-step-text" data-i18n="guide_siliconflow_s3">复制以 <code>sk-</code> 开头的 API Key</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">4</span>
-          <span class="guide-step-text">在 LingoFlow 设置中选择「硅基流动 AI」，粘贴密钥并选择模型</span>
+          <span class="guide-step-text" data-i18n="guide_siliconflow_s4">在 LingoFlow 设置中选择「硅基流动 AI」，粘贴密钥并选择模型</span>
         </li>
       </ol>
       <a href="https://cloud.siliconflow.cn/" target="_blank" rel="noopener" class="guide-cta">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
-        前往 硅基流动 获取 API Key
+        <span data-i18n="guide_go_siliconflow">前往 硅基流动 获取 API Key</span>
       </a>
     </div>
 
@@ -380,32 +418,32 @@
           <span class="guide-badge free">Free Endpoint</span>
         </div>
       </div>
-      <div class="guide-card-desc">英伟达 NIM 提供 57+ 个免费推理端点，含翻译模型 riva-translate，支持 OpenAI 兼容接口。</div>
+      <div class="guide-card-desc" data-i18n="guide_nim_desc">英伟达 NIM 提供 57+ 个免费推理端点，含翻译模型 riva-translate，支持 OpenAI 兼容接口。</div>
       <ol class="guide-steps">
         <li class="guide-step">
           <span class="guide-step-num">1</span>
-          <span class="guide-step-text">访问 build.nvidia.com，注册或登录 NVIDIA 账号（支持 Google / GitHub 登录）</span>
+          <span class="guide-step-text" data-i18n="guide_nim_s1">访问 build.nvidia.com，注册或登录 NVIDIA 账号（支持 Google / GitHub 登录）</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">2</span>
-          <span class="guide-step-text">在 Models 页筛选 <code>Free Endpoint</code>，搜索 <code>riva-translate</code> 或其它模型</span>
+          <span class="guide-step-text" data-i18n="guide_nim_s2">在 Models 页筛选 <code>Free Endpoint</code>，搜索 <code>riva-translate</code> 或其它模型</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">3</span>
-          <span class="guide-step-text">进入模型详情页，获取 API Key（或使用页面内嵌的测试界面）</span>
+          <span class="guide-step-text" data-i18n="guide_nim_s3">进入模型详情页，获取 API Key（或使用页面内嵌的测试界面）</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">4</span>
-          <span class="guide-step-text">复制 Base URL（通常为 <code>https://integrate.api.nvidia.com/v1</code>）和 API Key</span>
+          <span class="guide-step-text" data-i18n="guide_nim_s4">复制 Base URL（通常为 <code>https://integrate.api.nvidia.com/v1</code>）和 API Key</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">5</span>
-          <span class="guide-step-text">回到 LingoFlow 设置，选择「自定义 (OpenAI 兼容)」，填写 Host / Key / Model 名称</span>
+          <span class="guide-step-text" data-i18n="guide_nim_s5">回到 LingoFlow 设置，选择「自定义 (OpenAI 兼容)」，填写 Host / Key / Model 名称</span>
         </li>
       </ol>
       <a href="https://build.nvidia.com/models" target="_blank" rel="noopener" class="guide-cta">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
-        前往 NVIDIA NIM 获取免费端点
+        <span data-i18n="guide_go_nim">前往 NVIDIA NIM 获取免费端点</span>
       </a>
     </div>
 
@@ -413,32 +451,32 @@
     <div class="guide-card">
       <div class="guide-card-header">
         <div class="guide-card-title">
-          <strong>Gemini AI</strong>
-          <span class="guide-badge free">有免费额度</span>
+          <strong data-i18n="engine_gemini">Gemini AI</strong>
+          <span class="guide-badge free" data-i18n="guide_free_quota">有免费额度</span>
         </div>
       </div>
-      <div class="guide-card-desc">Google AI Studio 提供 Gemini API，有免费额度，速度快。</div>
+      <div class="guide-card-desc" data-i18n="guide_gemini_desc">Google AI Studio 提供 Gemini API，有免费额度，速度快。</div>
       <ol class="guide-steps">
         <li class="guide-step">
           <span class="guide-step-num">1</span>
-          <span class="guide-step-text">访问 Google AI Studio，使用 Google 账号登录</span>
+          <span class="guide-step-text" data-i18n="guide_gemini_s1">访问 Google AI Studio，使用 Google 账号登录</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">2</span>
-          <span class="guide-step-text">点击「Get API key」→「Create API key」</span>
+          <span class="guide-step-text" data-i18n="guide_gemini_s2">点击「Get API key」→「Create API key」</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">3</span>
-          <span class="guide-step-text">复制 API Key</span>
+          <span class="guide-step-text" data-i18n="guide_gemini_s3">复制 API Key</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">4</span>
-          <span class="guide-step-text">在 LingoFlow 设置中选择「Gemini AI」，粘贴密钥并选择模型</span>
+          <span class="guide-step-text" data-i18n="guide_gemini_s4">在 LingoFlow 设置中选择「Gemini AI」，粘贴密钥并选择模型</span>
         </li>
       </ol>
       <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" class="guide-cta">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
-        前往 Google AI Studio 获取 API Key
+        <span data-i18n="guide_go_gemini">前往 Google AI Studio 获取 API Key</span>
       </a>
     </div>
 
@@ -446,32 +484,32 @@
     <div class="guide-card">
       <div class="guide-card-header">
         <div class="guide-card-title">
-          <strong>百度翻译</strong>
-          <span class="guide-badge free">免费额度</span>
+          <strong data-i18n="engine_baidu">百度翻译</strong>
+          <span class="guide-badge free" data-i18n="guide_free_quota">免费额度</span>
         </div>
       </div>
-      <div class="guide-card-desc">百度翻译开放平台，国内稳定，免费额度足够个人使用。</div>
+      <div class="guide-card-desc" data-i18n="guide_baidu_desc">百度翻译开放平台，国内稳定，免费额度足够个人使用。</div>
       <ol class="guide-steps">
         <li class="guide-step">
           <span class="guide-step-num">1</span>
-          <span class="guide-step-text">访问百度翻译开放平台，登录百度账号</span>
+          <span class="guide-step-text" data-i18n="guide_baidu_s1">访问百度翻译开放平台，登录百度账号</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">2</span>
-          <span class="guide-step-text">注册开发者，创建通用翻译应用，获取 APP ID 和密钥</span>
+          <span class="guide-step-text" data-i18n="guide_baidu_s2">注册开发者，创建通用翻译应用，获取 APP ID 和密钥</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">3</span>
-          <span class="guide-step-text">复制 APP ID（应用 ID）和密钥（Secret Key）</span>
+          <span class="guide-step-text" data-i18n="guide_baidu_s3">复制 APP ID（应用 ID）和密钥（Secret Key）</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">4</span>
-          <span class="guide-step-text">在 LingoFlow 设置中选择「百度翻译」，分别粘贴 APP ID 和密钥</span>
+          <span class="guide-step-text" data-i18n="guide_baidu_s4">在 LingoFlow 设置中选择「百度翻译」，分别粘贴 APP ID 和密钥</span>
         </li>
       </ol>
       <a href="https://api.fanyi.baidu.com/" target="_blank" rel="noopener" class="guide-cta">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
-        前往百度翻译开放平台
+        <span data-i18n="guide_go_baidu">前往百度翻译开放平台</span>
       </a>
     </div>
 
@@ -479,27 +517,27 @@
     <div class="guide-card">
       <div class="guide-card-header">
         <div class="guide-card-title">
-          <strong>自定义接口</strong>
-          <span class="guide-badge">通用</span>
+          <strong data-i18n="guide_custom_title">自定义接口</strong>
+          <span class="guide-badge" data-i18n="guide_generic">通用</span>
         </div>
       </div>
-      <div class="guide-card-desc">任何提供 OpenAI <code>/v1/chat/completions</code> 兼容接口的服务均可接入，包括智谱 AI、Ollama 本地部署、OpenRouter 等。</div>
+      <div class="guide-card-desc" data-i18n="guide_custom_desc">任何提供 OpenAI <code>/v1/chat/completions</code> 兼容接口的服务均可接入，包括智谱 AI、Ollama 本地部署、OpenRouter 等。</div>
       <ol class="guide-steps">
         <li class="guide-step">
           <span class="guide-step-num">1</span>
-          <span class="guide-step-text">确认你的 API 服务商提供 OpenAI 兼容的 chat completions 接口</span>
+          <span class="guide-step-text" data-i18n="guide_custom_s1">确认你的 API 服务商提供 OpenAI 兼容的 chat completions 接口</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">2</span>
-          <span class="guide-step-text">从服务商处获取 Base URL（如 <code>https://open.bigmodel.cn/api/paas/v4</code>）和 API Key</span>
+          <span class="guide-step-text" data-i18n="guide_custom_s2">从服务商处获取 Base URL（如 <code>https://open.bigmodel.cn/api/paas/v4</code>）和 API Key</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">3</span>
-          <span class="guide-step-text">确认要使用的模型名称（如 <code>glm-4-flash</code>）</span>
+          <span class="guide-step-text" data-i18n="guide_custom_s3">确认要使用的模型名称（如 <code>glm-4-flash</code>）</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">4</span>
-          <span class="guide-step-text">在 LingoFlow 设置中选择「自定义 (OpenAI 兼容)」，分别填入 Host / API Key / Model</span>
+          <span class="guide-step-text" data-i18n="guide_custom_s4">在 LingoFlow 设置中选择「自定义 (OpenAI 兼容)」，分别填入 Host / API Key / Model</span>
         </li>
       </ol>
     </div>
@@ -509,31 +547,31 @@
       <div class="guide-card-header">
         <div class="guide-card-title">
           <strong>DeepSeek AI</strong>
-          <span class="guide-badge">按量付费 · 低价</span>
+          <span class="guide-badge" data-i18n="guide_low_price">按量付费 · 低价</span>
         </div>
       </div>
-      <div class="guide-card-desc">高质量 AI 翻译，价格低廉，推荐使用 DeepSeek V4 Flash。</div>
+      <div class="guide-card-desc" data-i18n="guide_deepseek_desc">高质量 AI 翻译，价格低廉，推荐使用 DeepSeek V4 Flash。</div>
       <ol class="guide-steps">
         <li class="guide-step">
           <span class="guide-step-num">1</span>
-          <span class="guide-step-text">访问 DeepSeek 开放平台，注册并登录</span>
+          <span class="guide-step-text" data-i18n="guide_deepseek_s1">访问 DeepSeek 开放平台，注册并登录</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">2</span>
-          <span class="guide-step-text">进入「API Keys」页面，点击「Create new API key」</span>
+          <span class="guide-step-text" data-i18n="guide_deepseek_s2">进入「API Keys」页面，点击「Create new API key」</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">3</span>
-          <span class="guide-step-text">复制以 <code>sk-</code> 开头的 API Key（注意：只显示一次）</span>
+          <span class="guide-step-text" data-i18n="guide_deepseek_s3">复制以 <code>sk-</code> 开头的 API Key（注意：只显示一次）</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">4</span>
-          <span class="guide-step-text">在 LingoFlow 设置中选择「DeepSeek AI」，粘贴密钥并选择模型</span>
+          <span class="guide-step-text" data-i18n="guide_deepseek_s4">在 LingoFlow 设置中选择「DeepSeek AI」，粘贴密钥并选择模型</span>
         </li>
       </ol>
       <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener" class="guide-cta">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
-        前往 DeepSeek 开放平台获取 API Key
+        <span data-i18n="guide_go_deepseek">前往 DeepSeek 开放平台获取 API Key</span>
       </a>
     </div>
 
@@ -541,32 +579,32 @@
     <div class="guide-card">
       <div class="guide-card-header">
         <div class="guide-card-title">
-          <strong>Microsoft Translator</strong>
-          <span class="guide-badge">Azure 付费</span>
+          <strong data-i18n="engine_microsoft">Microsoft Translator</strong>
+          <span class="guide-badge" data-i18n="guide_azure_paid">Azure 付费</span>
         </div>
       </div>
-      <div class="guide-card-desc">Azure AI 服务，翻译质量稳定专业，需绑定 Azure 账号。</div>
+      <div class="guide-card-desc" data-i18n="guide_microsoft_desc">Azure AI 服务，翻译质量稳定专业，需绑定 Azure 账号。</div>
       <ol class="guide-steps">
         <li class="guide-step">
           <span class="guide-step-num">1</span>
-          <span class="guide-step-text">访问 Azure 门户，登录或注册 Azure 账号</span>
+          <span class="guide-step-text" data-i18n="guide_microsoft_s1">访问 Azure 门户，登录或注册 Azure 账号</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">2</span>
-          <span class="guide-step-text">创建「Translator」资源，获取密钥（Key）和区域（Region）</span>
+          <span class="guide-step-text" data-i18n="guide_microsoft_s2">创建「Translator」资源，获取密钥（Key）和区域（Region）</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">3</span>
-          <span class="guide-step-text">复制密钥（两个 Key 任意一个均可）</span>
+          <span class="guide-step-text" data-i18n="guide_microsoft_s3">复制密钥（两个 Key 任意一个均可）</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">4</span>
-          <span class="guide-step-text">在 LingoFlow 设置中选择「Microsoft Translator」，粘贴密钥</span>
+          <span class="guide-step-text" data-i18n="guide_microsoft_s4">在 LingoFlow 设置中选择「Microsoft Translator」，粘贴密钥</span>
         </li>
       </ol>
       <a href="https://portal.azure.com/" target="_blank" rel="noopener" class="guide-cta">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
-        前往 Azure 门户获取密钥
+        <span data-i18n="guide_go_microsoft">前往 Azure 门户获取密钥</span>
       </a>
     </div>
 
@@ -574,32 +612,32 @@
     <div class="guide-card">
       <div class="guide-card-header">
         <div class="guide-card-title">
-          <strong>有道翻译</strong>
-          <span class="guide-badge">需申请</span>
+          <strong data-i18n="engine_youdao">有道翻译</strong>
+          <span class="guide-badge" data-i18n="guide_need_apply">需申请</span>
         </div>
       </div>
-      <div class="guide-card-desc">网易有道智云翻译 API，国内速度快，需实名申请。</div>
+      <div class="guide-card-desc" data-i18n="guide_youdao_desc">网易有道智云翻译 API，国内速度快，需实名申请。</div>
       <ol class="guide-steps">
         <li class="guide-step">
           <span class="guide-step-num">1</span>
-          <span class="guide-step-text">访问有道智云 AI 开放平台，注册并实名认证</span>
+          <span class="guide-step-text" data-i18n="guide_youdao_s1">访问有道智云 AI 开放平台，注册并实名认证</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">2</span>
-          <span class="guide-step-text">进入「应用管理」，创建应用，获取 App Key 和 App Secret</span>
+          <span class="guide-step-text" data-i18n="guide_youdao_s2">进入「应用管理」，创建应用，获取 App Key 和 App Secret</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">3</span>
-          <span class="guide-step-text">复制 App Key（应用 ID）和 App Secret（应用密钥）</span>
+          <span class="guide-step-text" data-i18n="guide_youdao_s3">复制 App Key（应用 ID）和 App Secret（应用密钥）</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">4</span>
-          <span class="guide-step-text">在 LingoFlow 设置中选择「有道翻译」，分别粘贴 App Key 和 App Secret</span>
+          <span class="guide-step-text" data-i18n="guide_youdao_s4">在 LingoFlow 设置中选择「有道翻译」，分别粘贴 App Key 和 App Secret</span>
         </li>
       </ol>
       <a href="https://ai.youdao.com/" target="_blank" rel="noopener" class="guide-cta">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
-        前往有道智云获取 App Key
+        <span data-i18n="guide_go_youdao">前往有道智云获取 App Key</span>
       </a>
     </div>
 
@@ -607,28 +645,28 @@
     <div class="guide-card">
       <div class="guide-card-header">
         <div class="guide-card-title">
-          <strong>有道大模型</strong>
-          <span class="guide-badge">AI 翻译</span>
+          <strong data-i18n="engine_youdaollm">有道大模型</strong>
+          <span class="guide-badge" data-i18n="guide_ai_translate">AI 翻译</span>
         </div>
       </div>
-      <div class="guide-card-desc">有道智云大模型翻译 API，基于 AI，翻译质量更高。</div>
+      <div class="guide-card-desc" data-i18n="guide_youdaollm_desc">有道智云大模型翻译 API，基于 AI，翻译质量更高。</div>
       <ol class="guide-steps">
         <li class="guide-step">
           <span class="guide-step-num">1</span>
-          <span class="guide-step-text">同样在有道智云申请，进入「大模型翻译」服务</span>
+          <span class="guide-step-text" data-i18n="guide_youdaollm_s1">同样在有道智云申请，进入「大模型翻译」服务</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">2</span>
-          <span class="guide-step-text">获取 App Key、App Secret，并选择大模型型号</span>
+          <span class="guide-step-text" data-i18n="guide_youdaollm_s2">获取 App Key、App Secret，并选择大模型型号</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">3</span>
-          <span class="guide-step-text">在 LingoFlow 设置中选择「有道大模型」，粘贴密钥并选择模型</span>
+          <span class="guide-step-text" data-i18n="guide_youdaollm_s3">在 LingoFlow 设置中选择「有道大模型」，粘贴密钥并选择模型</span>
         </li>
       </ol>
       <a href="https://ai.youdao.com/" target="_blank" rel="noopener" class="guide-cta">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
-        前往有道智云
+        <span data-i18n="guide_go_youdaollm">前往有道智云</span>
       </a>
     </div>
 
@@ -636,37 +674,36 @@
     <div class="guide-card">
       <div class="guide-card-header">
         <div class="guide-card-title">
-          <strong>百度大模型</strong>
-          <span class="guide-badge">AI 翻译</span>
+          <strong data-i18n="engine_baidullm">百度大模型</strong>
+          <span class="guide-badge" data-i18n="guide_ai_translate">AI 翻译</span>
         </div>
       </div>
-      <div class="guide-card-desc">百度翻译开放平台的大模型文本翻译 API，高质量 AI 翻译。</div>
+      <div class="guide-card-desc" data-i18n="guide_baidullm_desc">百度翻译开放平台的大模型文本翻译 API，高质量 AI 翻译。</div>
       <ol class="guide-steps">
         <li class="guide-step">
           <span class="guide-step-num">1</span>
-          <span class="guide-step-text">访问百度翻译开放平台，进入「大模型文本翻译」</span>
+          <span class="guide-step-text" data-i18n="guide_baidullm_s1">访问百度翻译开放平台，进入「大模型文本翻译」</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">2</span>
-          <span class="guide-step-text">在「API Key 管理」中创建 API Key（格式为 <code>bce-v3/ALTAK-...</code>）</span>
+          <span class="guide-step-text" data-i18n="guide_baidullm_s2">在「API Key 管理」中创建 API Key（格式为 <code>bce-v3/ALTAK-...</code>）</span>
         </li>
         <li class="guide-step">
           <span class="guide-step-num">3</span>
-          <span class="guide-step-text">复制 API Key，粘贴到 LingoFlow 设置中</span>
+          <span class="guide-step-text" data-i18n="guide_baidullm_s3">复制 API Key，粘贴到 LingoFlow 设置中</span>
         </li>
       </ol>
       <a href="https://fanyi-api.baidu.com/" target="_blank" rel="noopener" class="guide-cta">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>
-        前往百度大模型翻译
+        <span data-i18n="guide_go_baidullm">前往百度大模型翻译</span>
       </a>
     </div>
 
     <!-- 提示 -->
-    <div class="guide-note">
-      💡 <strong>提示：</strong>MyMemory 和 Google Translate 无需 API Key，直接在设置中选择即可使用，跳过上述步骤。
-    </div>
+    <div class="guide-note" data-i18n="guide_note">💡 <strong>提示：</strong>MyMemory 和 Google Translate 无需 API Key，直接在设置中选择即可使用，跳过上述步骤。</div>
   </div>
 
+  <script src="../js/i18n.js"></script>
   <script src="setup-guide.js"></script>
 </body>
 </html>
