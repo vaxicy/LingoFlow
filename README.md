@@ -41,6 +41,7 @@ A lightweight Chrome Extension for reading foreign-language websites with ease.
 | Baidu Translate | API key | Yes |
 | Baidu LLM | API key | Yes |
 | Alibaba Bailian (Qwen) | API key | Yes |
+| Custom (OpenAI Compatible) | API key + Base URL + Model | Yes |
 
 ### Interface & Customization / 界面与个性化
 

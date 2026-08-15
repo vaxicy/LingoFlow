@@ -438,6 +438,7 @@ function initSettingsPanel() {
         const isBaidu = control.value === 'baidu';
         const isBaiduLLM = control.value === 'baidullm';
         const isBailian = control.value === 'bailian';
+        const isCustom = control.value === 'custom';
         toggleApiKeyRow(isSF);
         toggleModelRow(isSF);
         toggleBailianRows(isBailian);
@@ -451,6 +452,7 @@ function initSettingsPanel() {
           document.getElementById('popup-baidu-app-id-row').hidden = false;
         }
         toggleBaiduLLMRows(isBaiduLLM);
+        toggleCustomRows(isCustom);
         syncEngineSelect(control.value);
       }
       if (id === 'popup-ui-language' && typeof setLanguage === 'function') {
@@ -1372,6 +1374,15 @@ function toggleBaiduLLMRows(show) {
   if (akRow) akRow.hidden = !show;
 }
 
+function toggleCustomRows(show) {
+  const keyRow = document.getElementById('popup-custom-key-row');
+  const hostRow = document.getElementById('popup-custom-host-row');
+  const modelRow = document.getElementById('popup-custom-model-row');
+  if (keyRow) keyRow.hidden = !show;
+  if (hostRow) hostRow.hidden = !show;
+  if (modelRow) modelRow.hidden = !show;
+}
+
 function applyPopupSettings(settings) {
   const translationEngine = document.getElementById('popup-translation-engine');
   const apiKeyInput = document.getElementById('popup-siliconflow-key');
@@ -1397,6 +1408,7 @@ function applyPopupSettings(settings) {
     const isBaidu = translationEngine.value === 'baidu';
     const isBaiduLLM = translationEngine.value === 'baidullm';
     const isBailian = translationEngine.value === 'bailian';
+    const isCustom = translationEngine.value === 'custom';
     toggleApiKeyRow(isSF);
     toggleModelRow(isSF);
     toggleMicrosoftRow(isMS);
@@ -1409,6 +1421,7 @@ function applyPopupSettings(settings) {
     }
     toggleBaiduLLMRows(isBaiduLLM);
     toggleBailianRows(isBailian);
+    toggleCustomRows(isCustom);
     syncEngineSelect(translationEngine.value);
   }
   if (apiKeyInput) apiKeyInput.value = settings.siliconflowApiKey || '';
@@ -1447,6 +1460,13 @@ function applyPopupSettings(settings) {
   if (baiduSecretKeyInput) baiduSecretKeyInput.value = settings.baiduSecretKey || '';
   const baiduLLMAkInput = document.getElementById('popup-baidullm-ak');
   if (baiduLLMAkInput) baiduLLMAkInput.value = settings.baiduLLMApiKey || '';
+
+  const customKeyInput = document.getElementById('popup-custom-key');
+  if (customKeyInput) customKeyInput.value = settings.customApiKey || '';
+  const customHostInput = document.getElementById('popup-custom-host');
+  if (customHostInput) customHostInput.value = settings.customApiHost || '';
+  const customModelInput = document.getElementById('popup-custom-model');
+  if (customModelInput) customModelInput.value = settings.customModel || '';
 
   const youdaoAppKeyInput = document.getElementById('popup-youdao-app-key');
   if (youdaoAppKeyInput) youdaoAppKeyInput.value = settings.youdaoAppKey || '';
@@ -1504,6 +1524,9 @@ function getPopupSettingsFromUI() {
     baiduAppId: document.getElementById('popup-baidu-app-id')?.value || '',
     baiduSecretKey: document.getElementById('popup-baidu-secret-key')?.value || '',
     baiduLLMApiKey: document.getElementById('popup-baidullm-ak')?.value || '',
+    customApiKey: document.getElementById('popup-custom-key')?.value || '',
+    customApiHost: document.getElementById('popup-custom-host')?.value || '',
+    customModel: document.getElementById('popup-custom-model')?.value || '',
     youdaoAppKey: document.getElementById('popup-youdao-app-key')?.value || '',
     youdaoAppSecret: document.getElementById('popup-youdao-app-secret')?.value || '',
     youdaoLLMModel: document.getElementById('popup-youdao-llm-model')?.value || '3',
@@ -1622,6 +1645,9 @@ function getDefaultSettings(overrides = {}) {
     bailianApiKey: '',
     bailianApiHost: 'https://ws-qs3nf4dw21t7cnw9.cn-beijing.maas.aliyuncs.com',
     bailianModel: 'qwen3.7-plus',
+    customApiKey: '',
+    customApiHost: 'https://api.openai.com',
+    customModel: 'gpt-4o-mini',
     microsoftApiKey: '',
     geminiApiKey: '',
     geminiModel: 'gemini-3.1-flash-lite',
@@ -1667,6 +1693,9 @@ function prefillHiddenInputs(settings) {
     { id: 'popup-baidu-app-id', key: 'baiduAppId' },
     { id: 'popup-baidu-secret-key', key: 'baiduSecretKey' },
     { id: 'popup-baidullm-ak', key: 'baiduLLMApiKey' },
+    { id: 'popup-custom-key', key: 'customApiKey' },
+    { id: 'popup-custom-host', key: 'customApiHost' },
+    { id: 'popup-custom-model', key: 'customModel' },
     { id: 'popup-youdao-app-key', key: 'youdaoAppKey' },
     { id: 'popup-youdao-app-secret', key: 'youdaoAppSecret' },
     { id: 'popup-youdao-llm-model', key: 'youdaoLLMModel' }

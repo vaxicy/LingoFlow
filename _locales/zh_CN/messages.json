@@ -427,6 +427,34 @@
     "message": "阿里百炼（通义千问）",
     "description": "阿里百炼翻译引擎选项"
   },
+  "engine_custom": {
+    "message": "自定义 (OpenAI 兼容)",
+    "description": "自定义 OpenAI 兼容翻译引擎选项"
+  },
+  "custom_api_key_label": {
+    "message": "API Key",
+    "description": "自定义引擎 API Key 标签"
+  },
+  "custom_api_key_desc": {
+    "message": "你的 OpenAI 兼容服务 API 密钥",
+    "description": "自定义引擎 API Key 描述"
+  },
+  "custom_api_host_label": {
+    "message": "Base URL",
+    "description": "自定义引擎 Base URL 标签"
+  },
+  "custom_api_host_desc": {
+    "message": "服务地址，需提供 /v1/chat/completions 接口",
+    "description": "自定义引擎 Base URL 描述"
+  },
+  "custom_model_label": {
+    "message": "模型",
+    "description": "自定义引擎模型标签"
+  },
+  "custom_model_desc": {
+    "message": "用于翻译的模型名称",
+    "description": "自定义引擎模型描述"
+  },
   "baidullm_api_key_label": {
     "message": "百度大模型 API Key",
     "description": "百度大模型翻译 API Key 标签"

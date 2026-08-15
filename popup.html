@@ -199,6 +199,7 @@
             <option value="youdaollm" data-i18n="engine_youdaollm">有道大模型</option>
             <option value="baidu" data-i18n="engine_baidu">百度翻译</option>
             <option value="baidullm" data-i18n="engine_baidullm">百度大模型</option>
+            <option value="custom" data-i18n="engine_custom">自定义 (OpenAI 兼容)</option>
           </select>
           <div class="engine-select" id="engine-select">
             <button class="engine-select-trigger" id="engine-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
@@ -305,6 +306,15 @@
                 <span>
                   <strong>百度大模型</strong>
                   <small>AI 翻译 · 高质量</small>
+                </span>
+                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </button>
+              <button class="engine-select-option" type="button" role="option" data-engine-value="custom" aria-selected="false">
+                <span>
+                  <strong>自定义 (OpenAI 兼容)</strong>
+                  <small>填自己的端点</small>
                 </span>
                 <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                   <path d="M20 6 9 17l-5-5"/>
@@ -472,6 +482,30 @@
             <option value="deepseek-v4-flash">DeepSeek V4 Flash（推荐 · 极速 · 便宜）</option>
             <option value="deepseek-v4-pro">DeepSeek V4 Pro（高质量 · 思考模式）</option>
           </select>
+        </div>
+
+        <div class="settings-row settings-row-stack" id="popup-custom-key-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="custom_api_key_label">API Key</strong>
+            <span data-i18n="custom_api_key_desc">你的 OpenAI 兼容服务 API 密钥</span>
+          </div>
+          <input type="password" class="panel-input" id="popup-custom-key" placeholder="sk-..." autocomplete="off">
+        </div>
+
+        <div class="settings-row settings-row-stack" id="popup-custom-host-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="custom_api_host_label">Base URL</strong>
+            <span data-i18n="custom_api_host_desc">服务地址，需包含 /v1/chat/completions</span>
+          </div>
+          <input type="text" class="panel-input" id="popup-custom-host" placeholder="https://api.openai.com" autocomplete="off">
+        </div>
+
+        <div class="settings-row settings-row-stack" id="popup-custom-model-row" hidden>
+          <div class="settings-row-copy">
+            <strong data-i18n="custom_model_label">Model</strong>
+            <span data-i18n="custom_model_desc">用于翻译的模型名称</span>
+          </div>
+          <input type="text" class="panel-input" id="popup-custom-model" placeholder="gpt-4o-mini" autocomplete="off">
         </div>
 
         <div class="settings-row settings-row-stack" id="popup-baidu-app-id-row" hidden>

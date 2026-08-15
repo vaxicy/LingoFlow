@@ -427,6 +427,34 @@
     "message": "Alibaba Bailian (Qwen)",
     "description": "Alibaba Bailian translation engine option"
   },
+  "engine_custom": {
+    "message": "Custom (OpenAI Compatible)",
+    "description": "Custom OpenAI-compatible translation engine option"
+  },
+  "custom_api_key_label": {
+    "message": "API Key",
+    "description": "Custom engine API Key label"
+  },
+  "custom_api_key_desc": {
+    "message": "Your API key for the OpenAI-compatible service",
+    "description": "Custom engine API Key description"
+  },
+  "custom_api_host_label": {
+    "message": "Base URL",
+    "description": "Custom engine Base URL label"
+  },
+  "custom_api_host_desc": {
+    "message": "Service address, must expose /v1/chat/completions",
+    "description": "Custom engine Base URL description"
+  },
+  "custom_model_label": {
+    "message": "Model",
+    "description": "Custom engine Model label"
+  },
+  "custom_model_desc": {
+    "message": "Model name used for translation",
+    "description": "Custom engine Model description"
+  },
   "baidullm_api_key_label": {
     "message": "Baidu LLM API Key",
     "description": "Baidu LLM translation API Key label"

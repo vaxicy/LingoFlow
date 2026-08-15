@@ -54,6 +54,9 @@ chrome.runtime.onInstalled.addListener(() => {
           siliconflowModel: 'tencent/Hunyuan-MT-7B',
           bailianApiKey: '',
           bailianModel: 'qwen3.7-plus',
+          customApiKey: '',
+          customApiHost: 'https://api.openai.com',
+          customModel: 'gpt-4o-mini',
           microsoftApiKey: '',
           geminiApiKey: '',
           geminiModel: 'gemini-3.1-flash-lite',
@@ -489,6 +492,9 @@ function getDefaultSettings(overrides = {}) {
     bailianApiKey: '',
     bailianApiHost: 'https://ws-qs3nf4dw21t7cnw9.cn-beijing.maas.aliyuncs.com',
     bailianModel: 'qwen3.7-plus',
+    customApiKey: '',
+    customApiHost: 'https://api.openai.com',
+    customModel: 'gpt-4o-mini',
     microsoftApiKey: '',
     geminiApiKey: '',
     geminiModel: 'gemini-3.1-flash-lite',
@@ -710,6 +716,8 @@ function translateText(text, targetLang, sendResponse) {
       translateWithBaidu(text, targetLang, sendResponse);
     } else if (engine === 'baidullm') {
       translateWithBaiduLLMCb(text, targetLang, sendResponse);
+    } else if (engine === 'custom') {
+      translateWithCustom(text, targetLang, sendResponse);
     } else {
       translateWithGoogle(text, targetLang, sendResponse);
     }
@@ -760,6 +768,11 @@ function translateBatch(texts, targetLang, sendResponse) {
 
     if (engine === 'baidullm') {
       translateBatchWithBaiduLLM(list, targetLang, sendResponse);
+      return;
+    }
+
+    if (engine === 'custom') {
+      translateBatchWithCustom(list, targetLang, sendResponse);
       return;
     }
 
@@ -821,6 +834,8 @@ function translateOneForBatch(text, targetLang, engine) {
       translateWithGemini(text, targetLang, respond);
     } else if (engine === 'mymemory') {
       translateWithMyMemory(text, targetLang, respond);
+    } else if (engine === 'custom') {
+      translateWithCustom(text, targetLang, respond);
     } else {
       translateWithGoogle(text, targetLang, respond);
     }
@@ -1426,6 +1441,198 @@ function translateWithBailian(text, targetLang, sendResponse) {
         });
     })(0);
   });
+}
+
+// ===== Custom OpenAI-Compatible Translation =====
+// Users fill in their own Base URL + API Key + Model. Any service that
+// exposes a standard /v1/chat/completions endpoint works here.
+function getCustomTargetName(targetLang) {
+  return (targetLang === 'zh' || targetLang === 'zh-CN') ? 'Simplified Chinese'
+       : (targetLang === 'en') ? 'English' : 'Simplified Chinese';
+}
+
+function translateWithCustom(text, targetLang, sendResponse) {
+  const tl = getCustomTargetName(targetLang);
+  const overallTimeoutMs = 18000;
+  let overallTimer = setTimeout(() => {
+    console.warn('LingoFlow: Custom engine overall timeout, falling back to Google');
+    translateWithGoogle(text, targetLang, sendResponse);
+  }, overallTimeoutMs);
+  let responseSent = false;
+
+  function done(result) {
+    if (responseSent) return;
+    responseSent = true;
+    clearTimeout(overallTimer);
+    if (result !== undefined) sendResponse({ success: true, translation: result });
+  }
+
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const settings = result.lingoflow_settings || {};
+    const apiKey = settings.customApiKey || '';
+    const selectedModel = settings.customModel || 'gpt-4o-mini';
+    const host = (settings.customApiHost || 'https://api.openai.com').replace(/\/+$/, '');
+    const cached = getCachedTranslation('custom', selectedModel, targetLang, text);
+    if (cached) { sendResponse({ success: true, translation: cached }); return; }
+    if (!apiKey) {
+      done();
+      console.warn('LingoFlow: Custom engine API key not set, falling back to Google');
+      translateWithGoogle(text, targetLang, sendResponse);
+      return;
+    }
+
+    const maxLen = 2000;
+    const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
+    const url = `${host}/v1/chat/completions`;
+    const body = {
+      model: selectedModel,
+      messages: [
+        { role: 'system', content: `You are a professional translator. Translate the following text to ${tl}. Only output the translated text, no explanations, no notes.` },
+        { role: 'user', content: truncated }
+      ],
+      temperature: 0.2,
+      top_p: 0.9,
+      max_tokens: Math.min(truncated.length * 4, 2000)
+    };
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    })
+      .then(res => { clearTimeout(timeoutId); if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+      .then(data => {
+        if (responseSent) return;
+        clearTimeout(timeoutId);
+        if (data && data.choices && data.choices[0] && data.choices[0].message) {
+          const translatedText = data.choices[0].message.content.trim();
+          if (translatedText.length === 0) {
+            done();
+            console.warn('LingoFlow: Custom engine returned empty, falling back to Google');
+            translateWithGoogle(text, targetLang, sendResponse);
+            return;
+          }
+          setCachedTranslation('custom', selectedModel, targetLang, text, translatedText);
+          done(translatedText);
+        } else {
+          done();
+          console.warn('LingoFlow: Custom engine invalid response, falling back to Google');
+          translateWithGoogle(text, targetLang, sendResponse);
+        }
+      })
+      .catch(error => {
+        clearTimeout(timeoutId);
+        if (responseSent) return;
+        console.warn('LingoFlow: Custom engine error, falling back to Google:', error && error.message ? error.message : error);
+        translateWithGoogle(text, targetLang, sendResponse);
+      });
+  });
+}
+
+// Custom batch translation: single-model call returning a JSON array,
+// modeled on the SiliconFlow batch flow.
+async function translateBatchWithCustom(texts, targetLang, sendResponse) {
+  const tl = getCustomTargetName(targetLang);
+  const translations = new Array(texts.length);
+  let pending = texts.length;
+  let anyFailed = false;
+
+  const settings = await new Promise(resolve => {
+    chrome.storage.local.get(['lingoflow_settings'], (r) => resolve(r.lingoflow_settings || {}));
+  });
+  const apiKey = settings.customApiKey || '';
+  const model = settings.customModel || 'gpt-4o-mini';
+  const host = (settings.customApiHost || 'https://api.openai.com').replace(/\/+$/, '');
+
+  if (!apiKey) {
+    console.warn('LingoFlow: Custom engine API key not set, falling back to Google for batch');
+    for (let i = 0; i < texts.length; i++) {
+      translations[i] = `[LingoFlow translation failed] ${texts[i]}`;
+    }
+    sendResponse({ success: true, translations });
+    return;
+  }
+
+  // Pre-fill from cache
+  for (let i = 0; i < texts.length; i++) {
+    const cached = getCachedTranslation('custom', model, targetLang, texts[i]);
+    if (cached) { translations[i] = cached; pending--; }
+  }
+  if (pending === 0) {
+    sendResponse({ success: true, translations });
+    return;
+  }
+
+  const url = `${host}/v1/chat/completions`;
+  const items = texts.map((text, idx) => ({ id: idx, text: text.length > 2000 ? text.substring(0, 2000) : text }));
+  const payload = items.filter(it => !translations[it.id]);
+  const body = {
+    model,
+    messages: [
+      {
+        role: 'system',
+        content: [
+          'You are a professional translation engine.',
+          `Translate each text value to ${tl}.`,
+          'Return ONLY a valid JSON array. No markdown. No explanations.',
+          'The output array must have the same length and order as the input array.',
+          'Each output item must be a string translation.'
+        ].join(' ')
+      },
+      { role: 'user', content: JSON.stringify(payload) }
+    ],
+    temperature: 0.1,
+    top_p: 0.9,
+    max_tokens: Math.min(Math.max(JSON.stringify(payload).length * 2, 512), 8192)
+  };
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const content = data && data.choices && data.choices[0] && data.choices[0].message
+      ? data.choices[0].message.content.trim() : '';
+    const parsed = parseGeminiTranslationArray(content, payload.length);
+    payload.forEach((it, idx) => {
+      const t = parsed[idx];
+      if (t !== undefined && t.length) {
+        translations[it.id] = t;
+        setCachedTranslation('custom', model, targetLang, texts[it.id], t);
+      }
+    });
+  } catch (error) {
+    clearTimeout(timeoutId);
+    console.warn('LingoFlow: Custom engine batch error:', error && error.message ? error.message : error);
+  }
+
+  // Fill any gaps with Google
+  const remaining = [];
+  for (let i = 0; i < texts.length; i++) {
+    if (translations[i] === undefined) remaining.push(i);
+  }
+  if (remaining.length) {
+    anyFailed = true;
+    await Promise.all(remaining.map(i => new Promise(resolve => {
+      translateWithGoogle(texts[i], targetLang, (r) => {
+        if (r && r.success && r.translation !== undefined) translations[i] = r.translation;
+        resolve();
+      });
+    })));
+  }
+
+  console.log(`LingoFlow: Custom engine batch done (${texts.length} items, google-fill: ${anyFailed ? remaining.length : 0})`);
+  sendResponse({ success: true, translations });
 }
 
 // Gemini AI Translation (Google AI Studio API key required)
