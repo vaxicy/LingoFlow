@@ -71,17 +71,19 @@ body[data-theme="dark"] {
   gap: 14px;
   flex-wrap: wrap;
   margin-bottom: 8px;
+  overflow: visible;
 }
 
 .support-hero h1 {
   margin: 0;
   font-size: clamp(26px, 4.5vw, 42px);
-  line-height: 1.1;
+  line-height: 1.35;
   letter-spacing: 0;
   background: var(--lf-gradient);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+  padding-bottom: 4px;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
@@ -107,6 +109,8 @@ body[data-theme="dark"] {
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.5);
   flex-shrink: 0;
+  position: relative;
+  z-index: 2;
 }
 
 body[data-theme="dark"] .lang-switch {
@@ -123,6 +127,9 @@ body[data-theme="dark"] .lang-switch {
   padding: 6px 16px;
   border-radius: 999px;
   cursor: pointer;
+  position: relative;
+  z-index: 3;
+  pointer-events: auto;
   transition: color 0.18s ease, background 0.18s ease;
 }
 
