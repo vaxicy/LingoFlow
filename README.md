@@ -48,9 +48,9 @@ A lightweight Chrome Extension for reading foreign-language websites with ease.
 
 ### About translate.js / 关于 translate.js
 
-The built-in free translation channel in LingoFlow is powered by the open-source project [xnx3/translate](https://github.com/xnx3/translate). It runs entirely as a content script injected into the page — no API key, no configuration, and no server round-trip to LingoFlow itself. The library rotates across multiple backends (Google, MyMemory, and your own custom AI API) to maximize availability. All credit for the underlying translation logic goes to the original authors of xnx3/translate.
+The built-in free translation channel in LingoFlow is powered by the open-source project **translate.js** by **xnx3** — official site: [translate.zvo.cn](https://translate.zvo.cn/), source code: [github.com/xnx3/translate](https://github.com/xnx3/translate). It runs entirely as a content script injected into the page — no API key, no configuration, and no server round-trip to LingoFlow itself. The library rotates across multiple backends (Google, MyMemory, and your own custom AI API) to maximize availability. All credit for the underlying translation logic goes to the original author **xnx3** and the translate.js project.
 
-LingoFlow 内置的免费翻译通道基于开源项目 [xnx3/translate](https://github.com/xnx3/translate) 实现。它完全以内容脚本的形式注入页面运行——**无需 API Key、无需配置**，也不会向 LingoFlow 自身回传任何数据。该库会在多个后端（Google、MyMemory 以及用户自定义的 AI API）之间自动轮换以保证可用性。翻译底层逻辑的全部归属与致谢均归于 xnx3/translate 的原作者。
+LingoFlow 内置的免费翻译通道基于开源项目 **translate.js**（作者 **xnx3**）实现 —— 官方网址：[translate.zvo.cn](https://translate.zvo.cn/)，源代码：[github.com/xnx3/translate](https://github.com/xnx3/translate)。它完全以内容脚本的形式注入页面运行——**无需 API Key、无需配置**，也不会向 LingoFlow 自身回传任何数据。该库会在多个后端（Google、MyMemory 以及用户自定义的 AI API）之间自动轮换以保证可用性。翻译底层逻辑的全部归属与致谢均归于原作者 **xnx3** 及 translate.js 项目。
 
 ### Interface & Customization / 界面与个性化
 
