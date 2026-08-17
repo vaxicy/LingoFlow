@@ -431,6 +431,10 @@
     "message": "自定义 (OpenAI 兼容)",
     "description": "自定义 OpenAI 兼容翻译引擎选项"
   },
+  "engine_translatejs": {
+    "message": "translate.js (免费无需Key)",
+    "description": "translate.js 免费翻译引擎选项，无需 API Key"
+  },
   "custom_api_key_label": {
     "message": "API Key",
     "description": "自定义引擎 API Key 标签"

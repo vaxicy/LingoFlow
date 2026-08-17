@@ -706,7 +706,8 @@ const ENGINE_SELECT_META = {
   youdao: { label: '有道翻译', description: '国内快速' },
   youdaollm: { label: '有道大模型', description: 'AI 翻译' },
   baidu: { label: '百度翻译', description: '国内稳定' },
-  baidullm: { label: '百度大模型', description: 'AI 翻译 · 高质量' }
+  baidullm: { label: '百度大模型', description: 'AI 翻译 · 高质量' },
+  translatejs: { label: 'translate.js', description: '免费 · 无需 Key' }
 };
 
 const ENGINE_SELECT_API_REQUIRED = new Set([

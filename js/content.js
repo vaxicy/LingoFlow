@@ -91,6 +91,22 @@
     translationOnlyDone: {
       en: count => `Translation mode: translated ${count} text blocks`,
       zh: count => `译文模式：已翻译 ${count} 个文本块`
+    },
+    translating: {
+      en: 'Translating page with translate.js...',
+      zh: '正在用 translate.js 整页翻译...'
+    },
+    translatejsDone: {
+      en: 'translate.js: page translated',
+      zh: 'translate.js：整页翻译完成'
+    },
+    translatejsFailed: {
+      en: 'translate.js failed to load (check network)',
+      zh: 'translate.js 加载失败（请检查网络）'
+    },
+    translatejsError: {
+      en: err => `translate.js error: ${err}`,
+      zh: err => `translate.js 出错：${err}`
     }
   };
 
@@ -3653,6 +3669,29 @@
       try {
         if (state.isTranslating) {
           UI.showNotification(statusText('translationInProgress'));
+          return;
+        }
+
+        // translate.js engine: delegate full-page translation to the injected library.
+        // It rewrites the page DOM directly in the MAIN world, so we do not run
+        // LingoFlow's block-by-block bilingual pipeline here.
+        if (TranslationEngine.activeEngine === 'translatejs') {
+          UI.showNotification(statusText('translating'));
+          try {
+            const resp = await new Promise((resolve) => {
+              chrome.runtime.sendMessage(
+                { action: 'inject_translatejs_page', targetLang: state.targetLanguage || 'en' },
+                (r) => resolve(r || { success: false, error: 'no_response' })
+              );
+            });
+            if (resp && resp.success) {
+              UI.showNotification(statusText('translatejsDone'));
+            } else {
+              UI.showNotification((resp && resp.error) ? statusText('translatejsError', resp.error) : statusText('translatejsFailed'));
+            }
+          } catch (e) {
+            UI.showNotification(statusText('translatejsFailed'));
+          }
           return;
         }
 

@@ -307,8 +307,93 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'update_settings':
       updateSettings(request.settings, sendResponse);
       return true;
+
+    case 'inject_translatejs_page':
+      injectTranslateJsPage(request, sender, sendResponse);
+      return true;
   }
 });
+
+// Inject translate.js (free, no-key full-page translation library) into the
+// current page's MAIN world and trigger translation to the requested language.
+// translate.js exposes a global `window.translate` object; it must run in the
+// page context (not the isolated world) to access and rewrite page DOM.
+function injectTranslateJsPage(request, sender, sendResponse) {
+  const tabId = sender && sender.tab && sender.tab.id;
+  if (!tabId) {
+    if (sendResponse) sendResponse({ success: false, error: 'no_tab' });
+    return;
+  }
+  const targetLang = (request.targetLang || 'en').toLowerCase();
+  const CDN_LIST = [
+    'https://cdn.jsdelivr.net/gh/xnx3/translate@master/translate.js/translate.min.js',
+    'https://cdn.staticfile.net/translate.js/3.7.1/translate.min.js',
+    'https://unpkg.com/translate.js/translate.min.js'
+  ];
+
+  chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    world: 'MAIN',
+    func: function (lang, cdnList) {
+      return new Promise((resolve) => {
+        function loadScript(idx) {
+          if (idx >= cdnList.length) {
+            resolve({ success: false, error: 'cdn_failed' });
+            return;
+          }
+          const s = document.createElement('script');
+          s.src = cdnList[idx];
+          s.onload = function () {
+            try {
+              if (typeof window.translate === 'undefined' || !window.translate.execute) {
+                resolve({ success: false, error: 'translate_api_missing' });
+                return;
+              }
+              // Prefer a free client-side edge translation channel if available.
+              if (window.translate.service && typeof window.translate.service.use === 'function') {
+                try { window.translate.service.use('client.edge'); } catch (e) {}
+              }
+              if (window.translate.language && typeof window.translate.language.setLocal === 'function') {
+                try { window.translate.language.setLocal(lang); } catch (e) {}
+              }
+              window.translate.changeLanguage(lang);
+              window.translate.execute();
+              resolve({ success: true });
+            } catch (e) {
+              resolve({ success: false, error: String(e && e.message || e) });
+            }
+          };
+          s.onerror = function () {
+            // Try next CDN mirror on failure.
+            loadScript(idx + 1);
+          };
+          document.head.appendChild(s);
+        }
+        if (typeof window.translate !== 'undefined' && window.translate.execute) {
+          // Already loaded: just re-run with the new language.
+          try {
+            if (window.translate.language && typeof window.translate.language.setLocal === 'function') {
+              try { window.translate.language.setLocal(lang); } catch (e) {}
+            }
+            window.translate.changeLanguage(lang);
+            window.translate.execute();
+            resolve({ success: true });
+          } catch (e) {
+            resolve({ success: false, error: String(e && e.message || e) });
+          }
+          return;
+        }
+        loadScript(0);
+      });
+    },
+    args: [targetLang, CDN_LIST]
+  }).then((results) => {
+    const r = (results && results[0] && results[0].result) || { success: false, error: 'no_result' };
+    if (sendResponse) sendResponse(r);
+  }).catch((err) => {
+    if (sendResponse) sendResponse({ success: false, error: String(err && err.message || err) });
+  });
+}
 
 // Vocabulary management
 function saveToVocabulary(data) {
@@ -718,6 +803,11 @@ function translateText(text, targetLang, sendResponse) {
       translateWithBaiduLLMCb(text, targetLang, sendResponse);
     } else if (engine === 'custom') {
       translateWithCustom(text, targetLang, sendResponse);
+    } else if (engine === 'translatejs') {
+      // translate.js is a full-page DOM translation library (injected via
+      // inject_translatejs_page). Single-text/selection translation falls back
+      // to Google so inline translation still works.
+      translateWithGoogle(text, targetLang, sendResponse);
     } else {
       translateWithGoogle(text, targetLang, sendResponse);
     }

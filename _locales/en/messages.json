@@ -431,6 +431,10 @@
     "message": "Custom (OpenAI Compatible)",
     "description": "Custom OpenAI-compatible translation engine option"
   },
+  "engine_translatejs": {
+    "message": "translate.js (Free, No Key)",
+    "description": "translate.js free translation engine option, no API key required"
+  },
   "custom_api_key_label": {
     "message": "API Key",
     "description": "Custom engine API Key label"
