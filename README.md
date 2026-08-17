@@ -32,6 +32,7 @@ A lightweight Chrome Extension for reading foreign-language websites with ease.
 | Engine | Type | Key Required |
 |--------|------|-------------|
 | Google Translate | Free (web scraping) | No |
+| translate.js | Free (built-in, no key) | No |
 | MyMemory | Free (with quota) | No |
 | SiliconFlow AI | API key | Yes |
 | Gemini AI | API key | Yes |
@@ -42,6 +43,12 @@ A lightweight Chrome Extension for reading foreign-language websites with ease.
 | Baidu LLM | API key | Yes |
 | Alibaba Bailian (Qwen) | API key | Yes |
 | Custom (OpenAI Compatible) | API key + Base URL + Model | Yes |
+
+### About translate.js / 关于 translate.js
+
+The built-in free translation channel in LingoFlow is powered by the open-source project [xnx3/translate](https://github.com/xnx3/translate). It runs entirely as a content script injected into the page — no API key, no configuration, and no server round-trip to LingoFlow itself. The library rotates across multiple backends (Google, MyMemory, and your own custom AI API) to maximize availability. All credit for the underlying translation logic goes to the original authors of xnx3/translate.
+
+LingoFlow 内置的免费翻译通道基于开源项目 [xnx3/translate](https://github.com/xnx3/translate) 实现。它完全以内容脚本的形式注入页面运行——无需 API Key、无需配置，也不会向 LingoFlow 自身回传任何数据。该库会在多个后端（Google、MyMemory 以及用户自定义的 AI API）之间自动轮换以保证可用性。翻译底层逻辑的全部归属与致谢均归于 xnx3/translate 的原作者。
 
 ### Interface & Customization / 界面与个性化
 
@@ -88,7 +95,7 @@ Download from the [Chrome Web Store](https://chromewebstore.google.com/detail/li
 
 ### Setting Up Translation Engines
 
-- **Free engines** (Google, MyMemory) work out of the box — no configuration needed.
+- **Free engines** (Google, translate.js, MyMemory) work out of the box — no configuration needed.
 - **API-key engines** require you to obtain an API key from the respective provider. See the **API Setup Guide** in the Settings panel for step-by-step instructions for each engine.
 
 ---
