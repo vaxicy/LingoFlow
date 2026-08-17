@@ -189,6 +189,7 @@
           </div>
           <select class="panel-select native-select-hidden" id="popup-translation-engine" aria-hidden="true" tabindex="-1">
             <option value="google" data-i18n="engine_google">Google Translate</option>
+            <option value="translatejs" data-i18n="engine_translatejs">translate.js (免费无需Key)</option>
             <option value="mymemory" data-i18n="engine_mymemory">MyMemory (Free)</option>
             <option value="microsoft" data-i18n="engine_microsoft">Microsoft Translator</option>
             <option value="gemini" data-i18n="engine_gemini">Gemini AI</option>
@@ -200,7 +201,6 @@
             <option value="baidu" data-i18n="engine_baidu">百度翻译</option>
             <option value="baidullm" data-i18n="engine_baidullm">百度大模型</option>
             <option value="custom" data-i18n="engine_custom">自定义 (OpenAI 兼容)</option>
-            <option value="translatejs" data-i18n="engine_translatejs">translate.js (免费无需Key)</option>
           </select>
           <div class="engine-select" id="engine-select">
             <button class="engine-select-trigger" id="engine-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
@@ -217,6 +217,15 @@
                 <span>
                   <strong>Google 翻译</strong>
                   <small>快速通用</small>
+                </span>
+                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+                  <path d="M20 6 9 17l-5-5"/>
+                </svg>
+              </button>
+              <button class="engine-select-option" type="button" role="option" data-engine-value="translatejs" aria-selected="false">
+                <span>
+                  <strong>translate.js (免费无需Key)</strong>
+                  <small>内置免费通道</small>
                 </span>
                 <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                   <path d="M20 6 9 17l-5-5"/>
@@ -316,15 +325,6 @@
                 <span>
                   <strong>自定义 (OpenAI 兼容)</strong>
                   <small>填自己的端点</small>
-                </span>
-                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-                  <path d="M20 6 9 17l-5-5"/>
-                </svg>
-              </button>
-              <button class="engine-select-option" type="button" role="option" data-engine-value="translatejs" aria-selected="false">
-                <span>
-                  <strong>translate.js (免费无需Key)</strong>
-                  <small>内置免费通道</small>
                 </span>
                 <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
                   <path d="M20 6 9 17l-5-5"/>
