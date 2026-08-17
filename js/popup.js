@@ -698,11 +698,11 @@ function scheduleSettingsAutoSave() {
 }
 
 const ENGINE_SELECT_META = {
-  google: { label: 'Google 翻译', description: '快速通用' },
+  google: { label: 'Google 翻译', description: '免费 · 无需 Key' },
   microsoft: { label: 'Microsoft Translator', description: '稳定专业' },
   siliconflow: { label: '硅基流动 AI', description: 'AI 翻译' },
   gemini: { label: 'Gemini AI', description: '便宜快速' },
-  mymemory: { label: 'MyMemory（免费）', description: '免费备用' },
+  mymemory: { label: 'MyMemory（免费）', description: '免费 · 无需 Key' },
   youdao: { label: '有道翻译', description: '国内快速' },
   youdaollm: { label: '有道大模型', description: 'AI 翻译' },
   baidu: { label: '百度翻译', description: '国内稳定' },
