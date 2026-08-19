@@ -931,7 +931,6 @@
           `).join('')}</div>` : ''}
         `
         : `
-          <div class="lingoflow-result-original">${renderParagraphs(resultData.paragraphs, 'text', originalText)}</div>
           <div class="lingoflow-result-translation">${renderParagraphs(resultData.paragraphs, 'translation', translation)}</div>
         `;
 

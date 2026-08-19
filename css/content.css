@@ -112,22 +112,40 @@
   overflow-y: auto;
   max-height: min(60vh, 460px);
   overscroll-behavior: contain;
-  scrollbar-gutter: stable;
-  padding-right: 4px;
+  scrollbar-gutter: stable both-edges;
+  padding-right: 0;
+  /* Standard (Firefox) - completely hide the scrollbar */
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
 }
 
-/* Thin scrollbar matching popup global style. content-script origin cannot
-   fully hide webkit arrow buttons on remote pages, so we keep it 6px and
-   accept the small arrows. `scrollbar-gutter: stable` hides them on the
-   extension's own pages (settings panel). */
-.lingoflow-result-content::-webkit-scrollbar { width: 6px; height: 6px; }
-.lingoflow-result-content::-webkit-scrollbar-track { background: transparent; }
-.lingoflow-result-content::-webkit-scrollbar-thumb {
-  background: rgba(73, 109, 255, 0.45);
-  border-radius: 3px;
+/* Fully hide the scrollbar (track, thumb, arrows) on both the
+   chrome-extension:// pages and remote https pages. We zero out the
+   scrollbar width/height so no track, thumb or arrow button is painted,
+   while keeping overflow-y:auto so wheel/trackpad scrolling still works. */
+.lingoflow-result-content::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
-.lingoflow-result-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(73, 109, 255, 0.7);
+.lingoflow-result-content::-webkit-scrollbar-track {
+  background: transparent !important;
+  display: none !important;
+}
+.lingoflow-result-content::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  display: none !important;
+}
+.lingoflow-result-content::-webkit-scrollbar-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+.lingoflow-result-content::-webkit-scrollbar-corner {
+  display: none !important;
+  background: transparent !important;
 }
 
 .lingoflow-result-header {
