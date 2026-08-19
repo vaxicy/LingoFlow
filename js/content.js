@@ -936,7 +936,7 @@
 
       result.innerHTML = `
         <div class="lingoflow-result-header">
-          <span class="lingoflow-result-title">${this.escapeHtml(isWord ? _getMessage('word', 'Word') : _getMessage('translate', 'Translate'))}</span>
+          <span class="lingoflow-result-title">${this.escapeHtml(isWord ? _getMessage('word', 'Word') : _getMessage('translation_result', 'Translation'))}</span>
           <button class="lingoflow-result-close" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="lingoflow-result-content">

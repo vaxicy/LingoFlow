@@ -24,6 +24,10 @@
     "description": "扩展描述"
   },
   "translate": {
+    "message": "翻译",
+    "description": "翻译按钮"
+  },
+  "translation_result": {
     "message": "译文",
     "description": "翻译结果面板标题"
   },

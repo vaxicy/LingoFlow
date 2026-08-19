@@ -27,6 +27,10 @@
     "message": "Translate",
     "description": "Translate button"
   },
+  "translation_result": {
+    "message": "Translation",
+    "description": "Translation result panel title"
+  },
   "copy": {
     "message": "Copy",
     "description": "Copy button"
