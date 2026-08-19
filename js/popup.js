@@ -453,7 +453,8 @@ function initSettingsPanel() {
     'popup-hover-paragraph-translation',
     'popup-auto-save-settings',
     'popup-existing-bilingual-strategy',
-    'popup-history-limit'
+    'popup-history-limit',
+    'popup-incognito-mode'
   ];
 
   controls.forEach(id => {
