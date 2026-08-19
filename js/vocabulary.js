@@ -47,6 +47,67 @@ function initEventListeners() {
       filterAndRender();
     });
   });
+
+  // Delete: event delegation with inline confirm (replaces native confirm())
+  const listContainer = document.getElementById('vocabulary-list');
+  if (listContainer) {
+    listContainer.addEventListener('click', (e) => {
+      const btn = e.target.closest('.item-action-btn.delete');
+      if (btn) {
+        e.preventDefault();
+        askDeleteConfirm(btn);
+      }
+    });
+  }
+}
+
+// Inline per-row delete confirm: swaps the Delete button for Confirm/Cancel, auto-reverts after 3s
+let _deleteTimer = null;
+function askDeleteConfirm(deleteBtn) {
+  const actions = deleteBtn.closest('.item-actions');
+  if (!actions) return;
+  if (actions.dataset.confirming === '1') return;
+
+  const id = deleteBtn.getAttribute('data-id');
+  const revert = () => {
+    deleteBtn.style.display = '';
+    const wrap = actions.querySelector('.inline-delete-confirm');
+    if (wrap) wrap.remove();
+    actions.dataset.confirming = '0';
+    clearTimeout(_deleteTimer);
+  };
+
+  const wrap = document.createElement('span');
+  wrap.className = 'inline-delete-confirm';
+  const ask = document.createElement('span');
+  ask.className = 'inline-delete-confirm-text';
+  ask.textContent = getMessage('delete_confirm') || 'Delete?';
+  const yes = document.createElement('button');
+  yes.type = 'button';
+  yes.className = 'item-action-btn delete solid';
+  yes.textContent = getMessage('delete') || 'Delete';
+  yes.addEventListener('click', () => {
+    wrap.remove();
+    deleteBtn.style.display = '';
+    actions.dataset.confirming = '0';
+    clearTimeout(_deleteTimer);
+    deleteItem(id);
+  });
+  const no = document.createElement('button');
+  no.type = 'button';
+  no.className = 'item-action-btn cancel';
+  no.textContent = getMessage('cancel') || 'Cancel';
+  no.addEventListener('click', revert);
+
+  wrap.appendChild(ask);
+  wrap.appendChild(yes);
+  wrap.appendChild(no);
+
+  deleteBtn.style.display = 'none';
+  actions.appendChild(wrap);
+  actions.dataset.confirming = '1';
+  clearTimeout(_deleteTimer);
+  _deleteTimer = setTimeout(revert, 3000);
 }
 
 // Handle search
@@ -110,7 +171,7 @@ function createVocabularyItem(item) {
         <span class="item-source" title="${escapeHtml(item.sourceUrl || '')}">${escapeHtml(source)}</span>
         <span class="item-date">${date}</span>
         <div class="item-actions">
-          <button class="item-action-btn delete" onclick="deleteItem('${item.id}')" data-i18n="delete">Delete</button>
+          <button class="item-action-btn delete" data-id="${item.id}" data-i18n="delete">Delete</button>
         </div>
       </div>
     </div>
@@ -119,8 +180,6 @@ function createVocabularyItem(item) {
 
 // Delete item
 function deleteItem(id) {
-  if (!confirm(getMessage('delete_confirm'))) return;
-
   chrome.runtime.sendMessage(
     { action: 'delete_vocabulary_item', id: id },
     (response) => {

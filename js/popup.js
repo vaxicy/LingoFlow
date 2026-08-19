@@ -210,16 +210,15 @@ function initPanels() {
 
   const clearHistory = document.getElementById('history-clear-btn');
   if (clearHistory) {
-    clearHistory.addEventListener('click', () => {
-      if (!confirm(getMessage('clear_confirm'))) return;
-      chrome.runtime.sendMessage({ action: 'clear_history' }, (response) => {
-        if (response && response.success) {
-          panelState.history = [];
-          renderHistoryPanel();
-          showStatus(getMessage('cleared'), 'success');
-        }
-      });
-    });
+    clearHistory.addEventListener('click', showHistoryClearConfirm);
+  }
+  // Inline clear-all confirm bar for history panel
+  const historyConfirm = document.getElementById('history-clear-confirm');
+  if (historyConfirm) {
+    const confirmBtn = historyConfirm.querySelector('[data-confirm-action="clear-history"]');
+    const cancelBtn = historyConfirm.querySelector('[data-confirm-cancel]');
+    if (confirmBtn) confirmBtn.addEventListener('click', clearHistoryAll);
+    if (cancelBtn) cancelBtn.addEventListener('click', hideHistoryClearConfirm);
   }
 
   const exportVocabulary = document.getElementById('vocabulary-export-btn');
@@ -228,6 +227,31 @@ function initPanels() {
   }
 
   initSettingsPanel();
+}
+
+// Inline clear-all confirm helpers (replaces native confirm())
+let historyClearTimer = null;
+function showHistoryClearConfirm() {
+  const bar = document.getElementById('history-clear-confirm');
+  if (!bar) return;
+  bar.hidden = false;
+  clearTimeout(historyClearTimer);
+  historyClearTimer = setTimeout(hideHistoryClearConfirm, 6000);
+}
+function hideHistoryClearConfirm() {
+  clearTimeout(historyClearTimer);
+  const bar = document.getElementById('history-clear-confirm');
+  if (bar) bar.hidden = true;
+}
+function clearHistoryAll() {
+  hideHistoryClearConfirm();
+  chrome.runtime.sendMessage({ action: 'clear_history' }, (response) => {
+    if (response && response.success) {
+      panelState.history = [];
+      renderHistoryPanel();
+      showStatus(getMessage('cleared'), 'success');
+    }
+  });
 }
 
 function openPanel(panelId) {
@@ -1844,7 +1868,40 @@ function createPanelItem(item, options) {
   deleteButton.type = 'button';
   deleteButton.className = 'panel-mini-btn danger';
   deleteButton.textContent = getMessage('delete') || 'Delete';
-  deleteButton.addEventListener('click', options.onDelete);
+  deleteButton.addEventListener('click', () => {
+    const onConfirm = options.onDelete;
+    if (typeof onConfirm !== 'function') return;
+    // Inline confirm: replace the button with a Confirm/Cancel pair, auto-revert after 3s
+    let reverted = false;
+    const revert = () => {
+      if (reverted) return;
+      reverted = true;
+      actions.replaceChild(deleteButton, actions.lastChild || deleteButton);
+      if (actions.contains(confirmWrap)) actions.removeChild(confirmWrap);
+    };
+
+    const confirmWrap = document.createElement('span');
+    confirmWrap.className = 'panel-inline-confirm';
+    const ask = document.createElement('span');
+    ask.className = 'panel-inline-confirm-text';
+    ask.textContent = getMessage('delete_confirm') || 'Delete?';
+    const yes = document.createElement('button');
+    yes.type = 'button';
+    yes.className = 'panel-mini-btn danger solid';
+    yes.textContent = getMessage('delete') || 'Delete';
+    yes.addEventListener('click', () => { reverted = true; actions.removeChild(confirmWrap); onConfirm(); });
+    const no = document.createElement('button');
+    no.type = 'button';
+    no.className = 'panel-mini-btn cancel';
+    no.textContent = getMessage('cancel') || 'Cancel';
+    no.addEventListener('click', revert);
+
+    confirmWrap.appendChild(ask);
+    confirmWrap.appendChild(yes);
+    confirmWrap.appendChild(no);
+    actions.replaceChild(confirmWrap, deleteButton);
+    setTimeout(revert, 3000);
+  });
   actions.appendChild(deleteButton);
 
   meta.appendChild(actions);
@@ -1886,7 +1943,6 @@ function deleteHistoryItem(id) {
 }
 
 function deleteVocabularyItem(id) {
-  if (!confirm(getMessage('delete_confirm'))) return;
   chrome.runtime.sendMessage({ action: 'delete_vocabulary_item', id }, (response) => {
     if (response && response.success) {
       panelState.vocabulary = panelState.vocabulary.filter(item => item.id !== id);
@@ -2608,6 +2664,14 @@ function initBackup() {
   const importBtn = document.getElementById('popup-import-data');
   if (exportBtn) exportBtn.addEventListener('click', exportAllData);
   if (importBtn) importBtn.addEventListener('click', triggerImportData);
+
+  const importConfirm = document.getElementById('import-confirm');
+  if (importConfirm) {
+    const doBtn = importConfirm.querySelector('[data-confirm-action="do-import"]');
+    const cancelBtn = importConfirm.querySelector('[data-confirm-cancel]');
+    if (doBtn) doBtn.addEventListener('click', doImportData);
+    if (cancelBtn) cancelBtn.addEventListener('click', hideImportConfirm);
+  }
 }
 
 function exportAllData() {
@@ -2669,18 +2733,46 @@ function onImportFileSelected(event) {
       showStatus(getMessage('import_invalid'), 'error');
       return;
     }
-    if (!confirm(getMessage('import_confirm'))) return;
+    // Show inline confirm instead of native confirm()
+    showImportConfirm(parsed);
+  };
+  reader.onerror = () => showStatus(getMessage('import_failed'), 'error');
+  reader.readAsText(file);
+}
 
-    const settings = parsed.settings !== undefined ? parsed.settings : parsed.lingoflow_settings;
-    const history = parsed.history !== undefined ? parsed.history : parsed.lingoflow_history;
-    const vocabulary = parsed.vocabulary !== undefined ? parsed.vocabulary : parsed.lingoflow_vocabulary;
+// Inline import-overwrite confirm (replaces native confirm())
+let _pendingImport = null;
+let importConfirmTimer = null;
+function showImportConfirm(parsed) {
+  _pendingImport = parsed;
+  const bar = document.getElementById('import-confirm');
+  if (!bar) return;
+  bar.hidden = false;
+  clearTimeout(importConfirmTimer);
+  importConfirmTimer = setTimeout(hideImportConfirm, 6000);
+}
+function hideImportConfirm() {
+  clearTimeout(importConfirmTimer);
+  const bar = document.getElementById('import-confirm');
+  if (bar) bar.hidden = true;
+}
 
-    const toSet = {};
-    if (settings !== undefined && settings !== null) toSet.lingoflow_settings = settings;
-    if (Array.isArray(history)) toSet.lingoflow_history = history;
-    if (Array.isArray(vocabulary)) toSet.lingoflow_vocabulary = vocabulary;
+function doImportData() {
+  const parsed = _pendingImport;
+  _pendingImport = null;
+  hideImportConfirm();
+  if (!parsed || typeof parsed !== 'object') return;
 
-    chrome.storage.local.set(toSet, () => {
+  const settings = parsed.settings !== undefined ? parsed.settings : parsed.lingoflow_settings;
+  const history = parsed.history !== undefined ? parsed.history : parsed.lingoflow_history;
+  const vocabulary = parsed.vocabulary !== undefined ? parsed.vocabulary : parsed.lingoflow_vocabulary;
+
+  const toSet = {};
+  if (settings !== undefined && settings !== null) toSet.lingoflow_settings = settings;
+  if (Array.isArray(history)) toSet.lingoflow_history = history;
+  if (Array.isArray(vocabulary)) toSet.lingoflow_vocabulary = vocabulary;
+
+  chrome.storage.local.set(toSet, () => {
       if (chrome.runtime.lastError) {
         showStatus(getMessage('import_failed'), 'error');
         return;
@@ -2710,9 +2802,6 @@ function onImportFileSelected(event) {
         }
       );
     });
-  };
-  reader.onerror = () => showStatus(getMessage('import_failed'), 'error');
-  reader.readAsText(file);
 }
 
 function fallbackDownload(url, filename) {

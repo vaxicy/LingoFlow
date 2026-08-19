@@ -118,6 +118,11 @@
         </svg>
         <input id="history-search" type="search" data-i18n-placeholder="search" placeholder="Search...">
       </label>
+      <div class="panel-confirm danger" id="history-clear-confirm" hidden>
+        <span class="panel-confirm-text" data-i18n="clear_confirm">Clear all?</span>
+        <button class="panel-confirm-btn danger" type="button" data-confirm-action="clear-history">Clear</button>
+        <button class="panel-confirm-btn cancel" type="button" data-confirm-cancel>Cancel</button>
+      </div>
       <div class="panel-list" id="history-list"></div>
       <div class="panel-empty" id="history-empty">
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
@@ -676,6 +681,11 @@
               <path d="M12 3v12"/>
             </svg>
           </button>
+        </div>
+        <div class="panel-confirm danger" id="import-confirm" hidden>
+          <span class="panel-confirm-text" data-i18n="import_confirm">Importing will overwrite current data.</span>
+          <button class="panel-confirm-btn danger" type="button" data-confirm-action="do-import">Import</button>
+          <button class="panel-confirm-btn cancel" type="button" data-confirm-cancel>Cancel</button>
         </div>
 
         <div class="settings-section-title" data-i18n="help_support_settings">Help & Support</div>
