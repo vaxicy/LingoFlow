@@ -114,14 +114,30 @@
   overflow-y: auto;
   overflow-x: hidden;
   max-height: min(60vh, 460px);
-  scrollbar-width: none;
-  -ms-overflow-style: none;
 }
 
 .lingoflow-result-content::-webkit-scrollbar {
-  width: 0;
-  height: 0;
-  display: none;
+  width: 6px;
+  height: 6px;
+}
+
+.lingoflow-result-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.lingoflow-result-content::-webkit-scrollbar-thumb {
+  background: rgba(184, 173, 255, 0.35);
+  border-radius: 999px;
+}
+
+.lingoflow-result-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(124, 108, 255, 0.58);
+}
+
+/* Firefox: thin rounded purple scrollbar */
+.lingoflow-result-content {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(184, 173, 255, 0.35) transparent;
 }
 
 .lingoflow-result-header {

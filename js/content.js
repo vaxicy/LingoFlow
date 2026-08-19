@@ -124,9 +124,35 @@
     }
   }
 
+  // Built-in Chinese fallback dictionary: when getMessage (from i18n.js) is
+  // unavailable — e.g. extension context invalidated, or i18n.js failed to load
+  // — we still render the toolbar in Chinese instead of English.
+  const _ZH_FALLBACK = {
+    translate: '翻译',
+    save: '保存',
+    copy: '复制',
+    close: '关闭',
+    retry: '重试',
+    loading: '翻译中…',
+    rarr: '→',
+    mode_word: '单词',
+    mode_sentence: '句子',
+    mode_paragraph: '段落',
+    dictionary_title: '词典',
+    pronunciation: '发音',
+    saveSuccess: '已收藏',
+    saveFailed: '收藏失败',
+    notLoggedIn: '未登录',
+    login: '登录',
+    settings: '设置',
+    feedback: '反馈',
+  };
+
   // Safety wrapper for getMessage: guard against i18n.js not loaded
   // or getMessage being undefined (e.g., extension context invalidated).
-  const _getMessage = (typeof getMessage === 'function') ? getMessage : (key, fallback) => fallback || key;
+  const _getMessage = (typeof getMessage === 'function')
+    ? getMessage
+    : (key, fallback) => _ZH_FALLBACK[key] || fallback || key;
 
   // NOTE: getMessage() is already defined in i18n.js (loaded before this file).
   // Do NOT re-define it here — that would break _manualMessages support and
@@ -3947,6 +3973,9 @@
       document.addEventListener('mousedown', (e) => {
         if (e.target && e.target.closest && e.target.closest('.lingoflow-ui')) return;
         EventHandlers.lastSelectionKey = '';
+        // Only remove the toolbar on mousedown elsewhere; keep the translation
+        // result box visible so a stray click (e.g. taking a screenshot)
+        // doesn't dismiss a result the user is still reading.
         UI.removeFloatingToolbar();
       });
       document.addEventListener('keydown', (e) => {
@@ -3956,8 +3985,9 @@
         }
       });
       window.addEventListener('scroll', () => {
+        // Only dismiss the floating toolbar on scroll; keep the translation
+        // result box open so a slight scroll while reading doesn't clear it.
         UI.removeFloatingToolbar();
-        UI.removeTranslationResult();
       }, { passive: true });
       // Listen for settings changes
       chrome.storage.onChanged.addListener((changes, namespace) => {
