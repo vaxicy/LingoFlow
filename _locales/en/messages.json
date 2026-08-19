@@ -75,14 +75,6 @@
     "message": "Incognito mode is on — translations won't be saved to history",
     "description": "Banner shown when incognito mode is active"
   },
-  "save_history": {
-    "message": "Save History",
-    "description": "Settings toggle"
-  },
-  "save_history_desc": {
-    "message": "Record translation history",
-    "description": "Settings toggle description"
-  },
   "vocabulary": {
     "message": "Vocabulary",
     "description": "Popup button"

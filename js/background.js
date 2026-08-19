@@ -72,7 +72,6 @@ chrome.runtime.onInstalled.addListener(() => {
           autoSaveSettings: true,
           hoverParagraphTranslation: false,
           existingBilingualStrategy: 'skip',
-          saveHistory: true,
           historyLimit: 50,
           activeMode: null,
           ...base
@@ -439,9 +438,8 @@ function deleteVocabularyItem(id, sendResponse) {
 function addToHistory(data) {
   chrome.storage.local.get(['lingoflow_history', 'lingoflow_settings'], (result) => {
     const settings = result.lingoflow_settings || {};
-    // Honor incognitoMode and saveHistory toggle — when either disables history, skip recording
+    // Honor incognitoMode — when enabled, skip recording history
     if (settings.incognitoMode === true) return;
-    if (settings.saveHistory === false) return;
 
     const history = result.lingoflow_history || [];
     const limit = settings.historyLimit || 50;
@@ -469,7 +467,7 @@ function getHistory(sendResponse) {
     const settings = result.lingoflow_settings || {};
     sendResponse({
       history: result.lingoflow_history || [],
-      historyEnabled: settings.saveHistory !== false && settings.incognitoMode !== true
+      historyEnabled: settings.incognitoMode !== true
     });
   });
 }
@@ -599,7 +597,6 @@ function getDefaultSettings(overrides = {}) {
     autoSaveSettings: true,
     hoverParagraphTranslation: false,
     incognitoMode: false,
-    saveHistory: true,
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
     activeMode: null,

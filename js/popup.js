@@ -453,8 +453,7 @@ function initSettingsPanel() {
     'popup-hover-paragraph-translation',
     'popup-auto-save-settings',
     'popup-existing-bilingual-strategy',
-    'popup-history-limit',
-    'popup-save-history'
+    'popup-history-limit'
   ];
 
   controls.forEach(id => {
@@ -1537,8 +1536,6 @@ function applyPopupSettings(settings) {
   if (autoSaveSettings) autoSaveSettings.checked = settings.autoSaveSettings !== false;
   if (existingBilingualStrategy) existingBilingualStrategy.value = settings.existingBilingualStrategy || 'skip';
   if (historyLimit) historyLimit.value = String(settings.historyLimit || 50);
-  const saveHistory = document.getElementById('popup-save-history');
-  if (saveHistory) saveHistory.checked = settings.saveHistory !== false;
   const incognitoMode = document.getElementById('popup-incognito-mode');
   if (incognitoMode) incognitoMode.checked = settings.incognitoMode === true;
   updateIncognitoBanner(settings.incognitoMode === true);
@@ -1593,8 +1590,7 @@ function getPopupSettingsFromUI() {
     toolbarPosition: document.querySelector('[data-position].active')?.getAttribute('data-position') || 'above',
     existingBilingualStrategy: document.getElementById('popup-existing-bilingual-strategy')?.value || 'skip',
     historyLimit: parseInt(document.getElementById('popup-history-limit')?.value, 10) || 50,
-    incognitoMode: document.getElementById('popup-incognito-mode')?.checked === true,
-    saveHistory: document.getElementById('popup-save-history')?.checked !== false
+    incognitoMode: document.getElementById('popup-incognito-mode')?.checked === true
   };
 }
 
@@ -1728,7 +1724,6 @@ function getDefaultSettings(overrides = {}) {
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
     incognitoMode: false,
-    saveHistory: true,
     activeMode: null,
     ...overrides
   };
