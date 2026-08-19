@@ -108,53 +108,20 @@
 }
 
 .lingoflow-result-content {
+  position: relative;
+  overflow: hidden; /* JS-driven scrolling, no native scrollbar so no arrows */
+  max-height: min(60vh, 460px);
+  overscroll-behavior: contain;
+  /* aria-hidden scrollbar alternative: thin visual cue via fade at bottom */
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 6px), transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 6px), transparent 100%);
+}
+
+.lingoflow-result-inner {
   display: flex;
   flex-direction: column;
   gap: 9px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  max-height: min(60vh, 460px);
-  /* Match the popup settings panel scrollbar (6px purple, rounded). */
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: rgba(184, 173, 255, 0.35) transparent;
-  -ms-overflow-style: auto;
-  /* Stable gutter mode skips webkit arrow-button rendering, same as settings panel. */
-  scrollbar-gutter: stable;
-  overscroll-behavior: contain;
-}
-
-.lingoflow-result-content::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-.lingoflow-result-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.lingoflow-result-content::-webkit-scrollbar-thumb {
-  background: rgba(184, 173, 255, 0.35);
-  border-radius: 999px;
-}
-
-.lingoflow-result-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(124, 108, 255, 0.58);
-}
-
-/* Hide the up/down arrow buttons on the webkit scrollbar */
-.lingoflow-result-content::-webkit-scrollbar-button {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
-}
-
-.lingoflow-result-content::-webkit-scrollbar-button:start:decrement,
-.lingoflow-result-content::-webkit-scrollbar-button:start:increment,
-.lingoflow-result-content::-webkit-scrollbar-button:end:decrement,
-.lingoflow-result-content::-webkit-scrollbar-button:end:increment {
-  display: none !important;
-  width: 0 !important;
-  height: 0 !important;
+  will-change: transform;
 }
 
 .lingoflow-result-header {

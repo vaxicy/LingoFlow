@@ -223,6 +223,65 @@
            message.includes('extension has been reloaded');
   }
 
+  // Module-level context-invalidated flag + banner. When the extension is
+  // reloaded while an old tab's content script is still alive, chrome.storage /
+  // chrome.runtime calls throw "Extension context invalidated". We swallow them
+  // (fall back to defaults) and show a "refresh this page" banner so the user
+  // knows to reload instead of hitting a red console error.
+  let _ctxInvalidated = false;
+  const LINGOFLOW_CTX_BANNER_ID = '__lingoflow_ctx_banner__';
+  function markCtxInvalidated() { _ctxInvalidated = true; }
+  function isCtxInvalidated() { return _ctxInvalidated; }
+
+  function showContextInvalidatedBanner() {
+    if (document.getElementById(LINGOFLOW_CTX_BANNER_ID)) return;
+    const wrap = document.createElement('div');
+    wrap.id = LINGOFLOW_CTX_BANNER_ID;
+    wrap.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:2147483647;background:#b8860b;color:#fff;font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+    const msg = document.createElement('span');
+    msg.textContent = 'LingoFlow 刚刚更新，请刷新此页面以重新连接。LingoFlow was just updated — refresh this page to reconnect.';
+    const btn = document.createElement('button');
+    btn.textContent = '刷新此页面 / Refresh';
+    btn.style.cssText = 'background:#fff;color:#b8860b;border:0;border-radius:6px;padding:6px 12px;font:600 13px -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;cursor:pointer;white-space:nowrap';
+    btn.addEventListener('click', () => location.reload());
+    wrap.appendChild(msg);
+    wrap.appendChild(btn);
+    (document.body || document.documentElement).appendChild(wrap);
+  }
+
+  // Safe wrapper around chrome.storage.local.get: never throws on an
+  // invalidated context, returns defaults instead.
+  function storageGet(keys) {
+    return new Promise((resolve) => {
+      if (_ctxInvalidated || typeof chrome === 'undefined' || !chrome.storage || !chrome.storage.local) {
+        resolve({});
+        return;
+      }
+      try {
+        chrome.storage.local.get(keys, (result) => {
+          if (chrome.runtime && chrome.runtime.lastError) {
+            const msg = (chrome.runtime.lastError.message || '').toLowerCase();
+            if (msg.includes('context invalidated') || msg.includes('extension has been reloaded')) {
+              markCtxInvalidated();
+              showContextInvalidatedBanner();
+            }
+            resolve({});
+            return;
+          }
+          resolve(result || {});
+        });
+      } catch (err) {
+        if (isContextInvalidatedError(err)) {
+          markCtxInvalidated();
+          showContextInvalidatedBanner();
+        } else {
+          console.warn('LingoFlow: storageGet error:', getErrorMessage(err));
+        }
+        resolve({});
+      }
+    });
+  }
+
   // Helper: Check if text is primarily Chinese/CJK (skip translation for already-Chinese content)
   function isChineseText(text) {
     const cleaned = (text || '').replace(/[\s\d\p{P}\p{S}]/gu, '');
@@ -882,16 +941,19 @@
           <button class="lingoflow-result-close" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="lingoflow-result-content">
-          ${body}
-          <div class="lingoflow-result-actions">
-            <button class="lingoflow-result-btn" type="button" data-result-action="copy">${this.escapeHtml(_getMessage('copy', 'Copy'))}</button>
-            <button class="lingoflow-result-btn" type="button" data-result-action="save">${this.escapeHtml(_getMessage('save', 'Save'))}</button>
-            <button class="lingoflow-result-close" type="button" aria-label="Close">×</button>
+          <div class="lingoflow-result-inner">
+            ${body}
+            <div class="lingoflow-result-actions">
+              <button class="lingoflow-result-btn" type="button" data-result-action="copy">${this.escapeHtml(_getMessage('copy', 'Copy'))}</button>
+              <button class="lingoflow-result-btn" type="button" data-result-action="save">${this.escapeHtml(_getMessage('save', 'Save'))}</button>
+              <button class="lingoflow-result-close" type="button" aria-label="Close">×</button>
+            </div>
           </div>
         </div>
       `;
 
       document.body.appendChild(result);
+      this.initResultScrolling(result);
       this.positionFloatingElement(result, selectionContext.rect, {
         preferred: state.toolbarPosition,
         offset: 10
@@ -944,9 +1006,95 @@
 
     // Remove translation result
     removeTranslationResult() {
+      this.destroyResultScrolling();
       const result = document.getElementById('lingoflow-translation-result');
       if (result) result.remove();
       this.currentResult = null;
+    },
+
+    // JS-driven scrolling for the result content. Avoids the native webkit
+    // scrollbar entirely (whose up/down arrow buttons cannot be reliably hidden
+    // in content-script CSS), so no arrows can ever appear.
+    initResultScrolling(result) {
+      const scroller = result && result.querySelector('.lingoflow-result-content');
+      const inner = result && result.querySelector('.lingoflow-result-inner');
+      if (!scroller || !inner) return;
+
+      let scrollTop = 0;
+      let dragging = false;
+      let lastY = 0;
+      let lastTouchY = 0;
+      let touchActive = false;
+
+      const applyScroll = () => {
+        const maxScroll = Math.max(0, inner.scrollHeight - scroller.clientHeight);
+        scrollTop = Math.max(0, Math.min(scrollTop, maxScroll));
+        inner.style.transform = `translateY(${-scrollTop}px)`;
+      };
+
+      // Recompute max after content/images settle.
+      const ro = new ResizeObserver(() => applyScroll());
+      ro.observe(inner);
+      applyScroll();
+
+      // Mouse wheel / trackpad
+      scroller.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        scrollTop += e.deltaY;
+        applyScroll();
+      }, { passive: false });
+
+      // Touch: basic two-finger / drag scroll
+      scroller.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          touchActive = true;
+          lastTouchY = e.touches[0].clientY;
+        }
+      }, { passive: true });
+      scroller.addEventListener('touchmove', (e) => {
+        if (!touchActive) return;
+        const y = e.touches[0].clientY;
+        const delta = lastTouchY - y;
+        lastTouchY = y;
+        scrollTop += delta;
+        applyScroll();
+        e.preventDefault();
+      }, { passive: false });
+      scroller.addEventListener('touchend', () => { touchActive = false; }, { passive: true });
+
+      // Keyboard: arrow keys / PageUp / PageDown / Home / End while focused
+      scroller.addEventListener('keydown', (e) => {
+        const step = 40;
+        switch (e.key) {
+          case 'ArrowDown': scrollTop += step; e.preventDefault(); break;
+          case 'ArrowUp': scrollTop -= step; e.preventDefault(); break;
+          case 'PageDown': scrollTop += scroller.clientHeight; e.preventDefault(); break;
+          case 'PageUp': scrollTop -= scroller.clientHeight; e.preventDefault(); break;
+          case 'Home': scrollTop = 0; e.preventDefault(); break;
+          case 'End': scrollTop = inner.scrollHeight; e.preventDefault(); break;
+          default: return;
+        }
+        applyScroll();
+      });
+
+      // Mouse wheel anywhere over the result box also scrolls, for convenience.
+      result.addEventListener('wheel', (e) => {
+        if (scroller.scrollHeight <= scroller.clientHeight) return;
+        if (e.target && scroller.contains(e.target)) return; // already handled
+        e.preventDefault();
+        scrollTop += e.deltaY;
+        applyScroll();
+      }, { passive: false });
+
+      this._resultScrollCleanup = () => {
+        ro.disconnect();
+      };
+    },
+    destroyResultScrolling() {
+      if (typeof this._resultScrollCleanup === 'function') {
+        this._resultScrollCleanup();
+        this._resultScrollCleanup = null;
+      }
     },
 
     // Handle translate action
@@ -3953,9 +4101,10 @@
     try {
       console.log('LingoFlow: Content script loaded');
 
-      // Load settings
-      chrome.storage.local.get(['lingoflow_settings'], (result) => {
-        if (result.lingoflow_settings) {
+      // Load settings (safe wrapper so a reloaded extension doesn't throw
+      // "Extension context invalidated" in an already-open old tab).
+      storageGet(['lingoflow_settings']).then((result) => {
+        if (result && result.lingoflow_settings) {
           state.selectionTranslationEnabled = result.lingoflow_settings.selectionTranslation !== false;
           state.hoverParagraphTranslationEnabled = result.lingoflow_settings.hoverParagraphTranslation === true;
           state.toolbarPosition = result.lingoflow_settings.toolbarPosition || 'above';
@@ -3993,9 +4142,11 @@
         // result box open so a slight scroll while reading doesn't clear it.
         UI.removeFloatingToolbar();
       }, { passive: true });
-      // Listen for settings changes
-      chrome.storage.onChanged.addListener((changes, namespace) => {
-        if (namespace === 'local' && changes.lingoflow_settings) {
+      // Listen for settings changes (guarded: a reloaded extension makes this
+      // listener inert, but registering it must never throw).
+      try {
+        chrome.storage.onChanged.addListener((changes, namespace) => {
+          if (namespace === 'local' && changes.lingoflow_settings) {
           const settings = changes.lingoflow_settings.newValue;
           const wasSelectionEnabled = state.selectionTranslationEnabled;
           const wasHoverEnabled = state.hoverParagraphTranslationEnabled;
@@ -4019,6 +4170,14 @@
           }
         }
       });
+      } catch (err) {
+        if (isContextInvalidatedError(err)) {
+          markCtxInvalidated();
+          showContextInvalidatedBanner();
+        } else {
+          console.warn('LingoFlow: storage.onChanged registration error:', getErrorMessage(err));
+        }
+      }
 
       console.log('LingoFlow: Content script initialized successfully');
     } catch (err) {
