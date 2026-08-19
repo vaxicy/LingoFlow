@@ -799,6 +799,7 @@
     // Show translation result
     showTranslationResult(selectionContext, resultData) {
       this.removeFloatingToolbar();
+      this.removeTranslationResult();
       this.currentResult = resultData;
 
       const originalText = resultData.text || '';
@@ -3947,7 +3948,6 @@
         if (e.target && e.target.closest && e.target.closest('.lingoflow-ui')) return;
         EventHandlers.lastSelectionKey = '';
         UI.removeFloatingToolbar();
-        UI.removeTranslationResult();
       });
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
