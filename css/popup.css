@@ -596,6 +596,26 @@ body[data-theme="light"] .settings-section-title {
   color: #ffc9c9;
   white-space: normal;
 }
+
+/* Full-width delete confirm banner (shown below the item row) */
+.panel-item-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+  padding: 9px 11px;
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 12px;
+  background: rgba(127, 29, 29, 0.2);
+}
+.panel-item-confirm-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #ffd6d6;
+}
 .panel-mini-btn.danger.solid {
   color: #fff;
   background: #dc2626;
@@ -2080,6 +2100,13 @@ body[data-theme="light"] .panel-banner {
   background: rgba(236, 254, 255, 0.85);
   border-color: rgba(34, 211, 238, 0.4);
   color: #0e7490;
+}
+body[data-theme="light"] .panel-item-confirm {
+  background: rgba(254, 226, 226, 0.72);
+  border-color: rgba(248, 113, 113, 0.35);
+}
+body[data-theme="light"] .panel-item-confirm-text {
+  color: #b42323;
 }
 
 /* Light theme: inline confirm bar */

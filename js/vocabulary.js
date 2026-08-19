@@ -61,23 +61,21 @@ function initEventListeners() {
   }
 }
 
-// Inline per-row delete confirm: swaps the Delete button for Confirm/Cancel, auto-reverts after 3s
+// Inline per-row delete confirm: shows a full-width banner below the item row, auto-reverts after 5s
 let _deleteTimer = null;
 function askDeleteConfirm(deleteBtn) {
-  const actions = deleteBtn.closest('.item-actions');
-  if (!actions) return;
-  if (actions.dataset.confirming === '1') return;
+  const item = deleteBtn.closest('.vocabulary-item');
+  if (!item) return;
+  if (item.querySelector('.inline-delete-confirm')) return;
 
   const id = deleteBtn.getAttribute('data-id');
   const revert = () => {
-    deleteBtn.style.display = '';
-    const wrap = actions.querySelector('.inline-delete-confirm');
+    const wrap = item.querySelector('.inline-delete-confirm');
     if (wrap) wrap.remove();
-    actions.dataset.confirming = '0';
     clearTimeout(_deleteTimer);
   };
 
-  const wrap = document.createElement('span');
+  const wrap = document.createElement('div');
   wrap.className = 'inline-delete-confirm';
   const ask = document.createElement('span');
   ask.className = 'inline-delete-confirm-text';
@@ -88,8 +86,6 @@ function askDeleteConfirm(deleteBtn) {
   yes.textContent = getMessage('delete') || 'Delete';
   yes.addEventListener('click', () => {
     wrap.remove();
-    deleteBtn.style.display = '';
-    actions.dataset.confirming = '0';
     clearTimeout(_deleteTimer);
     deleteItem(id);
   });
@@ -103,9 +99,7 @@ function askDeleteConfirm(deleteBtn) {
   wrap.appendChild(yes);
   wrap.appendChild(no);
 
-  deleteBtn.style.display = 'none';
-  actions.appendChild(wrap);
-  actions.dataset.confirming = '1';
+  item.appendChild(wrap);
   clearTimeout(_deleteTimer);
   _deleteTimer = setTimeout(revert, 5000);
 }

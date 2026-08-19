@@ -1885,35 +1885,36 @@ function createPanelItem(item, options) {
   deleteButton.addEventListener('click', () => {
     const onConfirm = options.onDelete;
     if (typeof onConfirm !== 'function') return;
-    // Inline confirm: replace the button with a Confirm/Cancel pair, auto-revert after 3s
+    // Show a full-width confirm banner below the row (instead of squeezing into the meta line)
+    if (row.querySelector('.panel-item-confirm')) return;
     let reverted = false;
     const revert = () => {
       if (reverted) return;
       reverted = true;
-      actions.replaceChild(deleteButton, actions.lastChild || deleteButton);
-      if (actions.contains(confirmWrap)) actions.removeChild(confirmWrap);
+      const b = row.querySelector('.panel-item-confirm');
+      if (b) b.remove();
     };
 
-    const confirmWrap = document.createElement('span');
-    confirmWrap.className = 'panel-inline-confirm';
+    const confirmBanner = document.createElement('div');
+    confirmBanner.className = 'panel-item-confirm';
     const ask = document.createElement('span');
-    ask.className = 'panel-inline-confirm-text';
+    ask.className = 'panel-item-confirm-text';
     ask.textContent = getMessage('delete_confirm') || 'Delete?';
     const yes = document.createElement('button');
     yes.type = 'button';
     yes.className = 'panel-mini-btn danger solid';
     yes.textContent = getMessage('delete') || 'Delete';
-    yes.addEventListener('click', () => { reverted = true; actions.removeChild(confirmWrap); onConfirm(); });
+    yes.addEventListener('click', () => { reverted = true; confirmBanner.remove(); onConfirm(); });
     const no = document.createElement('button');
     no.type = 'button';
     no.className = 'panel-mini-btn cancel';
     no.textContent = getMessage('cancel') || 'Cancel';
     no.addEventListener('click', revert);
 
-    confirmWrap.appendChild(ask);
-    confirmWrap.appendChild(yes);
-    confirmWrap.appendChild(no);
-    actions.replaceChild(confirmWrap, deleteButton);
+    confirmBanner.appendChild(ask);
+    confirmBanner.appendChild(yes);
+    confirmBanner.appendChild(no);
+    row.appendChild(confirmBanner);
     setTimeout(revert, 5000);
   });
   actions.appendChild(deleteButton);
