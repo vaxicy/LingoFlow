@@ -784,6 +784,10 @@
       const toolbar = document.getElementById('lingoflow-toolbar');
       if (toolbar) toolbar.remove();
       this.selectionContext = null;
+      // Clear the dedupe key so selecting the same text/position again
+      // (e.g. after the translate button dismissed the toolbar) re-shows
+      // the toolbar without requiring a long-press.
+      this.lastSelectionKey = '';
     },
 
     positionFloatingElement(element, anchorRect, options = {}) {
@@ -3972,10 +3976,10 @@
       document.addEventListener('pointerout', (e) => EventHandlers.cancelHoverParagraphTranslation(e), { passive: true });
       document.addEventListener('mousedown', (e) => {
         if (e.target && e.target.closest && e.target.closest('.lingoflow-ui')) return;
-        EventHandlers.lastSelectionKey = '';
-        // Only remove the toolbar on mousedown elsewhere; keep the translation
-        // result box visible so a stray click (e.g. taking a screenshot)
-        // doesn't dismiss a result the user is still reading.
+        // Remove the toolbar on mousedown elsewhere (removeFloatingToolbar
+        // also clears the dedupe key, so re-selecting the same text will
+        // re-show the toolbar normally). Keep the translation result box
+        // visible so a stray click (e.g. taking a screenshot) doesn't dismiss it.
         UI.removeFloatingToolbar();
       });
       document.addEventListener('keydown', (e) => {

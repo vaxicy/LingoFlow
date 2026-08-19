@@ -114,6 +114,10 @@
   overflow-y: auto;
   overflow-x: hidden;
   max-height: min(60vh, 460px);
+  /* Match the popup settings panel scrollbar (6px purple, rounded). */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(184, 173, 255, 0.35) transparent;
+  -ms-overflow-style: auto;
 }
 
 .lingoflow-result-content::-webkit-scrollbar {
@@ -132,12 +136,6 @@
 
 .lingoflow-result-content::-webkit-scrollbar-thumb:hover {
   background: rgba(124, 108, 255, 0.58);
-}
-
-/* Firefox: thin rounded purple scrollbar */
-.lingoflow-result-content {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(184, 173, 255, 0.35) transparent;
 }
 
 .lingoflow-result-header {
