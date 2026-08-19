@@ -33,8 +33,14 @@ function initEventListeners() {
   // Clear all
   const clearAllBtn = document.getElementById('clear-all-btn');
   if (clearAllBtn) {
-    clearAllBtn.addEventListener('click', handleClearAll);
+    clearAllBtn.addEventListener('click', showClearConfirm);
   }
+
+  // Confirm / cancel buttons
+  const confirmBtn = document.getElementById('confirm-clear-btn');
+  if (confirmBtn) confirmBtn.addEventListener('click', handleClearAll);
+  const cancelBtn = document.getElementById('cancel-clear-btn');
+  if (cancelBtn) cancelBtn.addEventListener('click', hideClearConfirm);
 }
 
 // Handle search
@@ -47,10 +53,28 @@ function handleSearch(e) {
   renderHistory(filtered);
 }
 
-// Handle clear all
-function handleClearAll() {
-  if (!confirm(getMessage('clear_confirm'))) return;
+// Show inline clear-all confirmation bar (instead of native confirm)
+let clearConfirmTimer = null;
+function showClearConfirm() {
+  const bar = document.getElementById('clear-confirm');
+  if (!bar) return;
+  bar.hidden = false;
+  const textEl = document.getElementById('clear-confirm-text');
+  if (textEl) textEl.textContent = getMessage('clear_confirm', '确定要清空所有记录吗？');
+  // Auto-dismiss after 6s so the user isn't stuck on an open confirm
+  clearTimeout(clearConfirmTimer);
+  clearConfirmTimer = setTimeout(hideClearConfirm, 6000);
+}
 
+function hideClearConfirm() {
+  clearTimeout(clearConfirmTimer);
+  const bar = document.getElementById('clear-confirm');
+  if (bar) bar.hidden = true;
+}
+
+// Actually clear history
+function handleClearAll() {
+  hideClearConfirm();
   chrome.runtime.sendMessage({ action: 'clear_history' }, (response) => {
     if (response && response.success) {
       allItems = [];

@@ -101,6 +101,69 @@ body {
   color: #c4b5fd;
 }
 
+/* Inline Clear-All Confirm Bar */
+.clear-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  color: #b91c1c;
+}
+
+.clear-confirm[hidden] {
+  display: none;
+}
+
+.clear-confirm-text {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.clear-confirm-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.clear-confirm-btn {
+  padding: 7px 16px;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-confirm-btn.danger {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+.clear-confirm-btn.danger:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+}
+
+.clear-confirm-btn.cancel {
+  background: transparent;
+  border-color: #e5e7eb;
+  color: #6b7280;
+}
+
+.clear-confirm-btn.cancel:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
 /* Danger Button */
 .btn-danger {
   padding: 9px 18px;
@@ -254,6 +317,28 @@ body {
     background: #3d1a1a;
     border-color: #7f1d1d;
     color: #fca5a5;
+  }
+
+  .clear-confirm {
+    background: #3d1a1a;
+    border-color: #7f1d1d;
+    color: #fca5a5;
+  }
+
+  .clear-confirm-btn.danger {
+    background: #dc2626;
+    border-color: #dc2626;
+    color: #ffffff;
+  }
+
+  .clear-confirm-btn.cancel {
+    border-color: #4b5563;
+    color: #9ca3af;
+  }
+
+  .clear-confirm-btn.cancel:hover {
+    background: #374151;
+    color: #d1d5db;
   }
 
   .history-item {
