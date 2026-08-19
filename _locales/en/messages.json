@@ -63,6 +63,18 @@
     "message": "Restore Original",
     "description": "Popup button"
   },
+  "incognito_mode": {
+    "message": "Incognito Mode",
+    "description": "Incognito mode toggle"
+  },
+  "incognito_mode_desc": {
+    "message": "When enabled, no translation history is saved",
+    "description": "Incognito mode toggle description"
+  },
+  "incognito_active_banner": {
+    "message": "Incognito mode is on — translations won't be saved to history",
+    "description": "Banner shown when incognito mode is active"
+  },
   "save_history": {
     "message": "Save History",
     "description": "Settings toggle"

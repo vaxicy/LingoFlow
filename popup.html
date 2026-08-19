@@ -123,6 +123,13 @@
         <button class="panel-confirm-btn danger" type="button" data-confirm-action="clear-history">Clear</button>
         <button class="panel-confirm-btn cancel" type="button" data-confirm-cancel>Cancel</button>
       </div>
+      <div class="panel-banner" id="incognito-banner" hidden>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2a7 7 0 0 1 7 7v5a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V9a7 7 0 0 1 7-7z"/>
+          <path d="M8 21h8M12 17v4"/>
+        </svg>
+        <span class="panel-banner-text" data-i18n="incognito_active_banner">Incognito mode is on</span>
+      </div>
       <div class="panel-list" id="history-list"></div>
       <div class="panel-empty" id="history-empty">
         <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
@@ -629,6 +636,17 @@
         </div>
 
         <div class="settings-section-title" data-i18n="data_settings">Data & History</div>
+
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
+            <strong data-i18n="incognito_mode">Incognito Mode</strong>
+            <span data-i18n="incognito_mode_desc">When enabled, no translation history is saved</span>
+          </div>
+          <label class="panel-switch">
+            <input type="checkbox" id="popup-incognito-mode">
+            <span></span>
+          </label>
+        </div>
 
         <div class="settings-row settings-row-inline">
           <div class="settings-row-copy">

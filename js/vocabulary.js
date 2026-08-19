@@ -107,7 +107,7 @@ function askDeleteConfirm(deleteBtn) {
   actions.appendChild(wrap);
   actions.dataset.confirming = '1';
   clearTimeout(_deleteTimer);
-  _deleteTimer = setTimeout(revert, 3000);
+  _deleteTimer = setTimeout(revert, 5000);
 }
 
 // Handle search

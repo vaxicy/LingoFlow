@@ -254,6 +254,14 @@ function clearHistoryAll() {
   });
 }
 
+// Show/hide incognito-mode banner and clear-all button in the history panel
+function updateIncognitoBanner(isIncognito) {
+  const banner = document.getElementById('incognito-banner');
+  if (banner) banner.hidden = !isIncognito;
+  const clearBtn = document.getElementById('history-clear-btn');
+  if (clearBtn) clearBtn.disabled = isIncognito;
+}
+
 function openPanel(panelId) {
   resetUnsavedSettingsPreview(panelId);
   document.querySelectorAll('.popup-panel').forEach(panel => {
@@ -1531,6 +1539,9 @@ function applyPopupSettings(settings) {
   if (historyLimit) historyLimit.value = String(settings.historyLimit || 50);
   const saveHistory = document.getElementById('popup-save-history');
   if (saveHistory) saveHistory.checked = settings.saveHistory !== false;
+  const incognitoMode = document.getElementById('popup-incognito-mode');
+  if (incognitoMode) incognitoMode.checked = settings.incognitoMode === true;
+  updateIncognitoBanner(settings.incognitoMode === true);
 
   document.querySelectorAll('[data-popup-theme]').forEach(button => {
     button.classList.toggle('active', button.getAttribute('data-popup-theme') === theme);
@@ -1582,6 +1593,7 @@ function getPopupSettingsFromUI() {
     toolbarPosition: document.querySelector('[data-position].active')?.getAttribute('data-position') || 'above',
     existingBilingualStrategy: document.getElementById('popup-existing-bilingual-strategy')?.value || 'skip',
     historyLimit: parseInt(document.getElementById('popup-history-limit')?.value, 10) || 50,
+    incognitoMode: document.getElementById('popup-incognito-mode')?.checked === true,
     saveHistory: document.getElementById('popup-save-history')?.checked !== false
   };
 }
@@ -1715,6 +1727,7 @@ function getDefaultSettings(overrides = {}) {
     toolbarPosition: 'above',
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
+    incognitoMode: false,
     saveHistory: true,
     activeMode: null,
     ...overrides
@@ -1770,6 +1783,7 @@ function renderHistoryPanel() {
   if (clearButton) {
     clearButton.disabled = !panelState.historyEnabled || panelState.history.length === 0;
   }
+  updateIncognitoBanner(!panelState.historyEnabled);
 
   list.textContent = '';
   empty.hidden = items.length > 0;
@@ -1900,7 +1914,7 @@ function createPanelItem(item, options) {
     confirmWrap.appendChild(yes);
     confirmWrap.appendChild(no);
     actions.replaceChild(confirmWrap, deleteButton);
-    setTimeout(revert, 3000);
+    setTimeout(revert, 5000);
   });
   actions.appendChild(deleteButton);
 

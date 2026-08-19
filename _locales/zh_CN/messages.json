@@ -63,6 +63,18 @@
     "message": "恢复原文",
     "description": "弹出窗口按钮"
   },
+  "incognito_mode": {
+    "message": "无痕模式",
+    "description": "无痕模式开关标签"
+  },
+  "incognito_mode_desc": {
+    "message": "开启后不保存任何翻译历史记录",
+    "description": "无痕模式开关描述"
+  },
+  "incognito_active_banner": {
+    "message": "无痕模式已开启，本次翻译不会保存历史记录",
+    "description": "无痕模式开启时的提示横幅"
+  },
   "save_history": {
     "message": "保存历史记录",
     "description": "设置开关标签"

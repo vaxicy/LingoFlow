@@ -439,7 +439,8 @@ function deleteVocabularyItem(id, sendResponse) {
 function addToHistory(data) {
   chrome.storage.local.get(['lingoflow_history', 'lingoflow_settings'], (result) => {
     const settings = result.lingoflow_settings || {};
-    // Honor saveHistory toggle — when disabled, silently skip recording
+    // Honor incognitoMode and saveHistory toggle — when either disables history, skip recording
+    if (settings.incognitoMode === true) return;
     if (settings.saveHistory === false) return;
 
     const history = result.lingoflow_history || [];
@@ -468,7 +469,7 @@ function getHistory(sendResponse) {
     const settings = result.lingoflow_settings || {};
     sendResponse({
       history: result.lingoflow_history || [],
-      historyEnabled: settings.saveHistory !== false
+      historyEnabled: settings.saveHistory !== false && settings.incognitoMode !== true
     });
   });
 }
@@ -597,6 +598,7 @@ function getDefaultSettings(overrides = {}) {
     selectionTranslation: true,
     autoSaveSettings: true,
     hoverParagraphTranslation: false,
+    incognitoMode: false,
     saveHistory: true,
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
