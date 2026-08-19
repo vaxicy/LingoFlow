@@ -118,6 +118,9 @@
   scrollbar-width: thin; /* Firefox */
   scrollbar-color: rgba(184, 173, 255, 0.35) transparent;
   -ms-overflow-style: auto;
+  /* Stable gutter mode skips webkit arrow-button rendering, same as settings panel. */
+  scrollbar-gutter: stable;
+  overscroll-behavior: contain;
 }
 
 .lingoflow-result-content::-webkit-scrollbar {
@@ -140,18 +143,18 @@
 
 /* Hide the up/down arrow buttons on the webkit scrollbar */
 .lingoflow-result-content::-webkit-scrollbar-button {
-  display: none;
-  width: 0;
-  height: 0;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .lingoflow-result-content::-webkit-scrollbar-button:start:decrement,
 .lingoflow-result-content::-webkit-scrollbar-button:start:increment,
 .lingoflow-result-content::-webkit-scrollbar-button:end:decrement,
 .lingoflow-result-content::-webkit-scrollbar-button:end:increment {
-  display: none;
-  width: 0;
-  height: 0;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
 
 .lingoflow-result-header {
