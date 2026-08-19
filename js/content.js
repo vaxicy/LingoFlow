@@ -941,19 +941,16 @@
           <button class="lingoflow-result-close" type="button" aria-label="Close">&times;</button>
         </div>
         <div class="lingoflow-result-content">
-          <div class="lingoflow-result-inner">
-            ${body}
-            <div class="lingoflow-result-actions">
-              <button class="lingoflow-result-btn" type="button" data-result-action="copy">${this.escapeHtml(_getMessage('copy', 'Copy'))}</button>
-              <button class="lingoflow-result-btn" type="button" data-result-action="save">${this.escapeHtml(_getMessage('save', 'Save'))}</button>
-              <button class="lingoflow-result-close" type="button" aria-label="Close">×</button>
-            </div>
+          ${body}
+          <div class="lingoflow-result-actions">
+            <button class="lingoflow-result-btn" type="button" data-result-action="copy">${this.escapeHtml(_getMessage('copy', 'Copy'))}</button>
+            <button class="lingoflow-result-btn" type="button" data-result-action="save">${this.escapeHtml(_getMessage('save', 'Save'))}</button>
+            <button class="lingoflow-result-close" type="button" aria-label="Close">×</button>
           </div>
         </div>
       `;
 
       document.body.appendChild(result);
-      this.initResultScrolling(result);
       this.positionFloatingElement(result, selectionContext.rect, {
         preferred: state.toolbarPosition,
         offset: 10
@@ -1006,96 +1003,13 @@
 
     // Remove translation result
     removeTranslationResult() {
-      this.destroyResultScrolling();
       const result = document.getElementById('lingoflow-translation-result');
       if (result) result.remove();
       this.currentResult = null;
     },
 
-    // JS-driven scrolling for the result content. Avoids the native webkit
-    // scrollbar entirely (whose up/down arrow buttons cannot be reliably hidden
-    // in content-script CSS), so no arrows can ever appear.
-    initResultScrolling(result) {
-      const scroller = result && result.querySelector('.lingoflow-result-content');
-      const inner = result && result.querySelector('.lingoflow-result-inner');
-      if (!scroller || !inner) return;
-
-      let scrollTop = 0;
-      let dragging = false;
-      let lastY = 0;
-      let lastTouchY = 0;
-      let touchActive = false;
-
-      const applyScroll = () => {
-        const maxScroll = Math.max(0, inner.scrollHeight - scroller.clientHeight);
-        scrollTop = Math.max(0, Math.min(scrollTop, maxScroll));
-        inner.style.transform = `translateY(${-scrollTop}px)`;
-      };
-
-      // Recompute max after content/images settle.
-      const ro = new ResizeObserver(() => applyScroll());
-      ro.observe(inner);
-      applyScroll();
-
-      // Mouse wheel / trackpad
-      scroller.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        scrollTop += e.deltaY;
-        applyScroll();
-      }, { passive: false });
-
-      // Touch: basic two-finger / drag scroll
-      scroller.addEventListener('touchstart', (e) => {
-        if (e.touches.length === 1) {
-          touchActive = true;
-          lastTouchY = e.touches[0].clientY;
-        }
-      }, { passive: true });
-      scroller.addEventListener('touchmove', (e) => {
-        if (!touchActive) return;
-        const y = e.touches[0].clientY;
-        const delta = lastTouchY - y;
-        lastTouchY = y;
-        scrollTop += delta;
-        applyScroll();
-        e.preventDefault();
-      }, { passive: false });
-      scroller.addEventListener('touchend', () => { touchActive = false; }, { passive: true });
-
-      // Keyboard: arrow keys / PageUp / PageDown / Home / End while focused
-      scroller.addEventListener('keydown', (e) => {
-        const step = 40;
-        switch (e.key) {
-          case 'ArrowDown': scrollTop += step; e.preventDefault(); break;
-          case 'ArrowUp': scrollTop -= step; e.preventDefault(); break;
-          case 'PageDown': scrollTop += scroller.clientHeight; e.preventDefault(); break;
-          case 'PageUp': scrollTop -= scroller.clientHeight; e.preventDefault(); break;
-          case 'Home': scrollTop = 0; e.preventDefault(); break;
-          case 'End': scrollTop = inner.scrollHeight; e.preventDefault(); break;
-          default: return;
-        }
-        applyScroll();
-      });
-
-      // Mouse wheel anywhere over the result box also scrolls, for convenience.
-      result.addEventListener('wheel', (e) => {
-        if (scroller.scrollHeight <= scroller.clientHeight) return;
-        if (e.target && scroller.contains(e.target)) return; // already handled
-        e.preventDefault();
-        scrollTop += e.deltaY;
-        applyScroll();
-      }, { passive: false });
-
-      this._resultScrollCleanup = () => {
-        ro.disconnect();
-      };
-    },
-    destroyResultScrolling() {
-      if (typeof this._resultScrollCleanup === 'function') {
-        this._resultScrollCleanup();
-        this._resultScrollCleanup = null;
-      }
-    },
+    // Storage + context-invalidation safety helpers (storageGet, markCtxInvalidated,
+    // showContextInvalidatedBanner, isCtxInvalidated) are defined above and retained.
 
     // Handle translate action
     setToolbarLoading(isLoading) {

@@ -109,19 +109,25 @@
 
 .lingoflow-result-content {
   position: relative;
-  overflow: hidden; /* JS-driven scrolling, no native scrollbar so no arrows */
+  overflow-y: auto;
   max-height: min(60vh, 460px);
   overscroll-behavior: contain;
-  /* aria-hidden scrollbar alternative: thin visual cue via fade at bottom */
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 6px), transparent 100%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 6px, #000 calc(100% - 6px), transparent 100%);
+  scrollbar-gutter: stable;
+  padding-right: 4px;
 }
 
-.lingoflow-result-inner {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  will-change: transform;
+/* Thin scrollbar matching popup global style. content-script origin cannot
+   fully hide webkit arrow buttons on remote pages, so we keep it 6px and
+   accept the small arrows. `scrollbar-gutter: stable` hides them on the
+   extension's own pages (settings panel). */
+.lingoflow-result-content::-webkit-scrollbar { width: 6px; height: 6px; }
+.lingoflow-result-content::-webkit-scrollbar-track { background: transparent; }
+.lingoflow-result-content::-webkit-scrollbar-thumb {
+  background: rgba(73, 109, 255, 0.45);
+  border-radius: 3px;
+}
+.lingoflow-result-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(73, 109, 255, 0.7);
 }
 
 .lingoflow-result-header {
