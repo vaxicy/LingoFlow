@@ -24,8 +24,8 @@
     "description": "扩展描述"
   },
   "translate": {
-    "message": "翻译",
-    "description": "翻译按钮"
+    "message": "译文",
+    "description": "翻译结果面板标题"
   },
   "copy": {
     "message": "复制",
