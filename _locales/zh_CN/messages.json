@@ -127,13 +127,13 @@
     "message": "翻译过的内容会显示在这里",
     "description": "历史为空提示"
   },
-  "history_disabled_title": {
-    "message": "历史记录已关闭",
-    "description": "历史记录关闭标题"
+  "history_incognito_title": {
+    "message": "无痕模式已开启",
+    "description": "无痕模式下空历史标题"
   },
-  "history_disabled_hint": {
-    "message": "在设置中开启后，才会记录新的翻译",
-    "description": "历史记录关闭提示"
+  "history_incognito_hint": {
+    "message": "当前翻译不会保存到历史记录",
+    "description": "无痕模式下空历史提示"
   },
   "delete_confirm": {
     "message": "确定要删除吗？",

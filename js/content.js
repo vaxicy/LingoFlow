@@ -997,7 +997,9 @@
         }
       }, true);
 
-      setTimeout(() => this.removeTranslationResult(), 12000);
+      // Note: removed 12s auto-dismiss — the result box is now closed manually
+      // (× button, Escape, or click outside). User feedback: it disappeared
+      // before they could read it.
     },
 
     // Remove translation result
@@ -4040,9 +4042,12 @@
         if (e.target && e.target.closest && e.target.closest('.lingoflow-ui')) return;
         // Remove the toolbar on mousedown elsewhere (removeFloatingToolbar
         // also clears the dedupe key, so re-selecting the same text will
-        // re-show the toolbar normally). Keep the translation result box
-        // visible so a stray click (e.g. taking a screenshot) doesn't dismiss it.
+        // re-show the toolbar normally).
         UI.removeFloatingToolbar();
+        // Also dismiss the translation result box on outside click (manual
+        // dismissal model — user said it disappeared before they could read it
+        // when relying on the previous auto-dismiss timer).
+        UI.removeTranslationResult();
       });
       document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {

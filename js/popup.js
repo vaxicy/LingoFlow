@@ -313,6 +313,10 @@ function openHistoryPanel() {
     panelState.historyEnabled = !response || response.historyEnabled !== false;
     renderHistoryPanel();
   });
+  // Sync incognito state from saved settings
+  if (panelState.savedSettings) {
+    panelState.incognitoMode = panelState.savedSettings.incognitoMode === true;
+  }
 }
 
 function openVocabularyPanel() {
@@ -1788,8 +1792,8 @@ function renderHistoryPanel() {
   if (!panelState.historyEnabled && items.length === 0) {
     const title = empty.querySelector('strong');
     const hint = empty.querySelector('span');
-    if (title) title.textContent = getMessage('history_disabled_title');
-    if (hint) hint.textContent = getMessage('history_disabled_hint');
+    if (title) title.textContent = getMessage('history_incognito_title');
+    if (hint) hint.textContent = getMessage('history_incognito_hint');
   } else if (items.length === 0) {
     const title = empty.querySelector('strong');
     const hint = empty.querySelector('span');

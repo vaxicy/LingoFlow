@@ -127,13 +127,13 @@
     "message": "Translation history will appear here",
     "description": "History empty hint"
   },
-  "history_disabled_title": {
-    "message": "History is off",
-    "description": "History disabled title"
+  "history_incognito_title": {
+    "message": "Incognito mode is on",
+    "description": "Empty history title when incognito is active"
   },
-  "history_disabled_hint": {
-    "message": "Turn it on in Settings to record new translations",
-    "description": "History disabled hint"
+  "history_incognito_hint": {
+    "message": "Current translations won't be saved to history",
+    "description": "Empty history hint when incognito is active"
   },
   "delete_confirm": {
     "message": "Are you sure you want to delete?",
