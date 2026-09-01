@@ -2602,3 +2602,183 @@ body[data-theme="light"] .support-link-compact svg:first-child {
 body[data-theme="light"] .setup-guide-link svg:last-child {
   color: rgba(103, 116, 255, 0.45);
 }
+
+/* ===== 自定义内联输入弹层（替换 window.prompt / alert / confirm） =====
+   浮在 .popup-container 内（不超出 popup 边界），深色玻璃感沿用 --lf-* 主题变量，
+   light/dark 都适配，用户改 theme 即可生效。 */
+.lf-inline-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(8, 10, 22, 0.62);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: lf-modal-backdrop-in 160ms ease-out;
+}
+
+@keyframes lf-modal-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes lf-modal-card-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.lf-inline-modal {
+  width: min(340px, calc(100% - 32px));
+  padding: 18px 18px 14px;
+  border-radius: 16px;
+  border: 1px solid var(--lf-border-strong);
+  background:
+    linear-gradient(180deg, rgba(124, 108, 255, 0.16), rgba(124, 108, 255, 0.04)),
+    var(--lf-surface-strong);
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  color: var(--lf-text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  animation: lf-modal-card-in 200ms cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.lf-inline-modal-title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 720;
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lf-inline-modal-title-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(140deg, var(--lf-violet), var(--lf-blue));
+  color: #fff;
+  font-size: 12px;
+  flex: none;
+}
+
+.lf-inline-modal-msg {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--lf-muted);
+}
+
+.lf-inline-modal-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lf-text);
+  border-radius: 10px;
+  border: 1px solid var(--lf-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+    rgba(16, 22, 43, 0.88);
+  outline: 0;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.lf-inline-modal-input::placeholder {
+  color: var(--lf-muted);
+  font-weight: 500;
+  opacity: 0.65;
+}
+
+.lf-inline-modal-input:focus {
+  border-color: var(--lf-border-strong);
+  box-shadow: 0 0 0 3px rgba(124, 108, 255, 0.22);
+}
+
+.lf-inline-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.lf-inline-modal-btn {
+  appearance: none;
+  border: 1px solid transparent;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: transform 80ms ease, background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+.lf-inline-modal-btn:active {
+  transform: translateY(1px);
+}
+
+.lf-inline-modal-btn-cancel {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--lf-text);
+  border-color: rgba(184, 173, 255, 0.18);
+}
+
+.lf-inline-modal-btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.10);
+}
+
+.lf-inline-modal-btn-primary {
+  background: linear-gradient(135deg, var(--lf-violet), var(--lf-blue));
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(73, 109, 255, 0.32);
+}
+
+.lf-inline-modal-btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.lf-inline-modal-btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.4);
+}
+
+body[data-theme="light"] .lf-inline-modal-backdrop {
+  background: rgba(36, 41, 73, 0.42);
+  backdrop-filter: blur(2px);
+}
+
+body[data-theme="light"] .lf-inline-modal {
+  background:
+    linear-gradient(180deg, rgba(124, 108, 255, 0.10), rgba(124, 108, 255, 0.02)),
+    rgba(255, 255, 255, 0.98);
+  color: #1f2347;
+  box-shadow: 0 24px 48px rgba(73, 109, 255, 0.22), 0 0 0 1px rgba(255, 255, 255, 0.7) inset;
+}
+
+body[data-theme="light"] .lf-inline-modal-msg {
+  color: #4f5180;
+}
+
+body[data-theme="light"] .lf-inline-modal-input {
+  color: #1f2347;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+  border-color: rgba(124, 108, 255, 0.22);
+}
+
+body[data-theme="light"] .lf-inline-modal-input::placeholder {
+  color: #8a8eb8;
+}
+
+body[data-theme="light"] .lf-inline-modal-btn-cancel {
+  background: rgba(124, 108, 255, 0.08);
+  color: #1f2347;
+  border-color: rgba(124, 108, 255, 0.22);
+}

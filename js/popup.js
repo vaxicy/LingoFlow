@@ -895,17 +895,161 @@ function refreshCustomModelCache(cb) {
   });
 }
 
+/**
+ * 自定义内联输入弹层（替换 window.prompt / alert / confirm）。
+ *
+ * 行为与 window.prompt(msg, defaultValue) 保持兼容：
+ *   - 用户点「确定」返回 trimmed 字符串
+ *   - 用户点「取消」/ESC/点 backdrop 返回 null
+ *
+ * 视觉风格与 popup.css 的 --lf-* 主题变量一致，dark/light 双主题自动适配。
+ * 弹层插入到 .popup-container 内（避免超出 popup 边界），z-index 9999。
+ *
+ * 选项对象：
+ *   {
+ *     title?: string,        // 标题（可不传，默认 'Custom'）
+ *     icon?: '🟣'|'⚙'|'✏', // 圆环小图标（默认 🟣）
+ *     message: string,       // 提示说明
+ *     placeholder?: string,  // 输入框 placeholder
+ *     defaultValue?: string, // 输入框初值
+ *     confirmText?: string,  // 确定按钮（默认 '确定'）
+ *     cancelText?: string,   // 取消按钮（默认 '取消'）
+ *     validator?: (text)=>string|null,  // 返回错误信息字符串则禁用确定并提示，返回 null 表示通过
+ *   }
+ */
+function showInlinePrompt(options) {
+  return new Promise((resolve) => {
+    const opts = options || {};
+    const popup = document.querySelector('.popup-container');
+    if (!popup) { resolve(null); return; }
+
+    // 清理已存在的弹层，防止叠层
+    const existing = document.getElementById('lf-inline-modal-host');
+    if (existing) existing.remove();
+
+    const host = document.createElement('div');
+    host.id = 'lf-inline-modal-host';
+    host.className = 'lf-inline-modal-backdrop';
+
+    const iconChar = opts.icon || '🟣';
+    const titleText = opts.title || 'Custom';
+    const messageText = opts.message || '';
+    const placeholder = opts.placeholder || '';
+    const defaultValue = opts.defaultValue || '';
+    const confirmText = opts.confirmText || (window.i18nPlaceholders && window.i18nPlaceholders.confirm) || '确定';
+    const cancelText = opts.cancelText || '取消';
+
+    host.innerHTML = `
+      <div class="lf-inline-modal" role="dialog" aria-modal="true" aria-labelledby="lf-modal-title">
+        <h3 class="lf-inline-modal-title" id="lf-modal-title">
+          <span class="lf-inline-modal-title-icon" aria-hidden="true">${iconChar}</span>
+          <span></span>
+        </h3>
+        <p class="lf-inline-modal-msg"></p>
+        <input class="lf-inline-modal-input" type="text" autocomplete="off" spellcheck="false" />
+        <div class="lf-inline-modal-actions">
+          <button class="lf-inline-modal-btn lf-inline-modal-btn-cancel" type="button" data-lf-modal-action="cancel"></button>
+          <button class="lf-inline-modal-btn lf-inline-modal-btn-primary" type="button" data-lf-modal-action="confirm"></button>
+        </div>
+      </div>
+    `;
+
+    // 填文案（避免 innerHTML 转义问题）
+    host.querySelector('.lf-inline-modal-title > span:last-child').textContent = titleText;
+    host.querySelector('.lf-inline-modal-msg').textContent = messageText;
+    const input = host.querySelector('.lf-inline-modal-input');
+    input.placeholder = placeholder;
+    if (defaultValue) input.value = defaultValue;
+    const cancelBtn = host.querySelector('[data-lf-modal-action="cancel"]');
+    const confirmBtn = host.querySelector('[data-lf-modal-action="confirm"]');
+    cancelBtn.textContent = cancelText;
+    confirmBtn.textContent = confirmText;
+
+    let resolved = false;
+    function close(value) {
+      if (resolved) return;
+      resolved = true;
+      try { input.removeEventListener('input', onInput); } catch (_) {}
+      document.removeEventListener('keydown', onKey, true);
+      if (host.parentNode) host.parentNode.removeChild(host);
+      resolve(value);
+    }
+
+    // 校验器：实时 disable 确定按钮 + 显示错误
+    function onInput() {
+      const v = input.value.trim();
+      let err = null;
+      try {
+        if (typeof opts.validator === 'function') err = opts.validator(v);
+      } catch (_) { err = null; }
+      confirmBtn.disabled = !v || !!err;
+      if (err) {
+        input.style.borderColor = '#e85f7c';
+        input.title = String(err);
+      } else {
+        input.style.borderColor = '';
+        input.title = '';
+      }
+    }
+    input.addEventListener('input', onInput);
+
+    // 点击 backdrop 关闭（但点击弹层本身不冒泡关）
+    host.addEventListener('click', (e) => {
+      if (e.target === host) close(null);
+    });
+
+    cancelBtn.addEventListener('click', () => close(null));
+    confirmBtn.addEventListener('click', () => {
+      const trimmed = input.value.trim();
+      if (!trimmed || confirmBtn.disabled) return;
+      close(trimmed);
+    });
+
+    // ESC 关闭，Enter 确认（除非在 textarea 内，input 内 Enter 提交）
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close(null);
+      } else if (e.key === 'Enter' && document.activeElement === input) {
+        e.preventDefault();
+        if (!confirmBtn.disabled) {
+          const trimmed = input.value.trim();
+          if (trimmed) close(trimmed);
+        }
+      }
+    }
+    document.addEventListener('keydown', onKey, true);
+
+    popup.appendChild(host);
+
+    // autofocus input
+    requestAnimationFrame(() => {
+      try { input.focus(); input.select(); } catch (_) {}
+      onInput(); // 初始 disable 状态
+    });
+  });
+}
+
 // 弹出 prompt 让用户输入自定义模型名，写回 chrome.storage.local，
 // 供 background.js 的 resolveModel(provider, selected, custom) 读取。
 function promptAndSaveCustomModel(storageKey, getFallback, onSaved, onCancelled) {
-  const STORAGE = { lingoflow_settings: true };
-  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+  chrome.storage.local.get(['lingoflow_settings'], async (result) => {
     const settings = result.lingoflow_settings || {};
     const prev = (settings[storageKey] || '').trim();
     const fallback = typeof getFallback === 'function' ? getFallback() : '';
     const initial = prev || fallback || '';
-    const msg = getMessage('model_custom_input_prompt') || 'Please enter the model id:';
-    const userInput = window.prompt(msg, initial);
+    const message = getMessage('model_custom_input_prompt') || 'Please enter the model id:';
+
+    const userInput = await showInlinePrompt({
+      title: 'Custom model',
+      icon: '✏️',
+      message,
+      placeholder: 'e.g. deepseek-ai/DeepSeek-V4-Flash',
+      defaultValue: initial,
+      confirmText: getMessage('confirm') || getMessage('save') || '确定',
+      cancelText: getMessage('cancel') || '取消'
+    });
+
     if (userInput === null) {
       if (typeof onCancelled === 'function') onCancelled();
       return;
@@ -1281,10 +1425,20 @@ function syncSiliconFlowModelSelect(value) {
     option.addEventListener('click', () => {
       if (model.id === '__custom__') {
         const storageKey = 'siliconflowModelCustom';
-        promptAndSaveCustomModel(storageKey, () => model.id, () => {
-          nativeSelect.value = '__custom__';
-          nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        });
+        const prevValue = nativeSelect.value && nativeSelect.value !== '__custom__'
+          ? nativeSelect.value
+          : 'tencent/Hunyuan-MT-7B';
+        promptAndSaveCustomModel(storageKey, () => prevValue,
+          () => {
+            nativeSelect.value = '__custom__';
+            nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          },
+          () => {
+            // 用户取消：恢复上一个有效 model id
+            nativeSelect.value = prevValue;
+            nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        );
       } else {
         nativeSelect.value = model.id;
         nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
@@ -1445,10 +1599,20 @@ function syncBailianModelSelect(value) {
     option.addEventListener('click', () => {
       if (model.id === '__custom__') {
         const storageKey = 'bailianModelCustom';
-        promptAndSaveCustomModel(storageKey, () => model.id, () => {
-          nativeSelect.value = '__custom__';
-          nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-        });
+        const prevValue = nativeSelect.value && nativeSelect.value !== '__custom__'
+          ? nativeSelect.value
+          : 'qwen3.7-plus';
+        promptAndSaveCustomModel(storageKey, () => prevValue,
+          () => {
+            nativeSelect.value = '__custom__';
+            nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          },
+          () => {
+            // 用户取消：恢复上一个有效 model id
+            nativeSelect.value = prevValue;
+            nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        );
       } else {
         nativeSelect.value = model.id;
         nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
