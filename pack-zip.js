@@ -31,7 +31,7 @@ function shouldExclude(filePath) {
 }
 
 const base = path.resolve('d:\\迅雷下载\\vibe coding\\Chrome Extensions\\LingoFlow');
-const outZip = path.join(base, 'lingoflow-1.1.1.zip');
+const outZip = path.join(base, 'lingoflow-1.1.2.zip');
 
 function collectFiles(dir, list = []) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
