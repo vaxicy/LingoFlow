@@ -920,7 +920,7 @@ function translateBatch(texts, targetLang, sendResponse) {
             finished++;
 
             if (finished === list.length) {
-              sendResponse({ success: true, translations });
+              sendResponse({ success: true, translations, model: 'google' });
               return;
             }
 
@@ -1057,7 +1057,7 @@ function translateBatchWithSiliconFlow(texts, targetLang, sendResponse) {
     if (!apiKey) {
       console.warn('LingoFlow: SiliconFlow API key not set for batch, falling back to Google');
       translateBatchWithGoogleFallback(list, targetLang).then(translations => {
-        sendResponse({ success: true, translations });
+        sendResponse({ success: true, translations, model: 'google' });
       });
       return;
     }
@@ -1076,7 +1076,7 @@ function translateBatchWithSiliconFlow(texts, targetLang, sendResponse) {
 
     if (!pendingCount) {
       console.log('LingoFlow: SiliconFlow batch served from cache', list.length, 'items');
-      sendResponse({ success: true, translations });
+      sendResponse({ success: true, translations, model: 'siliconflow/' + selectedModel });
       return;
     }
 
@@ -1113,13 +1113,13 @@ function translateBatchWithSiliconFlow(texts, targetLang, sendResponse) {
           });
           setCachedTranslation('siliconflow', selectedModel, targetLang, item.text, translated);
         });
-        sendResponse({ success: true, translations: translations.map((item, index) => item || list[index]) });
+        sendResponse({ success: true, translations: translations.map((item, index) => item || list[index]), model: 'siliconflow/' + selectedModel });
       })
       .catch(error => {
         const message = error && error.message ? error.message : String(error);
         console.warn('LingoFlow: SiliconFlow batch failed:', message, '- falling back to Google batch');
         translateBatchWithGoogleBatch(list, targetLang).then(fallbackTranslations => {
-          sendResponse({ success: true, translations: fallbackTranslations });
+          sendResponse({ success: true, translations: fallbackTranslations, model: 'google' });
         });
       });
   });
@@ -1361,7 +1361,7 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
     const cached = getCachedTranslation('siliconflow', selectedModel, targetLang, text);
 
     if (cached) {
-      sendResponse({ success: true, translation: cached });
+      sendResponse({ success: true, translation: cached, model: 'siliconflow/' + selectedModel });
       return;
     }
 
@@ -1493,11 +1493,11 @@ function translateWithBailian(text, targetLang, sendResponse) {
   }, overallTimeoutMs);
   let responseSent = false;
 
-  function done(result) {
+  function done(result, modelLabel) {
     if (responseSent) return;
     responseSent = true;
     clearTimeout(overallTimer);
-    if (result !== undefined) sendResponse({ success: true, translation: result });
+    if (result !== undefined) sendResponse({ success: true, translation: result, model: modelLabel || null });
   }
 
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
@@ -1506,7 +1506,7 @@ function translateWithBailian(text, targetLang, sendResponse) {
     const selectedModel = resolveModel('bailian', settings.bailianModel, settings.bailianModelCustom);
     const host = (settings.bailianApiHost || 'https://dashscope.aliyuncs.com').replace(/\/+$/, '');
     const cached = getCachedTranslation('bailian', selectedModel, targetLang, text);
-    if (cached) { sendResponse({ success: true, translation: cached }); return; }
+    if (cached) { sendResponse({ success: true, translation: cached, model: 'bailian/' + selectedModel }); return; }
     if (!apiKey) {
       done();
       console.warn('LingoFlow: Bailian API key not set, falling back to Google');
@@ -1559,7 +1559,7 @@ function translateWithBailian(text, targetLang, sendResponse) {
             if (!t.length) { console.warn(`LingoFlow: Bailian ${model} empty, next...`); tryNextModel(index + 1); return; }
             console.log(`LingoFlow: Bailian ${label} succeeded (${t.length} chars)`);
             setCachedTranslation('bailian', selectedModel, targetLang, text, t);
-            done(t);
+            done(t, 'bailian/' + model);
           } else { console.warn(`LingoFlow: Bailian ${model} invalid, next...`); tryNextModel(index + 1); }
         })
         .catch(error => {
@@ -1589,11 +1589,11 @@ function translateWithCustom(text, targetLang, sendResponse) {
   }, overallTimeoutMs);
   let responseSent = false;
 
-  function done(result) {
+  function done(result, modelLabel) {
     if (responseSent) return;
     responseSent = true;
     clearTimeout(overallTimer);
-    if (result !== undefined) sendResponse({ success: true, translation: result });
+    if (result !== undefined) sendResponse({ success: true, translation: result, model: modelLabel || null });
   }
 
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
@@ -1602,7 +1602,7 @@ function translateWithCustom(text, targetLang, sendResponse) {
     const selectedModel = settings.customModel || 'gpt-4o-mini';
     const host = (settings.customApiHost || 'https://api.openai.com').replace(/\/+$/, '');
     const cached = getCachedTranslation('custom', selectedModel, targetLang, text);
-    if (cached) { sendResponse({ success: true, translation: cached }); return; }
+    if (cached) { sendResponse({ success: true, translation: cached, model: 'custom/' + selectedModel }); return; }
     if (!apiKey) {
       done();
       console.warn('LingoFlow: Custom engine API key not set, falling back to Google');
@@ -1681,7 +1681,7 @@ async function translateBatchWithCustom(texts, targetLang, sendResponse) {
     for (let i = 0; i < texts.length; i++) {
       translations[i] = `[LingoFlow translation failed] ${texts[i]}`;
     }
-    sendResponse({ success: true, translations });
+    sendResponse({ success: true, translations, model: 'custom/' + model });
     return;
   }
 
@@ -1691,7 +1691,7 @@ async function translateBatchWithCustom(texts, targetLang, sendResponse) {
     if (cached) { translations[i] = cached; pending--; }
   }
   if (pending === 0) {
-    sendResponse({ success: true, translations });
+    sendResponse({ success: true, translations, model: 'custom/' + model });
     return;
   }
 
@@ -1761,7 +1761,7 @@ async function translateBatchWithCustom(texts, targetLang, sendResponse) {
   }
 
   console.log(`LingoFlow: Custom engine batch done (${texts.length} items, google-fill: ${anyFailed ? remaining.length : 0})`);
-  sendResponse({ success: true, translations });
+  sendResponse({ success: true, translations, model: 'custom/' + model });
 }
 
 // Gemini AI Translation (Google AI Studio API key required)
@@ -1836,7 +1836,7 @@ function translateWithGemini(text, targetLang, sendResponse) {
 
         if (translatedText) {
           console.log('LingoFlow: Gemini succeeded, result length:', translatedText.length);
-          sendResponse({ success: true, translation: translatedText });
+          sendResponse({ success: true, translation: translatedText, model: 'gemini/' + model });
           return;
         }
 
@@ -1867,7 +1867,7 @@ function translateBatchWithGemini(texts, targetLang, sendResponse) {
     if (!apiKey) {
       console.warn('LingoFlow: Gemini API key not set for batch, falling back to Google');
       translateBatchWithGoogleFallback(list, targetLang).then(translations => {
-        sendResponse({ success: true, translations });
+        sendResponse({ success: true, translations, model: 'google' });
       });
       return;
     }
@@ -1884,13 +1884,13 @@ function translateBatchWithGemini(texts, targetLang, sendResponse) {
       attempt: 0
     })
       .then(() => {
-        sendResponse({ success: true, translations: translations.map((item, index) => item || list[index]) });
+        sendResponse({ success: true, translations: translations.map((item, index) => item || list[index]), model: 'gemini/' + model });
       })
       .catch(error => {
         const message = error && error.message ? error.message : String(error);
         console.warn('LingoFlow: Gemini batch failed:', message, '- falling back to Google batch');
         translateBatchWithGoogleBatch(list, targetLang).then(fallbackTranslations => {
-          sendResponse({ success: true, translations: fallbackTranslations });
+          sendResponse({ success: true, translations: fallbackTranslations, model: 'google' });
         });
       });
   });
@@ -2217,7 +2217,7 @@ function translateWithMyMemory(text, targetLang, sendResponse) {
 
           console.log('LingoFlow: MyMemory succeeded, result length:', translatedText.length,
             '(matchQuality:', ((data.responseData && data.responseData.match) || '-'), ')');
-          sendResponse({ success: true, translation: translatedText });
+          sendResponse({ success: true, translation: translatedText, model: 'mymemory' });
         } else {
           const msg = (data && data.responseStatus) ? `MyMemory error ${data.responseStatus}` : 'Invalid response';
           console.warn('LingoFlow: MyMemory failed:', msg);
@@ -2305,7 +2305,7 @@ function translateWithYoudao(text, targetLang, sendResponse) {
           if (data && String(data.errorCode) === '0' && data.translation && data.translation[0]) {
             const translatedText = data.translation[0];
             console.log('LingoFlow: Youdao succeeded, result length:', translatedText.length);
-            sendResponse({ success: true, translation: translatedText });
+            sendResponse({ success: true, translation: translatedText, model: 'youdao' });
           } else {
             const errMsg = (data && data.errorCode) ? `Youdao error ${data.errorCode}` : 'Invalid response';
             console.warn('LingoFlow: Youdao failed:', errMsg, '- falling back to Google');
@@ -2350,7 +2350,7 @@ function translateBatchWithYoudao(texts, targetLang, sendResponse) {
           active--;
           finished++;
           if (finished === list.length) {
-            sendResponse({ success: true, translations });
+            sendResponse({ success: true, translations, model: 'youdao' });
           } else {
             // Small delay between requests to avoid Youdao rate limiting (411)
             setTimeout(runNext, 300);
@@ -2456,7 +2456,7 @@ function translateWithYoudaoLLM(text, targetLang, sendResponse) {
         })
         .then(translatedText => {
           console.log('LingoFlow: Youdao LLM succeeded, result length:', translatedText.length);
-          sendResponse({ success: true, translation: translatedText });
+          sendResponse({ success: true, translation: translatedText, model: 'youdaollm' });
         })
         .catch(error => {
           clearTimeout(timeoutId);
@@ -2592,7 +2592,7 @@ function translateWithDeepSeek(text, targetLang) {
 function translateWithDeepSeekCb(text, targetLang, sendResponse) {
   translateWithDeepSeek(text, targetLang)
     .then(translatedText => {
-      sendResponse({ success: true, translation: translatedText });
+      sendResponse({ success: true, translation: translatedText, model: 'deepseek' });
     })
     .catch(error => {
       const message = error && error.message ? error.message : String(error);
@@ -2633,7 +2633,7 @@ function translateBatchWithDeepSeek(texts, targetLang, sendResponse) {
           if (finished === list.length) {
             console.log(`LingoFlow: DeepSeek batch complete, ${list.length} items done`);
             try {
-              sendResponse({ success: true, translations });
+              sendResponse({ success: true, translations, model: 'deepseek' });
             } catch (e) {
               console.error('LingoFlow: DeepSeek batch sendResponse error:', e);
             }
@@ -2672,7 +2672,7 @@ function translateBatchWithYoudaoLLM(texts, targetLang, sendResponse) {
           active--;
           finished++;
           if (finished === list.length) {
-            sendResponse({ success: true, translations });
+            sendResponse({ success: true, translations, model: 'youdaollm' });
           } else {
             setTimeout(runNext, 300);
           }
@@ -2739,7 +2739,7 @@ function translateWithMicrosoft(text, targetLang, sendResponse) {
         if (data && data[0] && data[0].translations && data[0].translations[0]) {
           const translatedText = data[0].translations[0].text;
           console.log('LingoFlow: Microsoft Translator succeeded, result length:', translatedText.length);
-          sendResponse({ success: true, translation: translatedText });
+          sendResponse({ success: true, translation: translatedText, model: 'microsoft' });
         } else {
           console.warn('LingoFlow: Microsoft Translator invalid response, falling back to Google');
           translateWithGoogle(text, targetLang, sendResponse);
@@ -2785,7 +2785,7 @@ function translateWithGoogle(text, targetLang, sendResponse) {
         const translation = data[0].map(segment => segment[0]).join('');
         if (translation) {
           console.log('LingoFlow: Google Translate succeeded, result length:', translation.length);
-          sendResponse({ success: true, translation: translation });
+          sendResponse({ success: true, translation: translation, model: 'google' });
         } else {
           sendResponse({ success: false, error: 'Empty translation' });
         }
@@ -2883,7 +2883,7 @@ function translateWithBaidu(text, targetLang, sendResponse) {
         if (data && data.trans_result && data.trans_result[0] && data.trans_result[0].dst) {
           const translatedText = data.trans_result[0].dst;
           console.log('LingoFlow: Baidu succeeded, result length:', translatedText.length);
-          sendResponse({ success: true, translation: translatedText });
+          sendResponse({ success: true, translation: translatedText, model: 'baidu' });
         } else if (data && data.error_code) {
           // Detailed error logging for debugging
           const errMsg = `Baidu error ${data.error_code}: ${data.error_msg || ''}`;
@@ -2931,7 +2931,7 @@ function translateBatchWithBaidu(texts, targetLang, sendResponse) {
           active--;
           finished++;
           if (finished === list.length) {
-            sendResponse({ success: true, translations });
+            sendResponse({ success: true, translations, model: 'baidu' });
           } else {
             setTimeout(runNext, 500); // Rate limit delay
           }
@@ -3146,7 +3146,7 @@ function translateWithBaiduLLMCb(text, targetLang, sendResponse) {
   translateWithBaiduLLM(text, targetLang)
     .then(translatedText => {
       console.log('LingoFlow: Baidu LLM succeeded, result length:', translatedText.length);
-      sendResponse({ success: true, translation: translatedText });
+      sendResponse({ success: true, translation: translatedText, model: 'baidullm' });
     })
     .catch(error => {
       const message = error && error.message ? error.message : String(error);
@@ -3184,7 +3184,7 @@ function translateBatchWithBaiduLLM(texts, targetLang, sendResponse) {
           finished++;
           if (finished === list.length) {
             console.log('LingoFlow: Baidu LLM batch complete,', list.length, 'items done');
-            try { sendResponse({ success: true, translations }); } catch(e) {}
+            try { sendResponse({ success: true, translations, model: 'baidullm' }); } catch(e) {}
           } else {
             setTimeout(runNext, 300);
           }

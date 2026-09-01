@@ -506,6 +506,9 @@
                 response && response.model ? `, model=${response.model}` : '');
 
               if (response && Array.isArray(response.translations)) {
+                if (response.model) {
+                  console.log(`LingoFlow: ✅ batch translation served by [${response.model}]`);
+                }
                 resolve(response.translations);
                 return;
               }
