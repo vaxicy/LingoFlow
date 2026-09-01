@@ -1376,8 +1376,15 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
     const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
 
     // Build fallback list: selected model first, then others (excluding selected)
-    const fallbackModels = [selectedModel];
-    SILICONFLOW_FALLBACK_MODELS.forEach(m => { if (m !== selectedModel) fallbackModels.push(m); });
+    // **重要**：当用户选了 Custom 自定义模型（userCustom 非空）时，不走 fallback——
+    //   失败要让用户看见，不应静默换默认模型（用户以为在用自己的模型）
+    const isCustomModel = !!(settings.siliconflowModelCustom && settings.siliconflowModelCustom.trim());
+    if (isCustomModel) {
+      // Custom：只尝试用户输入的 model；不再追加默认 fallback
+      // 兜底交给 translateWithGoogle
+    } else {
+      SILICONFLOW_FALLBACK_MODELS.forEach(m => { if (m !== selectedModel) fallbackModels.push(m); });
+    }
 
     tryNextModel(0);
 
@@ -1386,7 +1393,11 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
 
       if (index >= fallbackModels.length) {
         done();
-        console.warn('LingoFlow: All SiliconFlow models failed, falling back to Google');
+        if (isCustomModel) {
+          console.warn(`LingoFlow: Custom model "${selectedModel}" failed; falling back to Google. Please verify the model id exists in SiliconFlow model hub.`);
+        } else {
+          console.warn('LingoFlow: All SiliconFlow models failed, falling back to Google');
+        }
         translateWithGoogle(text, targetLang, sendResponse);
         return;
       }
