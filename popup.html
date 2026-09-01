@@ -364,7 +364,19 @@
             <strong data-i18n="api_key_label">API Key</strong>
             <span data-i18n="api_key_desc">SiliconFlow API key (free at siliconflow.cn)</span>
           </div>
-          <input type="password" class="panel-input" id="popup-siliconflow-key" placeholder="sk-..." autocomplete="off">
+          <div class="input-secret">
+            <input type="password" class="panel-input" id="popup-siliconflow-key" placeholder="sk-..." autocomplete="off" data-secret-input>
+            <button class="secret-toggle" type="button" id="popup-siliconflow-key-toggle" aria-label="显示/隐藏 API Key" tabindex="-1">
+              <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A10.93 10.93 0 0 1 12 4c7 0 11 7 11 7a18.55 18.55 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div class="settings-row settings-row-stack" id="popup-model-row" hidden>
@@ -390,6 +402,9 @@
             </button>
             <div class="model-select-menu" id="siliconflow-model-menu" role="listbox" aria-label="SiliconFlow model" hidden></div>
           </div>
+          <div class="model-custom-input" id="siliconflow-model-custom-row" hidden>
+            <input type="text" class="panel-input model-custom-input-field" id="popup-siliconflow-model-custom-input" placeholder="custom model id (e.g. Qwen/Qwen2-7B-Instruct)" autocomplete="off" spellcheck="false">
+          </div>
         </div>
 
         <div class="settings-row settings-row-stack" id="popup-bailian-key-row" hidden>
@@ -397,7 +412,19 @@
             <strong data-i18n="bailian_api_key_label">百炼 API 密钥</strong>
             <span data-i18n="bailian_api_key_desc">阿里百炼 API 密钥（阿里云免费额度）</span>
           </div>
-          <input type="password" class="panel-input" id="popup-bailian-key" placeholder="sk-..." autocomplete="off">
+          <div class="input-secret">
+            <input type="password" class="panel-input" id="popup-bailian-key" placeholder="sk-..." autocomplete="off" data-secret-input>
+            <button class="secret-toggle" type="button" id="popup-bailian-key-toggle" aria-label="显示/隐藏 API Key" tabindex="-1">
+              <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A10.93 10.93 0 0 1 12 4c7 0 11 7 11 7a18.55 18.55 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            </button>
+          </div>
         </div>
 
         <div class="settings-row settings-row-stack" id="popup-bailian-host-row" hidden>
@@ -431,6 +458,9 @@
             </button>
             <div class="model-select-menu" id="bailian-model-menu" role="listbox" aria-label="Bailian model" hidden></div>
           </div>
+          <div class="model-custom-input" id="bailian-model-custom-row" hidden>
+            <input type="text" class="panel-input model-custom-input-field" id="popup-bailian-model-custom-input" placeholder="custom model id (e.g. qwen3-max)" autocomplete="off" spellcheck="false">
+          </div>
         </div>
 
         <div class="settings-row settings-row-stack" id="popup-microsoft-key-row" hidden>
@@ -438,7 +468,19 @@
             <strong data-i18n="microsoft_api_key_label">Microsoft API Key</strong>
             <span data-i18n="microsoft_api_key_desc">Azure Translator 密钥</span>
           </div>
-          <input type="password" class="panel-input" id="popup-microsoft-key" placeholder="Azure Translator Key" autocomplete="off">
+          <div class="input-secret">
+          <input type="password" class="panel-input" id="popup-microsoft-key" placeholder="Azure Translator Key" autocomplete="off" data-secret-input>
+          <button class="secret-toggle" type="button" id="popup-microsoft-key-toggle" aria-label="显示/隐藏 API Key" tabindex="-1">
+            <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A10.93 10.93 0 0 1 12 4c7 0 11 7 11 7a18.55 18.55 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+          </button>
+        </div>
         </div>
 
         <!-- Microsoft Region: hidden, default eastasia -->
@@ -448,7 +490,19 @@
             <strong data-i18n="youdao_app_key_label">有道 App Key</strong>
             <span data-i18n="youdao_app_key_desc">有道智云应用 ID</span>
           </div>
-          <input type="text" class="panel-input" id="popup-youdao-app-key" placeholder="appKey" autocomplete="off">
+          <div class="input-secret">
+          <input type="text" class="panel-input" id="popup-youdao-app-key" placeholder="appKey" autocomplete="off" data-secret-input>
+          <button class="secret-toggle" type="button" id="popup-youdao-app-key-toggle" aria-label="显示/隐藏 App Key" tabindex="-1">
+            <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A10.93 10.93 0 0 1 12 4c7 0 11 7 11 7a18.55 18.55 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+          </button>
+        </div>
         </div>
 
         <div class="settings-row settings-row-stack" id="popup-youdao-secret-row" hidden>
@@ -456,7 +510,19 @@
             <strong data-i18n="youdao_app_secret_label">有道 App Secret</strong>
             <span data-i18n="youdao_app_secret_desc">有道智云应用密钥</span>
           </div>
-          <input type="password" class="panel-input" id="popup-youdao-app-secret" placeholder="应用密钥" autocomplete="off">
+          <div class="input-secret">
+          <input type="password" class="panel-input" id="popup-youdao-app-secret" placeholder="应用密钥" autocomplete="off" data-secret-input>
+          <button class="secret-toggle" type="button" id="popup-youdao-app-secret-toggle" aria-label="显示/隐藏 App Secret" tabindex="-1">
+            <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A10.93 10.93 0 0 1 12 4c7 0 11 7 11 7a18.55 18.55 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+          </button>
+        </div>
         </div>
 
         <div class="settings-row settings-row-stack" id="popup-youdao-llm-model-row" hidden>
@@ -467,6 +533,9 @@
           <select class="panel-select" id="popup-youdao-llm-model">
             <!-- Options populated by JS -->
           </select>
+          <div class="model-custom-input" id="youdao-llm-model-custom-row" hidden>
+            <input type="text" class="panel-input model-custom-input-field" id="popup-youdao-llm-model-custom-input" placeholder="custom handleOption (e.g. 0 / 3)" autocomplete="off" spellcheck="false">
+          </div>
         </div>
 
         <div class="settings-row settings-row-stack" id="popup-gemini-key-row" hidden>
@@ -474,7 +543,19 @@
             <strong data-i18n="gemini_api_key_label">Gemini API Key</strong>
             <span data-i18n="gemini_api_key_desc">Google AI Studio API key</span>
           </div>
-          <input type="password" class="panel-input" id="popup-gemini-key" placeholder="Gemini API Key" autocomplete="off">
+          <div class="input-secret">
+          <input type="password" class="panel-input" id="popup-gemini-key" placeholder="Gemini API Key" autocomplete="off" data-secret-input>
+          <button class="secret-toggle" type="button" id="popup-gemini-key-toggle" aria-label="显示/隐藏 API Key" tabindex="-1">
+            <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A10.93 10.93 0 0 1 12 4c7 0 11 7 11 7a18.55 18.55 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+          </button>
+        </div>
         </div>
 
         <div class="settings-row settings-row-stack" id="popup-gemini-model-row" hidden>
@@ -485,6 +566,9 @@
           <select class="panel-select" id="popup-gemini-model">
             <!-- Options populated by JS -->
           </select>
+          <div class="model-custom-input" id="gemini-model-custom-row" hidden>
+            <input type="text" class="panel-input model-custom-input-field" id="popup-gemini-model-custom-input" placeholder="custom model id (e.g. gemini-2.0-pro)" autocomplete="off" spellcheck="false">
+          </div>
         </div>
 
         <div class="settings-row settings-row-stack" id="popup-deepseek-key-row" hidden>
@@ -492,7 +576,19 @@
             <strong data-i18n="deepseek_api_key_label">DeepSeek API Key</strong>
             <span data-i18n="deepseek_api_key_desc">DeepSeek 平台 API 密钥</span>
           </div>
-          <input type="password" class="panel-input" id="popup-deepseek-key" placeholder="sk-..." autocomplete="off">
+          <div class="input-secret">
+          <input type="password" class="panel-input" id="popup-deepseek-key" placeholder="sk-..." autocomplete="off" data-secret-input>
+          <button class="secret-toggle" type="button" id="popup-deepseek-key-toggle" aria-label="显示/隐藏 API Key" tabindex="-1">
+            <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A10.93 10.93 0 0 1 12 4c7 0 11 7 11 7a18.55 18.55 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+          </button>
+        </div>
         </div>
 
         <div class="settings-row settings-row-stack" id="popup-deepseek-model-row" hidden>
@@ -504,6 +600,9 @@
             <option value="deepseek-v4-flash">DeepSeek V4 Flash（推荐 · 极速 · 便宜）</option>
             <option value="deepseek-v4-pro">DeepSeek V4 Pro（高质量 · 思考模式）</option>
           </select>
+          <div class="model-custom-input" id="deepseek-model-custom-row" hidden>
+            <input type="text" class="panel-input model-custom-input-field" id="popup-deepseek-model-custom-input" placeholder="custom model id" autocomplete="off" spellcheck="false">
+          </div>
         </div>
 
         <div class="settings-row settings-row-stack" id="popup-custom-key-row" hidden>
@@ -511,7 +610,19 @@
             <strong data-i18n="custom_api_key_label">API Key</strong>
             <span data-i18n="custom_api_key_desc">你的 OpenAI 兼容服务 API 密钥</span>
           </div>
-          <input type="password" class="panel-input" id="popup-custom-key" placeholder="" autocomplete="off">
+          <div class="input-secret">
+          <input type="password" class="panel-input" id="popup-custom-key" placeholder="" autocomplete="off" data-secret-input>
+          <button class="secret-toggle" type="button" id="popup-custom-key-toggle" aria-label="显示/隐藏 API Key" tabindex="-1">
+            <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A10.93 10.93 0 0 1 12 4c7 0 11 7 11 7a18.55 18.55 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+          </button>
+        </div>
         </div>
 
         <div class="settings-row settings-row-stack" id="popup-custom-host-row" hidden>
@@ -543,7 +654,19 @@
             <strong data-i18n="baidu_secret_key_label">百度密钥</strong>
             <span data-i18n="baidu_secret_key_desc">百度翻译开放平台应用密钥</span>
           </div>
-          <input type="password" class="panel-input" id="popup-baidu-secret-key" placeholder="密钥" autocomplete="off">
+          <div class="input-secret">
+          <input type="password" class="panel-input" id="popup-baidu-secret-key" placeholder="密钥" autocomplete="off" data-secret-input>
+          <button class="secret-toggle" type="button" id="popup-baidu-secret-key-toggle" aria-label="显示/隐藏 Secret" tabindex="-1">
+            <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A10.93 10.93 0 0 1 12 4c7 0 11 7 11 7a18.55 18.55 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+          </button>
+        </div>
         </div>
 
         <!-- Baidu LLM (大模型文本翻译) - uses Bearer Token auth with single API Key -->
@@ -552,7 +675,19 @@
             <strong data-i18n="baidullm_api_key_label">百度大模型 API Key</strong>
             <span data-i18n="baidullm_api_key_desc">翻译开放平台 → 大模型文本翻译 → API Key管理 创建的 API Key</span>
           </div>
-          <input type="password" class="panel-input" id="popup-baidullm-ak" placeholder="bce-v3/ALTAK-..." autocomplete="off">
+          <div class="input-secret">
+          <input type="password" class="panel-input" id="popup-baidullm-ak" placeholder="bce-v3/ALTAK-..." autocomplete="off" data-secret-input>
+          <button class="secret-toggle" type="button" id="popup-baidullm-ak-toggle" aria-label="显示/隐藏 API Key" tabindex="-1">
+            <svg class="icon-eye" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <svg class="icon-eye-off" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A10.93 10.93 0 0 1 12 4c7 0 11 7 11 7a18.55 18.55 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/>
+              <line x1="1" y1="1" x2="23" y2="23"/>
+            </svg>
+          </button>
+        </div>
         </div>
 
         <div class="settings-section-title" data-i18n="feature_settings">Features</div>

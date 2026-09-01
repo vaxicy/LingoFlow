@@ -1008,6 +1008,117 @@ body[data-theme="light"] .settings-section-title {
   width: 100%;
 }
 
+/* ==== API Key/secret 输入框眼睛按钮容器 ==== */
+.input-secret {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.input-secret .panel-input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  /* 比原先的 140px 更紧凑，给眼睛按钮留位 */
+  max-width: 220px;
+}
+
+.secret-toggle {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid var(--lf-border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+    rgba(16, 22, 43, 0.6);
+  color: var(--lf-muted);
+  cursor: pointer;
+  padding: 0;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+.secret-toggle:hover {
+  color: var(--lf-lavender);
+  border-color: var(--lf-border-strong);
+  background:
+    linear-gradient(180deg, rgba(124, 108, 255, 0.14), rgba(124, 108, 255, 0.04)),
+    rgba(16, 22, 43, 0.7);
+}
+
+.secret-toggle:active {
+  transform: translateY(1px);
+}
+
+.secret-toggle .icon-eye-off {
+  display: none;
+}
+
+.secret-toggle.is-revealed {
+  color: var(--lf-blue);
+  border-color: var(--lf-border-strong);
+  background:
+    linear-gradient(180deg, rgba(98, 168, 255, 0.16), rgba(98, 168, 255, 0.04)),
+    rgba(16, 22, 43, 0.78);
+}
+
+.secret-toggle.is-revealed .icon-eye {
+  display: none;
+}
+
+.secret-toggle.is-revealed .icon-eye-off {
+  display: block;
+}
+
+body[data-theme="light"] .secret-toggle {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85));
+  color: #6b6db0;
+  border-color: rgba(124, 108, 255, 0.22);
+}
+
+body[data-theme="light"] .secret-toggle:hover {
+  background:
+    linear-gradient(180deg, rgba(124, 108, 255, 0.18), rgba(124, 108, 255, 0.06)),
+    rgba(255, 255, 255, 0.9);
+}
+
+body[data-theme="light"] .secret-toggle.is-revealed {
+  color: #496dff;
+}
+
+/* ==== 自定义模型内联输入框（替代弹窗） ==== */
+.model-custom-input {
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  animation: lf-model-custom-in 200ms cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+@keyframes lf-model-custom-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.model-custom-input-field {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.model-custom-input-field:focus {
+  border-color: var(--lf-border-strong);
+  box-shadow: 0 0 0 3px rgba(124, 108, 255, 0.22);
+}
+
 .settings-row-inline .panel-select {
   width: auto;
   min-width: 104px;

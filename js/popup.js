@@ -227,6 +227,76 @@ function initPanels() {
   }
 
   initSettingsPanel();
+  initSecretToggles();
+  initModelCustomRowToggles();
+}
+
+// 眼睛按钮：切换 input type=password <-> text
+function initSecretToggles() {
+  document.querySelectorAll('.secret-toggle').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      // 找到包裹 .input-secret 内紧邻的 input
+      const wrap = btn.closest('.input-secret');
+      if (!wrap) return;
+      const input = wrap.querySelector('input[data-secret-input], input.panel-input');
+      if (!input) return;
+      const willReveal = input.type === 'password';
+      input.type = willReveal ? 'text' : 'password';
+      btn.classList.toggle('is-revealed', willReveal);
+      btn.setAttribute('aria-pressed', String(willReveal));
+      btn.setAttribute('aria-label', willReveal ? '隐藏 API Key' : '显示 API Key');
+      // 切回密码时同步 blur 触发密码保险副提示
+      if (!willReveal) {
+        try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch (_) {}
+      }
+    });
+  });
+}
+
+// 自定义模型内联输入框：根据 modelSelect 值显示/隐藏 + 双向同步到 storage
+function initModelCustomRowToggles() {
+  const map = [
+    { selectId: 'popup-siliconflow-model', rowId: 'siliconflow-model-custom-row', inputId: 'popup-siliconflow-model-custom-input', storageKey: 'siliconflowModelCustom', cacheKey: 'siliconflow' },
+    { selectId: 'popup-bailian-model', rowId: 'bailian-model-custom-row', inputId: 'popup-bailian-model-custom-input', storageKey: 'bailianModelCustom', cacheKey: 'bailian' },
+    { selectId: 'popup-gemini-model', rowId: 'gemini-model-custom-row', inputId: 'popup-gemini-model-custom-input', storageKey: 'geminiModelCustom', cacheKey: 'gemini' },
+    { selectId: 'popup-deepseek-model', rowId: 'deepseek-model-custom-row', inputId: 'popup-deepseek-model-custom-input', storageKey: 'deepseekModelCustom', cacheKey: 'deepseek' },
+    { selectId: 'popup-youdao-llm-model', rowId: 'youdao-llm-model-custom-row', inputId: 'popup-youdao-llm-model-custom-input', storageKey: 'youdaoLLMModelCustom', cacheKey: 'youdaollm' }
+  ];
+
+  function refreshRow(item) {
+    const sel = document.getElementById(item.selectId);
+    const row = document.getElementById(item.rowId);
+    const input = document.getElementById(item.inputId);
+    if (!sel || !row || !input) return;
+    const showCustom = sel.value === '__custom__';
+    row.hidden = !showCustom;
+  }
+
+  map.forEach(item => {
+    const sel = document.getElementById(item.selectId);
+    const input = document.getElementById(item.inputId);
+    if (!sel || !input) return;
+    // 监听 model select 变化 → 切换显示
+    sel.addEventListener('change', () => refreshRow(item));
+    // 监听 input 输入 → 写 storage（实时同步自定义模型名）
+    input.addEventListener('input', () => {
+      const cacheKey = item.cacheKey;
+      if (typeof window.__customModelCache !== 'object') window.__customModelCache = {};
+      // 同步更新 cache
+      window.__customModelCache[cacheKey] = input.value.trim();
+      // 写 chrome.storage.local
+      chrome.storage.local.get(['lingoflow_settings'], (res) => {
+        const settings = (res && res.lingoflow_settings) || {};
+        const next = Object.assign({}, settings, { [item.storageKey]: input.value.trim() });
+        chrome.storage.local.set({ lingoflow_settings: next });
+        markSettingsChanged();
+      });
+    });
+  });
+
+  // 暴露到全局供 syncXxxModelSelect 调用
+  window.__refreshModelCustomRows = () => map.forEach(refreshRow);
 }
 
 // Inline clear-all confirm helpers (replaces native confirm())
@@ -350,6 +420,32 @@ function openSettingsPanel() {
     setSettingsDirty(false);
     // 同步缓存自定义模型值，给 prompt 输入前的 getCustomModelFromUI 用
     refreshCustomModelCache();
+    // 设置面板打开后：刷新 5 个 provider 模型下拉同步自定义内联框的 value + 可见性
+    refreshCustomModelInputs();
+  });
+}
+
+// 把 storage 里的 xxxModelCustom 写到对应内联 input.value，并触发可见性刷新
+function refreshCustomModelInputs() {
+  const map = [
+    { inputId: 'popup-siliconflow-model-custom-input', storageKey: 'siliconflowModelCustom', selectId: 'popup-siliconflow-model', rowId: 'siliconflow-model-custom-row' },
+    { inputId: 'popup-bailian-model-custom-input', storageKey: 'bailianModelCustom', selectId: 'popup-bailian-model', rowId: 'bailian-model-custom-row' },
+    { inputId: 'popup-gemini-model-custom-input', storageKey: 'geminiModelCustom', selectId: 'popup-gemini-model', rowId: 'gemini-model-custom-row' },
+    { inputId: 'popup-deepseek-model-custom-input', storageKey: 'deepseekModelCustom', selectId: 'popup-deepseek-model', rowId: 'deepseek-model-custom-row' },
+    { inputId: 'popup-youdao-llm-model-custom-input', storageKey: 'youdaoLLMModelCustom', selectId: 'popup-youdao-llm-model', rowId: 'youdao-llm-model-custom-row' }
+  ];
+  map.forEach(item => {
+    const input = document.getElementById(item.inputId);
+    const sel = document.getElementById(item.selectId);
+    const row = document.getElementById(item.rowId);
+    if (!input || !sel || !row) return;
+    const v = (window.__customModelCache && window.__customModelCache[({
+      siliconflowModelCustom: 'siliconflow', bailianModelCustom: 'bailian',
+      geminiModelCustom: 'gemini', deepseekModelCustom: 'deepseek',
+      youdaoLLMModelCustom: 'youdaollm'
+    })[item.storageKey]]) || '';
+    if (v) input.value = v;
+    row.hidden = sel.value !== '__custom__';
   });
 }
 
@@ -466,28 +562,6 @@ function initSettingsPanel() {
     const control = document.getElementById(id);
     if (!control) return;
     control.addEventListener('change', () => {
-      // Native <select> 的 model select 选到 '__custom__' 哨兵时弹 prompt 输入
-      const customSelectMap = {
-        'popup-gemini-model': 'geminiModelCustom',
-        'popup-deepseek-model': 'deepseekModelCustom',
-        'popup-youdao-llm-model': 'youdaoLLMModelCustom'
-      };
-      if (customSelectMap[id] && control.value === '__custom__') {
-        const prevValue = control.dataset.__prevCustom || control.value;
-        const storageKey = customSelectMap[id];
-        promptAndSaveCustomModel(
-          storageKey,
-          () => prevValue,
-          (customVal) => {
-            // 用户输入完成后，更新 select label（如果是 this same select）
-            control.dataset.__lastCustom = customVal;
-          },
-          () => {
-            // 用户取消 → 回退到上一个非 __custom__ 值
-            control.value = prevValue === '__custom__' ? getDefaultModelForSelect(id) : prevValue;
-          }
-        );
-      }
       if (id === 'popup-translation-engine') {
         const isSF = control.value === 'siliconflow';
         const isMS = control.value === 'microsoft';
@@ -895,193 +969,6 @@ function refreshCustomModelCache(cb) {
   });
 }
 
-/**
- * 自定义内联输入弹层（替换 window.prompt / alert / confirm）。
- *
- * 行为与 window.prompt(msg, defaultValue) 保持兼容：
- *   - 用户点「确定」返回 trimmed 字符串
- *   - 用户点「取消」/ESC/点 backdrop 返回 null
- *
- * 视觉风格与 popup.css 的 --lf-* 主题变量一致，dark/light 双主题自动适配。
- * 弹层插入到 .popup-container 内（避免超出 popup 边界），z-index 9999。
- *
- * 选项对象：
- *   {
- *     title?: string,        // 标题（可不传，默认 'Custom'）
- *     icon?: '🟣'|'⚙'|'✏', // 圆环小图标（默认 🟣）
- *     message: string,       // 提示说明
- *     placeholder?: string,  // 输入框 placeholder
- *     defaultValue?: string, // 输入框初值
- *     confirmText?: string,  // 确定按钮（默认 '确定'）
- *     cancelText?: string,   // 取消按钮（默认 '取消'）
- *     validator?: (text)=>string|null,  // 返回错误信息字符串则禁用确定并提示，返回 null 表示通过
- *   }
- */
-function showInlinePrompt(options) {
-  return new Promise((resolve) => {
-    const opts = options || {};
-    const popup = document.querySelector('.popup-container');
-    if (!popup) { resolve(null); return; }
-
-    // 清理已存在的弹层，防止叠层
-    const existing = document.getElementById('lf-inline-modal-host');
-    if (existing) existing.remove();
-
-    const host = document.createElement('div');
-    host.id = 'lf-inline-modal-host';
-    host.className = 'lf-inline-modal-backdrop';
-
-    const iconChar = opts.icon || '🟣';
-    const titleText = opts.title || 'Custom';
-    const messageText = opts.message || '';
-    const placeholder = opts.placeholder || '';
-    const defaultValue = opts.defaultValue || '';
-    const confirmText = opts.confirmText || (window.i18nPlaceholders && window.i18nPlaceholders.confirm) || '确定';
-    const cancelText = opts.cancelText || '取消';
-
-    host.innerHTML = `
-      <div class="lf-inline-modal" role="dialog" aria-modal="true" aria-labelledby="lf-modal-title">
-        <h3 class="lf-inline-modal-title" id="lf-modal-title">
-          <span class="lf-inline-modal-title-icon" aria-hidden="true">${iconChar}</span>
-          <span></span>
-        </h3>
-        <p class="lf-inline-modal-msg"></p>
-        <input class="lf-inline-modal-input" type="text" autocomplete="off" spellcheck="false" />
-        <div class="lf-inline-modal-actions">
-          <button class="lf-inline-modal-btn lf-inline-modal-btn-cancel" type="button" data-lf-modal-action="cancel"></button>
-          <button class="lf-inline-modal-btn lf-inline-modal-btn-primary" type="button" data-lf-modal-action="confirm"></button>
-        </div>
-      </div>
-    `;
-
-    // 填文案（避免 innerHTML 转义问题）
-    host.querySelector('.lf-inline-modal-title > span:last-child').textContent = titleText;
-    host.querySelector('.lf-inline-modal-msg').textContent = messageText;
-    const input = host.querySelector('.lf-inline-modal-input');
-    input.placeholder = placeholder;
-    if (defaultValue) input.value = defaultValue;
-    const cancelBtn = host.querySelector('[data-lf-modal-action="cancel"]');
-    const confirmBtn = host.querySelector('[data-lf-modal-action="confirm"]');
-    cancelBtn.textContent = cancelText;
-    confirmBtn.textContent = confirmText;
-
-    let resolved = false;
-    function close(value) {
-      if (resolved) return;
-      resolved = true;
-      try { input.removeEventListener('input', onInput); } catch (_) {}
-      document.removeEventListener('keydown', onKey, true);
-      if (host.parentNode) host.parentNode.removeChild(host);
-      resolve(value);
-    }
-
-    // 校验器：实时 disable 确定按钮 + 显示错误
-    function onInput() {
-      const v = input.value.trim();
-      let err = null;
-      try {
-        if (typeof opts.validator === 'function') err = opts.validator(v);
-      } catch (_) { err = null; }
-      confirmBtn.disabled = !v || !!err;
-      if (err) {
-        input.style.borderColor = '#e85f7c';
-        input.title = String(err);
-      } else {
-        input.style.borderColor = '';
-        input.title = '';
-      }
-    }
-    input.addEventListener('input', onInput);
-
-    // 点击 backdrop 关闭（但点击弹层本身不冒泡关）
-    host.addEventListener('click', (e) => {
-      if (e.target === host) close(null);
-    });
-
-    cancelBtn.addEventListener('click', () => close(null));
-    confirmBtn.addEventListener('click', () => {
-      const trimmed = input.value.trim();
-      if (!trimmed || confirmBtn.disabled) return;
-      close(trimmed);
-    });
-
-    // ESC 关闭，Enter 确认（除非在 textarea 内，input 内 Enter 提交）
-    function onKey(e) {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        close(null);
-      } else if (e.key === 'Enter' && document.activeElement === input) {
-        e.preventDefault();
-        if (!confirmBtn.disabled) {
-          const trimmed = input.value.trim();
-          if (trimmed) close(trimmed);
-        }
-      }
-    }
-    document.addEventListener('keydown', onKey, true);
-
-    popup.appendChild(host);
-
-    // autofocus input
-    requestAnimationFrame(() => {
-      try { input.focus(); input.select(); } catch (_) {}
-      onInput(); // 初始 disable 状态
-    });
-  });
-}
-
-// 弹出 prompt 让用户输入自定义模型名，写回 chrome.storage.local，
-// 供 background.js 的 resolveModel(provider, selected, custom) 读取。
-function promptAndSaveCustomModel(storageKey, getFallback, onSaved, onCancelled) {
-  chrome.storage.local.get(['lingoflow_settings'], async (result) => {
-    const settings = result.lingoflow_settings || {};
-    const prev = (settings[storageKey] || '').trim();
-    const fallback = typeof getFallback === 'function' ? getFallback() : '';
-    const initial = prev || fallback || '';
-    const message = getMessage('model_custom_input_prompt') || 'Please enter the model id:';
-
-    const userInput = await showInlinePrompt({
-      title: 'Custom model',
-      icon: '✏️',
-      message,
-      placeholder: 'e.g. deepseek-ai/DeepSeek-V4-Flash',
-      defaultValue: initial,
-      confirmText: getMessage('confirm') || getMessage('save') || '确定',
-      cancelText: getMessage('cancel') || '取消'
-    });
-
-    if (userInput === null) {
-      if (typeof onCancelled === 'function') onCancelled();
-      return;
-    }
-    const trimmed = String(userInput).trim();
-    if (!trimmed) {
-      if (typeof onCancelled === 'function') onCancelled();
-      return;
-    }
-    const updated = Object.assign({}, settings, { [storageKey]: trimmed });
-    chrome.storage.local.set({ lingoflow_settings: updated }, () => {
-      // 同步更新本地 cache，确保 getPopupSettingsFromUI 立即拿到
-      refreshCustomModelCache(() => {
-        if (typeof onSaved === 'function') onSaved(trimmed);
-        // 同步 sync Trigger label 立刻生效
-        if (storageKey === 'siliconflowModelCustom') syncSiliconFlowModelSelect('__custom__');
-        if (storageKey === 'bailianModelCustom') syncBailianModelSelect('__custom__');
-        markSettingsChanged();
-      });
-    });
-  });
-}
-
-function getDefaultModelForSelect(selectId) {
-  const map = {
-    'popup-gemini-model': 'gemini-3.1-flash-lite',
-    'popup-deepseek-model': 'deepseek-v4-flash',
-    'popup-youdao-llm-model': '3'
-  };
-  return map[selectId] || '';
-}
-
 function setEngineSelectOpen(open) {
   const customSelect = document.getElementById('engine-select');
   const trigger = document.getElementById('engine-select-trigger');
@@ -1424,21 +1311,14 @@ function syncSiliconFlowModelSelect(value) {
 
     option.addEventListener('click', () => {
       if (model.id === '__custom__') {
-        const storageKey = 'siliconflowModelCustom';
-        const prevValue = nativeSelect.value && nativeSelect.value !== '__custom__'
-          ? nativeSelect.value
-          : 'tencent/Hunyuan-MT-7B';
-        promptAndSaveCustomModel(storageKey, () => prevValue,
-          () => {
-            nativeSelect.value = '__custom__';
-            nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-          },
-          () => {
-            // 用户取消：恢复上一个有效 model id
-            nativeSelect.value = prevValue;
-            nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-        );
+        // 选中 Custom：直接切到 __custom__，由 initModelCustomRowToggles 负责显示下方内联 input
+        nativeSelect.value = '__custom__';
+        nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        // 自动 focus 到内联 input
+        setTimeout(() => {
+          const inp = document.getElementById('popup-siliconflow-model-custom-input');
+          if (inp) { try { inp.focus(); inp.select(); } catch (_) {} }
+        }, 30);
       } else {
         nativeSelect.value = model.id;
         nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
@@ -1598,21 +1478,12 @@ function syncBailianModelSelect(value) {
 
     option.addEventListener('click', () => {
       if (model.id === '__custom__') {
-        const storageKey = 'bailianModelCustom';
-        const prevValue = nativeSelect.value && nativeSelect.value !== '__custom__'
-          ? nativeSelect.value
-          : 'qwen3.7-plus';
-        promptAndSaveCustomModel(storageKey, () => prevValue,
-          () => {
-            nativeSelect.value = '__custom__';
-            nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-          },
-          () => {
-            // 用户取消：恢复上一个有效 model id
-            nativeSelect.value = prevValue;
-            nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-        );
+        nativeSelect.value = '__custom__';
+        nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        setTimeout(() => {
+          const inp = document.getElementById('popup-bailian-model-custom-input');
+          if (inp) { try { inp.focus(); inp.select(); } catch (_) {} }
+        }, 30);
       } else {
         nativeSelect.value = model.id;
         nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
