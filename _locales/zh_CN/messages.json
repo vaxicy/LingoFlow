@@ -1059,6 +1059,26 @@
     "message": "手动",
     "description": "Model select 中 Custom 项的 badge"
   },
+  "model_custom_input_placeholder_siliconflow": {
+    "message": "自定义模型 id（例：Qwen/Qwen2-7B-Instruct）",
+    "description": "SiliconFlow 自定义模型输入 placeholder"
+  },
+  "model_custom_input_placeholder_bailian": {
+    "message": "自定义模型 id（例：qwen3-max）",
+    "description": "Bailian 自定义模型输入 placeholder"
+  },
+  "model_custom_input_placeholder_gemini": {
+    "message": "自定义模型 id（例：gemini-2.0-pro）",
+    "description": "Gemini 自定义模型输入 placeholder"
+  },
+  "model_custom_input_placeholder_deepseek": {
+    "message": "自定义模型 id",
+    "description": "DeepSeek 自定义模型输入 placeholder"
+  },
+  "model_custom_input_placeholder_youdaollm": {
+    "message": "自定义 handleOption（例：0 / 3）",
+    "description": "YoudaoLLM 自定义模型输入 placeholder"
+  },
   "model_custom_label": {
     "message": "Custom（自定义模型）",
     "description": "trigger label 显示用户选了自定义模型，可加后缀 : <name>"

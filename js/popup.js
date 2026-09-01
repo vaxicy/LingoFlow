@@ -428,17 +428,22 @@ function openSettingsPanel() {
 // 把 storage 里的 xxxModelCustom 写到对应内联 input.value，并触发可见性刷新
 function refreshCustomModelInputs() {
   const map = [
-    { inputId: 'popup-siliconflow-model-custom-input', storageKey: 'siliconflowModelCustom', selectId: 'popup-siliconflow-model', rowId: 'siliconflow-model-custom-row' },
-    { inputId: 'popup-bailian-model-custom-input', storageKey: 'bailianModelCustom', selectId: 'popup-bailian-model', rowId: 'bailian-model-custom-row' },
-    { inputId: 'popup-gemini-model-custom-input', storageKey: 'geminiModelCustom', selectId: 'popup-gemini-model', rowId: 'gemini-model-custom-row' },
-    { inputId: 'popup-deepseek-model-custom-input', storageKey: 'deepseekModelCustom', selectId: 'popup-deepseek-model', rowId: 'deepseek-model-custom-row' },
-    { inputId: 'popup-youdao-llm-model-custom-input', storageKey: 'youdaoLLMModelCustom', selectId: 'popup-youdao-llm-model', rowId: 'youdao-llm-model-custom-row' }
+    { inputId: 'popup-siliconflow-model-custom-input', storageKey: 'siliconflowModelCustom', selectId: 'popup-siliconflow-model', rowId: 'siliconflow-model-custom-row', provider: 'siliconflow' },
+    { inputId: 'popup-bailian-model-custom-input', storageKey: 'bailianModelCustom', selectId: 'popup-bailian-model', rowId: 'bailian-model-custom-row', provider: 'bailian' },
+    { inputId: 'popup-gemini-model-custom-input', storageKey: 'geminiModelCustom', selectId: 'popup-gemini-model', rowId: 'gemini-model-custom-row', provider: 'gemini' },
+    { inputId: 'popup-deepseek-model-custom-input', storageKey: 'deepseekModelCustom', selectId: 'popup-deepseek-model', rowId: 'deepseek-model-custom-row', provider: 'deepseek' },
+    { inputId: 'popup-youdao-llm-model-custom-input', storageKey: 'youdaoLLMModelCustom', selectId: 'popup-youdao-llm-model', rowId: 'youdao-llm-model-custom-row', provider: 'youdaollm' }
   ];
   map.forEach(item => {
     const input = document.getElementById(item.inputId);
     const sel = document.getElementById(item.selectId);
     const row = document.getElementById(item.rowId);
     if (!input || !sel || !row) return;
+    // 自定义模型 placeholder 走 i18n（按当前 UI 语言切换）
+    const placeholderKey = `model_custom_input_placeholder_${item.provider}`;
+    const placeholderText = getMessage(placeholderKey) || '';
+    if (placeholderText) input.placeholder = placeholderText;
+    // 恢复已存的 custom model value
     const v = (window.__customModelCache && window.__customModelCache[({
       siliconflowModelCustom: 'siliconflow', bailianModelCustom: 'bailian',
       geminiModelCustom: 'gemini', deepseekModelCustom: 'deepseek',
@@ -594,6 +599,8 @@ function initSettingsPanel() {
           syncSiliconFlowModelSelect(document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B');
           syncPanelCustomSelects();
           updateSettingsFooter();
+          // 同步 5 个 provider 自定义模型输入 placeholder，按新 UI 语言切换
+          if (typeof refreshCustomModelInputs === 'function') refreshCustomModelInputs();
         });
       }
       // Fix: auto-save setting itself must always be persisted,
