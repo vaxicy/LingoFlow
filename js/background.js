@@ -1345,12 +1345,12 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
   }, overallTimeoutMs);
   let responseSent = false;
 
-  function done(result) {
+  function done(result, modelLabel) {
     if (responseSent) return;
     responseSent = true;
     clearTimeout(overallTimer);
     if (result !== undefined) {
-      sendResponse({ success: true, translation: result });
+      sendResponse({ success: true, translation: result, model: modelLabel || null });
     }
   }
 
@@ -1452,7 +1452,7 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
             }
             console.log(`LingoFlow: SiliconFlow ${label} succeeded (${translatedText.length} chars)`);
             setCachedTranslation('siliconflow', selectedModel, targetLang, text, translatedText);
-            done(translatedText);
+            done(translatedText, `siliconflow/${model}`);
           } else {
             console.warn(`LingoFlow: SiliconFlow ${model} invalid response, trying next...`);
             tryNextModel(index + 1);
@@ -1645,7 +1645,7 @@ function translateWithCustom(text, targetLang, sendResponse) {
             return;
           }
           setCachedTranslation('custom', selectedModel, targetLang, text, translatedText);
-          done(translatedText);
+          done(translatedText, `custom/${selectedModel}`);
         } else {
           done();
           console.warn('LingoFlow: Custom engine invalid response, falling back to Google');

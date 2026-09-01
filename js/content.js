@@ -359,6 +359,9 @@
                 }
 
                 if (response && response.success && response.translation) {
+                  if (response.model) {
+                    console.log(`LingoFlow: ✅ translation served by [${response.model}]`, response.translation.substring(0, 60) + (response.translation.length > 60 ? '…' : ''));
+                  }
                   resolve(response.translation);
                 } else {
                   console.warn('LingoFlow: Translation failed:', getErrorMessage(response && response.error));
@@ -410,6 +413,9 @@
                   return;
                 }
                 if (response && response.success && response.translation) {
+                  if (response.model) {
+                    console.log(`LingoFlow: ✅ translation served by [${response.model}]`, response.translation.substring(0, 60) + (response.translation.length > 60 ? '…' : ''));
+                  }
                   resolve(response.translation);
                 } else {
                   console.warn('LingoFlow: Translation failed:', getErrorMessage(response && response.error));
@@ -496,7 +502,8 @@
               console.log('LingoFlow: Batch translate response received:',
                 response ? (Array.isArray(response.translations)
                   ? `${response.translations.length} translations, first="${(response.translations[0] || '').substring(0, 60)}"`
-                  : 'non-array response') : 'null/undefined');
+                  : 'non-array response') : 'null/undefined',
+                response && response.model ? `, model=${response.model}` : '');
 
               if (response && Array.isArray(response.translations)) {
                 resolve(response.translations);
