@@ -1593,6 +1593,16 @@ body[data-theme="light"] .secret-toggle.is-revealed {
   background: rgba(185, 28, 28, 0.16);
 }
 
+.model-select-badge-custom {
+  color: #c4b5fd;
+  border-color: rgba(167, 139, 250, 0.34);
+  background: rgba(124, 108, 255, 0.14);
+}
+
+.model-select-option[aria-selected="true"] .model-select-badge-custom {
+  background: rgba(255, 255, 255, 0.12);
+}
+
 .model-select-chevron {
   flex: 0 0 auto;
   color: #dcd6ff;
@@ -2157,6 +2167,12 @@ body[data-theme="light"] .model-select-badge-paid {
   background: rgba(254, 226, 226, 0.62);
 }
 
+body[data-theme="light"] .model-select-badge-custom {
+  color: #5b3fbb;
+  border-color: rgba(124, 108, 255, 0.28);
+  background: rgba(124, 108, 255, 0.10);
+}
+
 body[data-theme="light"] .panel-segment-btn {
   color: #66718d;
 }
@@ -2409,6 +2425,11 @@ body[data-theme="light"] .model-select-badge-free {
 body[data-theme="light"] .model-select-badge-paid {
   color: #991b1b;
   background: rgba(254, 226, 226, 0.76);
+}
+
+body[data-theme="light"] .model-select-badge-custom {
+  color: #4338ca;
+  background: rgba(224, 219, 255, 0.86);
 }
 
 body[data-theme="light"] #settings-panel .panel-header h2 {

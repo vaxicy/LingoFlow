@@ -1052,8 +1052,20 @@
     "description": "Setup guide footer note"
   },
   "model_custom_option": {
-    "message": "🟣 Custom (type model manually)",
+    "message": "Custom (type model manually)",
     "description": "Last item in model select: type a model id yourself"
+  },
+  "custom_model_badge": {
+    "message": "Manual",
+    "description": "Badge for the Custom item in model select"
+  },
+  "model_custom_label": {
+    "message": "Custom",
+    "description": "trigger label shown when user picked the custom option"
+  },
+  "model_custom_desc": {
+    "message": "Type a model name below",
+    "description": "trigger description for the custom option"
   },
   "model_custom_input_prompt": {
     "message": "Please enter the model id:",

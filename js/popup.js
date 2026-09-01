@@ -483,10 +483,10 @@ const SILICONFLOW_MODELS = [
   },
   {
     id: '__custom__',
-    name: 'Custom (manual input)',
+    name: '__custom__',  // sentinel: name resolved via i18n key 'model_custom_option'
     badge: 'paid',
-    descZh: '自定义 · 手动输入模型名',
-    descEn: 'Custom · Type model name'
+    descZh: '在下方输入模型名称',
+    descEn: 'Type a model name below'
   }
 ];
 
@@ -494,14 +494,14 @@ const BAILIAN_MODELS = [
   { id: 'qwen3.7-plus', name: 'Qwen3.7 Plus', badge: 'free', descZh: '通用 · 免费额度', descEn: 'General · Free quota' },
   { id: 'qwen-mt-flash', name: 'Qwen-MT-Flash', badge: 'free', descZh: '翻译专用 · 推荐', descEn: 'Translation · Recommended' },
   { id: 'qwen-mt-plus', name: 'Qwen-MT-Plus', badge: 'paid', descZh: '翻译最高质量', descEn: 'Highest translation quality' },
-  { id: '__custom__', name: 'Custom (manual input)', badge: 'paid', descZh: '自定义 · 手动输入模型名', descEn: 'Custom · Type model name' }
+  { id: '__custom__', name: '__custom__', badge: 'custom', descZh: '在下方输入模型名称', descEn: 'Type a model name below' }
 ];
 
 const GEMINI_MODELS = [
   { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite（推荐·免费层）' },
   { id: 'gemini-3-flash', name: 'Gemini 3 Flash（速度快）' },
   { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash（高质量）' },
-  { id: '__custom__', name: 'Custom (manual input) 自定义模型' }
+  { id: '__custom__', name: '__custom__' }  // sentinel: 走 i18n key 'model_custom_option'
 ];
 
 const YOUDAO_LLM_MODELS = [
@@ -509,13 +509,13 @@ const YOUDAO_LLM_MODELS = [
   // '__custom__' 是哨兵位，给用户输入其它 handleOption 留位（如官方未来新增选项）。
   { id: '3', group: '有道子曰', name: '子曰 Lite (1.5B)', descZh: '免费 · 推荐' },
   { id: '0', group: '有道子曰', name: '子曰 Pro (14B)', descZh: '高质量 · 付费' },
-  { id: '__custom__', group: '自定义', name: 'Custom (manual input) 自定义', descZh: '手动填 handleOption' }
+  { id: '__custom__', group: '__custom__', name: '__custom__', descZh: '在下方输入 handleOption' }  // sentinel: group/name 都走 i18n
 ];
 
 const DEEPSEEK_MODELS = [
   { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', desc: '推荐 · 极速 · 便宜' },
   { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro', desc: '高质量 · 思考模式' },
-  { id: '__custom__', name: 'Custom (manual input) 自定义模型' }
+  { id: '__custom__', name: '__custom__' }  // sentinel: 走 i18n key 'model_custom_option'
 ];
 
 function populateDeepSeekModelSelect(selectId) {
@@ -1171,6 +1171,16 @@ function getSiliconFlowModelMeta(value) {
   return SILICONFLOW_MODELS.find(model => model.id === value) || SILICONFLOW_MODELS[0];
 }
 
+/**
+ * 模型显示名获取器：model.name 为 sentinel '__custom__' 时走 i18n key 'model_custom_option'；
+ * 否则原样返回（模型 id 都是英文，保留不做翻译）。
+ */
+function getModelDisplayName(model) {
+  if (!model) return '';
+  if (model.name === '__custom__') return getMessage('model_custom_option') || 'Custom';
+  return model.name;
+}
+
 function getSiliconFlowModelDescription(model) {
   const lang = document.getElementById('popup-ui-language')?.value || 'auto';
   if (lang === 'en') return model.descEn || model.descZh || '';
@@ -1178,6 +1188,8 @@ function getSiliconFlowModelDescription(model) {
 }
 
 function getModelBadgeText(type) {
+  // 'custom' 为中性紫色「手动 / Manual」badge；'free' 绿；'paid' 红
+  if (type === 'custom') return getMessage('custom_model_badge') || '手动';
   return getMessage(type === 'paid' ? 'paid' : 'free');
 }
 
@@ -1242,16 +1254,17 @@ function syncSiliconFlowModelSelect(value) {
     // 从 storage 同步拿自定义值
     chrome.storage.local.get(['lingoflow_settings'], (res) => {
       const v = (res.lingoflow_settings && res.lingoflow_settings.siliconflowModelCustom) || '';
-      label.textContent = v ? `🟣 Custom: ${v}` : '🟣 Custom';
-      desc.textContent = getMessage('model_custom_option') || 'Custom · Type model name';
-      badge.textContent = getModelBadgeText('paid');
-      badge.className = 'model-select-badge model-select-badge-paid';
+      const labelText = getMessage('model_custom_label') || 'Custom';
+      label.textContent = v ? `${labelText}: ${v}` : labelText;
+      desc.textContent = getMessage('model_custom_desc') || 'Type a model name below';
+      badge.textContent = getModelBadgeText('custom');
+      badge.className = 'model-select-badge model-select-badge-custom';
     });
   } else {
-    label.textContent = currentModel.name;
+    label.textContent = getModelDisplayName(currentModel);
     desc.textContent = getSiliconFlowModelDescription(currentModel);
     badge.textContent = getModelBadgeText(currentModel.badge);
-    badge.className = `model-select-badge model-select-badge-${currentModel.badge === 'paid' ? 'paid' : 'free'}`;
+    badge.className = `model-select-badge model-select-badge-${currentModel.badge === 'paid' ? 'paid' : (currentModel.badge === 'custom' ? 'custom' : 'free')}`;
   }
   menu.textContent = '';
 
@@ -1284,10 +1297,10 @@ function syncSiliconFlowModelSelect(value) {
     top.className = 'model-select-title-row';
 
     const title = document.createElement('strong');
-    title.textContent = model.name;
+    title.textContent = getModelDisplayName(model);
 
     const optionBadge = document.createElement('span');
-    optionBadge.className = `model-select-badge model-select-badge-${model.badge === 'paid' ? 'paid' : 'free'}`;
+    optionBadge.className = `model-select-badge model-select-badge-${model.badge === 'paid' ? 'paid' : (model.badge === 'custom' ? 'custom' : 'free')}`;
     optionBadge.textContent = getModelBadgeText(model.badge);
 
     const optionDesc = document.createElement('small');
@@ -1410,16 +1423,17 @@ function syncBailianModelSelect(value) {
   if (currentValue === '__custom__') {
     chrome.storage.local.get(['lingoflow_settings'], (res) => {
       const v = (res.lingoflow_settings && res.lingoflow_settings.bailianModelCustom) || '';
-      label.textContent = v ? `🟣 Custom: ${v}` : '🟣 Custom';
-      desc.textContent = getMessage('model_custom_option') || 'Custom · Type model name';
-      badge.textContent = getModelBadgeText('paid');
-      badge.className = 'model-select-badge model-select-badge-paid';
+      const labelText = getMessage('model_custom_label') || 'Custom';
+      label.textContent = v ? `${labelText}: ${v}` : labelText;
+      desc.textContent = getMessage('model_custom_desc') || 'Type a model name below';
+      badge.textContent = getModelBadgeText('custom');
+      badge.className = 'model-select-badge model-select-badge-custom';
     });
   } else {
-    label.textContent = currentModel.name;
+    label.textContent = getModelDisplayName(currentModel);
     desc.textContent = getBailianModelDescription(currentModel);
     badge.textContent = getModelBadgeText(currentModel.badge);
-    badge.className = `model-select-badge model-select-badge-${currentModel.badge === 'paid' ? 'paid' : 'free'}`;
+    badge.className = `model-select-badge model-select-badge-${currentModel.badge === 'paid' ? 'paid' : (currentModel.badge === 'custom' ? 'custom' : 'free')}`;
   }
   menu.textContent = '';
 
@@ -1451,10 +1465,10 @@ function syncBailianModelSelect(value) {
     top.className = 'model-select-title-row';
 
     const title = document.createElement('strong');
-    title.textContent = model.name;
+    title.textContent = getModelDisplayName(model);
 
     const optionBadge = document.createElement('span');
-    optionBadge.className = `model-select-badge model-select-badge-${model.badge === 'paid' ? 'paid' : 'free'}`;
+    optionBadge.className = `model-select-badge model-select-badge-${model.badge === 'paid' ? 'paid' : (model.badge === 'custom' ? 'custom' : 'free')}`;
     optionBadge.textContent = getModelBadgeText(model.badge);
 
     const optionDesc = document.createElement('small');
