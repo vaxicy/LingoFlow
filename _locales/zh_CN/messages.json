@@ -1050,5 +1050,13 @@
   "guide_note": {
     "message": "💡 <strong>提示：</strong>MyMemory 和 Google Translate 无需 API Key，直接在设置中选择即可使用，跳过上述步骤。",
     "description": "接入教程底部提示"
+  },
+  "model_custom_option": {
+    "message": "🟣 Custom (手动输入模型)",
+    "description": "模型下拉最后一项：选自己输入模型名"
+  },
+  "model_custom_input_prompt": {
+    "message": "请输入模型名称（model id）：",
+    "description": "popup 弹窗 prompt：自定义模型输入提示"
   }
 }

@@ -348,12 +348,15 @@ function openSettingsPanel() {
     panelState.savedSettings = cloneSettings(settings);
     applyPopupSettings(panelState.savedSettings);
     setSettingsDirty(false);
+    // 同步缓存自定义模型值，给 prompt 输入前的 getCustomModelFromUI 用
+    refreshCustomModelCache();
   });
 }
 
 // SiliconFlow models list (must match background.js)
+// Sources: SiliconFlow 官方模型中心当前在列 + 用户截图确认。
+// 默认仅 4 个（默认推荐 = Hunyuan-MT-7B 翻译专精），末尾 '__custom__' 为自定义占位。
 const SILICONFLOW_MODELS = [
-  // 免费模型
   {
     id: 'tencent/Hunyuan-MT-7B',
     name: 'Hunyuan-MT-7B',
@@ -361,64 +364,62 @@ const SILICONFLOW_MODELS = [
     descZh: '翻译专用 · 默认推荐',
     descEn: 'Translation · Default'
   },
-  // 付费模型 - DeepSeek
+  {
+    id: 'Pro/MiniMaxAI/MiniMax-M2.5',
+    name: 'MiniMax-M2.5',
+    badge: 'paid',
+    descZh: 'MiniMax · 对话最新',
+    descEn: 'MiniMax · Latest chat'
+  },
   {
     id: 'deepseek-ai/DeepSeek-V4-Flash',
     name: 'DeepSeek-V4-Flash',
     badge: 'paid',
-    descZh: '极速 · 高性价比',
-    descEn: 'Fast · Cost-effective'
-  },
-  {
-    id: 'deepseek-ai/DeepSeek-V3.2',
-    name: 'DeepSeek-V3.2',
-    badge: 'paid',
-    descZh: '最新 · 高性能',
-    descEn: 'Latest · High performance'
+    descZh: 'DeepSeek V4 Flash · 便宜',
+    descEn: 'DeepSeek V4 Flash · Fast'
   },
   {
     id: 'deepseek-ai/DeepSeek-V3',
     name: 'DeepSeek-V3',
     badge: 'paid',
-    descZh: '稳定 · 高性价比',
-    descEn: 'Stable · Cost-effective'
+    descZh: 'DeepSeek V3 · 旗舰对话',
+    descEn: 'DeepSeek V3 · Flagship chat'
   },
-  // 付费模型 - MiniMax
   {
-    id: 'MiniMaxAI/MiniMax-M2.5',
-    name: 'MiniMax-M2.5',
+    id: '__custom__',
+    name: 'Custom (manual input)',
     badge: 'paid',
-    descZh: 'MiniMax · 长文本',
-    descEn: 'MiniMax · Long context'
+    descZh: '自定义 · 手动输入模型名',
+    descEn: 'Custom · Type model name'
   }
 ];
 
 const BAILIAN_MODELS = [
   { id: 'qwen3.7-plus', name: 'Qwen3.7 Plus', badge: 'free', descZh: '通用 · 免费额度', descEn: 'General · Free quota' },
-  { id: 'qwen-max-latest', name: 'Qwen Max', badge: 'free', descZh: '最高质量', descEn: 'Highest quality' },
-  { id: 'qwen-turbo', name: 'Qwen Turbo', badge: 'free', descZh: '极速', descEn: 'Fastest' },
-  { id: 'qwen-plus', name: 'Qwen Plus', badge: 'free', descZh: '均衡', descEn: 'Balanced' }
+  { id: 'qwen-mt-flash', name: 'Qwen-MT-Flash', badge: 'free', descZh: '翻译专用 · 推荐', descEn: 'Translation · Recommended' },
+  { id: 'qwen-mt-plus', name: 'Qwen-MT-Plus', badge: 'paid', descZh: '翻译最高质量', descEn: 'Highest translation quality' },
+  { id: '__custom__', name: 'Custom (manual input)', badge: 'paid', descZh: '自定义 · 手动输入模型名', descEn: 'Custom · Type model name' }
 ];
 
 const GEMINI_MODELS = [
-  { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite（推荐·500次/天）' },
-  { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash（备用）' },
-  { id: 'gemini-3-flash', name: 'Gemini 3 Flash（备用）' },
-  { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite（低成本）' },
-  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash（质量备用）' }
+  { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash Lite（推荐·免费层）' },
+  { id: 'gemini-3-flash', name: 'Gemini 3 Flash（速度快）' },
+  { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash（高质量）' },
+  { id: '__custom__', name: 'Custom (manual input) 自定义模型' }
 ];
 
 const YOUDAO_LLM_MODELS = [
-  // 有道大模型翻译 API (llm-trans) 仅支持以下 handleOption 值：
-  // '0' = 子曰 Pro (14B) — 高质量，需付费
-  // '3' = 子曰 Lite (1.5B) — 免费轻量，推荐
+  // 有道大模型翻译 API (llm-trans) 官方仅支持以下 handleOption 值（'0' 子曰 Pro / '3' 子曰 Lite）。
+  // '__custom__' 是哨兵位，给用户输入其它 handleOption 留位（如官方未来新增选项）。
   { id: '3', group: '有道子曰', name: '子曰 Lite (1.5B)', descZh: '免费 · 推荐' },
-  { id: '0', group: '有道子曰', name: '子曰 Pro (14B)', descZh: '高质量 · 付费' }
+  { id: '0', group: '有道子曰', name: '子曰 Pro (14B)', descZh: '高质量 · 付费' },
+  { id: '__custom__', group: '自定义', name: 'Custom (manual input) 自定义', descZh: '手动填 handleOption' }
 ];
 
 const DEEPSEEK_MODELS = [
   { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', desc: '推荐 · 极速 · 便宜' },
-  { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro', desc: '高质量 · 思考模式' }
+  { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro', desc: '高质量 · 思考模式' },
+  { id: '__custom__', name: 'Custom (manual input) 自定义模型' }
 ];
 
 function populateDeepSeekModelSelect(selectId) {
@@ -465,6 +466,28 @@ function initSettingsPanel() {
     const control = document.getElementById(id);
     if (!control) return;
     control.addEventListener('change', () => {
+      // Native <select> 的 model select 选到 '__custom__' 哨兵时弹 prompt 输入
+      const customSelectMap = {
+        'popup-gemini-model': 'geminiModelCustom',
+        'popup-deepseek-model': 'deepseekModelCustom',
+        'popup-youdao-llm-model': 'youdaoLLMModelCustom'
+      };
+      if (customSelectMap[id] && control.value === '__custom__') {
+        const prevValue = control.dataset.__prevCustom || control.value;
+        const storageKey = customSelectMap[id];
+        promptAndSaveCustomModel(
+          storageKey,
+          () => prevValue,
+          (customVal) => {
+            // 用户输入完成后，更新 select label（如果是 this same select）
+            control.dataset.__lastCustom = customVal;
+          },
+          () => {
+            // 用户取消 → 回退到上一个非 __custom__ 值
+            control.value = prevValue === '__custom__' ? getDefaultModelForSelect(id) : prevValue;
+          }
+        );
+      }
       if (id === 'popup-translation-engine') {
         const isSF = control.value === 'siliconflow';
         const isMS = control.value === 'microsoft';
@@ -734,16 +757,19 @@ function scheduleSettingsAutoSave() {
 }
 
 const ENGINE_SELECT_META = {
-  google: { label: 'Google 翻译', description: '免费 · 无需 Key' },
-  microsoft: { label: 'Microsoft Translator', description: '稳定专业' },
-  siliconflow: { label: '硅基流动 AI', description: 'AI 翻译' },
-  gemini: { label: 'Gemini AI', description: '便宜快速' },
-  mymemory: { label: 'MyMemory（免费）', description: '免费 · 无需 Key' },
-  youdao: { label: '有道翻译', description: '国内快速' },
-  youdaollm: { label: '有道大模型', description: 'AI 翻译' },
-  baidu: { label: '百度翻译', description: '国内稳定' },
-  baidullm: { label: '百度大模型', description: 'AI 翻译 · 高质量' },
-  translatejs: { label: 'translate.js', description: '免费 · 无需 Key' }
+  google:      { label: 'Google 翻译',          description: '免费 · 无需 Key' },
+  translatejs: { label: 'translate.js',         description: '免费 · 无需 Key' },
+  mymemory:    { label: 'MyMemory（免费）',      description: '免费 · 无需 Key' },
+  microsoft:   { label: 'Microsoft Translator', description: '需 Azure Key · 企业级' },
+  siliconflow: { label: '硅基流动 AI',           description: '需 Key · 有免费模型' },
+  gemini:      { label: 'Gemini AI',            description: '需 Key · 有免费层' },
+  bailian:     { label: '阿里百炼（通义千问）',   description: '需 Key · 有免费额度' },
+  deepseek:    { label: 'DeepSeek AI',          description: '需 Key · 高质量低价' },
+  youdao:      { label: '有道翻译',              description: '需 Key · 国内稳定' },
+  youdaollm:   { label: '有道大模型',            description: '需 Key · AI 翻译' },
+  baidu:       { label: '百度翻译',              description: '需 Key · 国内稳定' },
+  baidullm:    { label: '百度大模型',            description: '需 Key · 高质量' },
+  custom:      { label: '自定义 (OpenAI 兼容)',   description: '需 Key · 填自有端点' }
 };
 
 const ENGINE_SELECT_API_REQUIRED = new Set([
@@ -846,6 +872,70 @@ function initEngineSelect() {
   });
 
   syncEngineSelect(nativeSelect.value || 'google');
+}
+
+// 同步读 chrome.storage 的自定义模型缓存（用 chrome.storage.local.get 是异步的，
+// 但 chrome.storage.session 没有，所以我们要么在 popup 打开时把 storage 拍平成同步 cache）。
+function getCustomModelFromUI(key) {
+  if (typeof window.__customModelCache !== 'object') return '';
+  return window.__customModelCache[key] || '';
+}
+
+function refreshCustomModelCache(cb) {
+  chrome.storage.local.get(['lingoflow_settings'], (res) => {
+    const s = (res && res.lingoflow_settings) || {};
+    window.__customModelCache = {
+      siliconflow: s.siliconflowModelCustom || '',
+      bailian: s.bailianModelCustom || '',
+      gemini: s.geminiModelCustom || '',
+      deepseek: s.deepseekModelCustom || '',
+      youdaollm: s.youdaoLLMModelCustom || ''
+    };
+    if (typeof cb === 'function') cb();
+  });
+}
+
+// 弹出 prompt 让用户输入自定义模型名，写回 chrome.storage.local，
+// 供 background.js 的 resolveModel(provider, selected, custom) 读取。
+function promptAndSaveCustomModel(storageKey, getFallback, onSaved, onCancelled) {
+  const STORAGE = { lingoflow_settings: true };
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const settings = result.lingoflow_settings || {};
+    const prev = (settings[storageKey] || '').trim();
+    const fallback = typeof getFallback === 'function' ? getFallback() : '';
+    const initial = prev || fallback || '';
+    const msg = getMessage('model_custom_input_prompt') || 'Please enter the model id:';
+    const userInput = window.prompt(msg, initial);
+    if (userInput === null) {
+      if (typeof onCancelled === 'function') onCancelled();
+      return;
+    }
+    const trimmed = String(userInput).trim();
+    if (!trimmed) {
+      if (typeof onCancelled === 'function') onCancelled();
+      return;
+    }
+    const updated = Object.assign({}, settings, { [storageKey]: trimmed });
+    chrome.storage.local.set({ lingoflow_settings: updated }, () => {
+      // 同步更新本地 cache，确保 getPopupSettingsFromUI 立即拿到
+      refreshCustomModelCache(() => {
+        if (typeof onSaved === 'function') onSaved(trimmed);
+        // 同步 sync Trigger label 立刻生效
+        if (storageKey === 'siliconflowModelCustom') syncSiliconFlowModelSelect('__custom__');
+        if (storageKey === 'bailianModelCustom') syncBailianModelSelect('__custom__');
+        markSettingsChanged();
+      });
+    });
+  });
+}
+
+function getDefaultModelForSelect(selectId) {
+  const map = {
+    'popup-gemini-model': 'gemini-3.1-flash-lite',
+    'popup-deepseek-model': 'deepseek-v4-flash',
+    'popup-youdao-llm-model': '3'
+  };
+  return map[selectId] || '';
 }
 
 function setEngineSelectOpen(open) {
@@ -1117,10 +1207,21 @@ function syncSiliconFlowModelSelect(value) {
 
   const currentValue = value || nativeSelect.value || 'tencent/Hunyuan-MT-7B';
   const currentModel = getSiliconFlowModelMeta(currentValue);
-  label.textContent = currentModel.name;
-  desc.textContent = getSiliconFlowModelDescription(currentModel);
-  badge.textContent = getModelBadgeText(currentModel.badge);
-  badge.className = `model-select-badge model-select-badge-${currentModel.badge === 'paid' ? 'paid' : 'free'}`;
+  if (currentValue === '__custom__') {
+    // 从 storage 同步拿自定义值
+    chrome.storage.local.get(['lingoflow_settings'], (res) => {
+      const v = (res.lingoflow_settings && res.lingoflow_settings.siliconflowModelCustom) || '';
+      label.textContent = v ? `🟣 Custom: ${v}` : '🟣 Custom';
+      desc.textContent = getMessage('model_custom_option') || 'Custom · Type model name';
+      badge.textContent = getModelBadgeText('paid');
+      badge.className = 'model-select-badge model-select-badge-paid';
+    });
+  } else {
+    label.textContent = currentModel.name;
+    desc.textContent = getSiliconFlowModelDescription(currentModel);
+    badge.textContent = getModelBadgeText(currentModel.badge);
+    badge.className = `model-select-badge model-select-badge-${currentModel.badge === 'paid' ? 'paid' : 'free'}`;
+  }
   menu.textContent = '';
 
   let lastBadgeType = null;
@@ -1178,8 +1279,16 @@ function syncSiliconFlowModelSelect(value) {
     option.append(text, check);
 
     option.addEventListener('click', () => {
-      nativeSelect.value = model.id;
-      nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      if (model.id === '__custom__') {
+        const storageKey = 'siliconflowModelCustom';
+        promptAndSaveCustomModel(storageKey, () => model.id, () => {
+          nativeSelect.value = '__custom__';
+          nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      } else {
+        nativeSelect.value = model.id;
+        nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      }
       setSiliconFlowModelSelectOpen(false);
     });
 
@@ -1264,10 +1373,20 @@ function syncBailianModelSelect(value) {
 
   const currentValue = value || nativeSelect.value || 'qwen3.7-plus';
   const currentModel = getBailianModelMeta(currentValue);
-  label.textContent = currentModel.name;
-  desc.textContent = getBailianModelDescription(currentModel);
-  badge.textContent = getModelBadgeText(currentModel.badge);
-  badge.className = `model-select-badge model-select-badge-${currentModel.badge === 'paid' ? 'paid' : 'free'}`;
+  if (currentValue === '__custom__') {
+    chrome.storage.local.get(['lingoflow_settings'], (res) => {
+      const v = (res.lingoflow_settings && res.lingoflow_settings.bailianModelCustom) || '';
+      label.textContent = v ? `🟣 Custom: ${v}` : '🟣 Custom';
+      desc.textContent = getMessage('model_custom_option') || 'Custom · Type model name';
+      badge.textContent = getModelBadgeText('paid');
+      badge.className = 'model-select-badge model-select-badge-paid';
+    });
+  } else {
+    label.textContent = currentModel.name;
+    desc.textContent = getBailianModelDescription(currentModel);
+    badge.textContent = getModelBadgeText(currentModel.badge);
+    badge.className = `model-select-badge model-select-badge-${currentModel.badge === 'paid' ? 'paid' : 'free'}`;
+  }
   menu.textContent = '';
 
   let lastBadgeType = null;
@@ -1324,8 +1443,16 @@ function syncBailianModelSelect(value) {
     option.append(text, check);
 
     option.addEventListener('click', () => {
-      nativeSelect.value = model.id;
-      nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      if (model.id === '__custom__') {
+        const storageKey = 'bailianModelCustom';
+        promptAndSaveCustomModel(storageKey, () => model.id, () => {
+          nativeSelect.value = '__custom__';
+          nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+      } else {
+        nativeSelect.value = model.id;
+        nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+      }
       setBailianModelSelectOpen(false);
     });
 
@@ -1569,14 +1696,18 @@ function getPopupSettingsFromUI() {
     translationEngine: document.getElementById('popup-translation-engine')?.value || 'google',
     siliconflowApiKey: document.getElementById('popup-siliconflow-key')?.value || '',
     siliconflowModel: document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B',
+    siliconflowModelCustom: getCustomModelFromUI('siliconflowModelCustom') || (window.__customModelCache && window.__customModelCache.siliconflow) || '',
     bailianApiKey: document.getElementById('popup-bailian-key')?.value || '',
     bailianApiHost: document.getElementById('popup-bailian-host')?.value || '',
     bailianModel: document.getElementById('popup-bailian-model')?.value || 'qwen3.7-plus',
+    bailianModelCustom: getCustomModelFromUI('bailianModelCustom') || (window.__customModelCache && window.__customModelCache.bailian) || '',
     microsoftApiKey: document.getElementById('popup-microsoft-key')?.value || '',
     geminiApiKey: document.getElementById('popup-gemini-key')?.value || '',
     geminiModel: document.getElementById('popup-gemini-model')?.value || 'gemini-3.1-flash-lite',
+    geminiModelCustom: getCustomModelFromUI('geminiModelCustom') || (window.__customModelCache && window.__customModelCache.gemini) || '',
     deepseekApiKey: document.getElementById('popup-deepseek-key')?.value || '',
     deepseekModel: document.getElementById('popup-deepseek-model')?.value || 'deepseek-v4-flash',
+    deepseekModelCustom: getCustomModelFromUI('deepseekModelCustom') || (window.__customModelCache && window.__customModelCache.deepseek) || '',
     baiduAppId: document.getElementById('popup-baidu-app-id')?.value || '',
     baiduSecretKey: document.getElementById('popup-baidu-secret-key')?.value || '',
     baiduLLMApiKey: document.getElementById('popup-baidullm-ak')?.value || '',
@@ -1586,6 +1717,7 @@ function getPopupSettingsFromUI() {
     youdaoAppKey: document.getElementById('popup-youdao-app-key')?.value || '',
     youdaoAppSecret: document.getElementById('popup-youdao-app-secret')?.value || '',
     youdaoLLMModel: document.getElementById('popup-youdao-llm-model')?.value || '3',
+    youdaoLLMModelCustom: getCustomModelFromUI('youdaoLLMModelCustom') || (window.__customModelCache && window.__customModelCache.youdaollm) || '',
     targetLanguage: document.getElementById('popup-translate-to')?.value || 'zh',
     uiLanguage: document.getElementById('popup-ui-language')?.value || 'auto',
     theme: document.querySelector('[data-popup-theme].active')?.getAttribute('data-popup-theme') || 'light',
@@ -1703,20 +1835,25 @@ function getDefaultSettings(overrides = {}) {
     translationEngine: 'google',
     siliconflowApiKey: '',
     siliconflowModel: 'tencent/Hunyuan-MT-7B',
+    siliconflowModelCustom: '',
     bailianApiKey: '',
     bailianApiHost: 'https://ws-qs3nf4dw21t7cnw9.cn-beijing.maas.aliyuncs.com',
     bailianModel: 'qwen3.7-plus',
+    bailianModelCustom: '',
     customApiKey: '',
     customApiHost: 'https://api.openai.com',
     customModel: 'gpt-4o-mini',
     microsoftApiKey: '',
     geminiApiKey: '',
     geminiModel: 'gemini-3.1-flash-lite',
+    geminiModelCustom: '',
     deepseekApiKey: '',
     deepseekModel: 'deepseek-v4-flash',
+    deepseekModelCustom: '',
     youdaoAppKey: '',
     youdaoAppSecret: '',
     youdaoLLMModel: '3',
+    youdaoLLMModelCustom: '',
     baiduAppId: '',
     baiduSecretKey: '',
     baiduLLMApiKey: '',
@@ -1761,6 +1898,16 @@ function prefillHiddenInputs(settings) {
     { id: 'popup-youdao-app-secret', key: 'youdaoAppSecret' },
     { id: 'popup-youdao-llm-model', key: 'youdaoLLMModel' }
   ];
+  // 模型自定义字段没有 DOM 元素（storage-only），同步到缓存供 getPopupSettingsFromUI 取
+  if (settings && typeof window === 'object') {
+    window.__customModelCache = {
+      siliconflow: settings.siliconflowModelCustom || '',
+      bailian: settings.bailianModelCustom || '',
+      gemini: settings.geminiModelCustom || '',
+      deepseek: settings.deepseekModelCustom || '',
+      youdaollm: settings.youdaoLLMModelCustom || ''
+    };
+  }
   fields.forEach(({ id, key }) => {
     const el = document.getElementById(id);
     if (el && settings[key] !== undefined) {

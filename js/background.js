@@ -52,19 +52,24 @@ chrome.runtime.onInstalled.addListener(() => {
           translationEngine: 'google',
           siliconflowApiKey: '',
           siliconflowModel: 'tencent/Hunyuan-MT-7B',
+          siliconflowModelCustom: '',
           bailianApiKey: '',
           bailianModel: 'qwen3.7-plus',
+          bailianModelCustom: '',
           customApiKey: '',
           customApiHost: 'https://api.openai.com',
           customModel: 'gpt-4o-mini',
           microsoftApiKey: '',
           geminiApiKey: '',
           geminiModel: 'gemini-3.1-flash-lite',
+          geminiModelCustom: '',
           youdaoAppKey: '',
           youdaoAppSecret: '',
           deepseekApiKey: '',
           deepseekModel: 'deepseek-v4-flash',
+          deepseekModelCustom: '',
           youdaoLLMModel: '3',
+          youdaoLLMModelCustom: '',
           baiduLLMApiKey: '',
           targetLanguage: 'zh',
           uiLanguage: 'auto',
@@ -573,20 +578,25 @@ function getDefaultSettings(overrides = {}) {
     translationEngine: 'google',
     siliconflowApiKey: '',
     siliconflowModel: 'tencent/Hunyuan-MT-7B',
+    siliconflowModelCustom: '',
     bailianApiKey: '',
     bailianApiHost: 'https://ws-qs3nf4dw21t7cnw9.cn-beijing.maas.aliyuncs.com',
     bailianModel: 'qwen3.7-plus',
+    bailianModelCustom: '',
     customApiKey: '',
     customApiHost: 'https://api.openai.com',
     customModel: 'gpt-4o-mini',
     microsoftApiKey: '',
     geminiApiKey: '',
     geminiModel: 'gemini-3.1-flash-lite',
+    geminiModelCustom: '',
     deepseekApiKey: '',
     deepseekModel: 'deepseek-v4-flash',
+    deepseekModelCustom: '',
     youdaoAppKey: '',
     youdaoAppSecret: '',
     youdaoLLMModel: '3',
+    youdaoLLMModelCustom: '',
     baiduAppId: '',
     baiduSecretKey: '',
     baiduLLMApiKey: '',
@@ -607,6 +617,26 @@ function getDefaultSettings(overrides = {}) {
 // Utility functions
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+/**
+ * Resolve model selection sentinel ('__custom__') to actual model name.
+ * provider 形参: 'siliconflow' | 'bailian' | 'gemini' | 'deepseek' | 'youdaollm'
+ * 返回: 选择 id 字符串（已替换为用户输入的自定义模型名），或输入 null → 返回 null 表示未配置。
+ */
+function resolveModel(provider, selected, custom) {
+  const fallback = {
+    siliconflow: 'tencent/Hunyuan-MT-7B',
+    bailian: 'qwen3.7-plus',
+    gemini: 'gemini-3.1-flash-lite',
+    deepseek: 'deepseek-v4-flash',
+    youdaollm: '3'
+  }[provider] || null;
+  const chosen = (selected || '').trim();
+  const userCustom = (custom || '').trim();
+  if (chosen === '__custom__') return userCustom || fallback;
+  if (!chosen) return fallback;
+  return chosen;
 }
 
 // Translation dispatcher — routes to the selected engine
@@ -934,19 +964,18 @@ function translateOneForBatch(text, targetLang, engine) {
 // SiliconFlow models - auto fallback in order
 // Priority: verified working models first, then untested ones as backup
 const SILICONFLOW_FALLBACK_MODELS = [
-  'tencent/Hunyuan-MT-7B',          // ✅ Verified working - dedicated MT model, fast & reliable
-  'MiniMaxAI/MiniMax-M2.5',
+  'tencent/Hunyuan-MT-7B',          // ✅ Verified working - dedicated MT model, fast & reliable (default)
+  'Pro/MiniMaxAI/MiniMax-M2.5',     // MiniMax latest chat
   'deepseek-ai/DeepSeek-V4-Flash',   // ✅ Fast, cheap, good quality
-  'deepseek-ai/DeepSeek-V3.2',
-  'deepseek-ai/DeepSeek-V3'
+  'deepseek-ai/DeepSeek-V3'          // Flagship DeepSeek chat
 ];
 
 const SILICONFLOW_MODEL_META = {
-  'tencent/Hunyuan-MT-7B':        { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
-  'MiniMaxAI/MiniMax-M2.5':       { pricing: 'paid', maxItems: 70, maxChars: 24000, chunkDelay: 60 },
+  'tencent/Hunyuan-MT-7B':         { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
+  'Pro/MiniMaxAI/MiniMax-M2.5':    { pricing: 'paid', maxItems: 70, maxChars: 24000, chunkDelay: 60 },
   'deepseek-ai/DeepSeek-V4-Flash': { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 40 },
-  'deepseek-ai/DeepSeek-V3.2':    { pricing: 'paid', maxItems: 70, maxChars: 22000, chunkDelay: 60 },
-  'deepseek-ai/DeepSeek-V3':       { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 }
+  'deepseek-ai/DeepSeek-V3':       { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 },
+  '__custom__':                     { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 }
 };
 
 const translationMemory = new Map();
@@ -1023,7 +1052,7 @@ function translateBatchWithSiliconFlow(texts, targetLang, sendResponse) {
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = result.lingoflow_settings || {};
     const apiKey = (settings.siliconflowApiKey || '').trim();
-    const selectedModel = settings.siliconflowModel || 'tencent/Hunyuan-MT-7B';
+    const selectedModel = resolveModel('siliconflow', settings.siliconflowModel, settings.siliconflowModelCustom);
 
     if (!apiKey) {
       console.warn('LingoFlow: SiliconFlow API key not set for batch, falling back to Google');
@@ -1328,7 +1357,7 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = result.lingoflow_settings || {};
     const apiKey = settings.siliconflowApiKey || '';
-    const selectedModel = settings.siliconflowModel || 'tencent/Hunyuan-MT-7B';
+    const selectedModel = resolveModel('siliconflow', settings.siliconflowModel, settings.siliconflowModelCustom);
     const cached = getCachedTranslation('siliconflow', selectedModel, targetLang, text);
 
     if (cached) {
@@ -1463,7 +1492,7 @@ function translateWithBailian(text, targetLang, sendResponse) {
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = result.lingoflow_settings || {};
     const apiKey = settings.bailianApiKey || '';
-    const selectedModel = settings.bailianModel || 'qwen3.7-plus';
+    const selectedModel = resolveModel('bailian', settings.bailianModel, settings.bailianModelCustom);
     const host = (settings.bailianApiHost || 'https://dashscope.aliyuncs.com').replace(/\/+$/, '');
     const cached = getCachedTranslation('bailian', selectedModel, targetLang, text);
     if (cached) { sendResponse({ success: true, translation: cached }); return; }
@@ -1733,7 +1762,7 @@ function translateWithGemini(text, targetLang, sendResponse) {
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = result.lingoflow_settings || {};
     const apiKey = (settings.geminiApiKey || '').trim();
-    const model = settings.geminiModel || 'gemini-3.1-flash-lite';
+    const model = resolveModel('gemini', settings.geminiModel, settings.geminiModelCustom);
 
     if (!apiKey) {
       console.warn('LingoFlow: Gemini API key not set, falling back to Google');
@@ -1822,7 +1851,7 @@ function translateBatchWithGemini(texts, targetLang, sendResponse) {
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = result.lingoflow_settings || {};
     const apiKey = (settings.geminiApiKey || '').trim();
-    const model = settings.geminiModel || 'gemini-3.1-flash-lite';
+    const model = resolveModel('gemini', settings.geminiModel, settings.geminiModelCustom);
 
     if (!apiKey) {
       console.warn('LingoFlow: Gemini API key not set for batch, falling back to Google');
@@ -2391,8 +2420,9 @@ function translateWithYoudaoLLM(text, targetLang, sendResponse) {
       // Only these two values are accepted by the llm-trans API. External models like deepseek-v4-flash
       // are NOT supported as handleOption values for this endpoint.
       const validOptions = { '0': '0', '3': '3', 'pro': '0', 'lite': '3' };
-      const handleOpt = (settings.youdaoLLMModel || '3').trim().toLowerCase();
-      const actualHandleOption = validOptions[handleOpt] || '3';
+      const handleOptRaw = resolveModel('youdaollm', settings.youdaoLLMModel, settings.youdaoLLMModelCustom);
+      const handleOpt = String(handleOptRaw || '3').trim().toLowerCase();
+      const actualHandleOption = validOptions[handleOpt] || handleOpt;
       params.append('handleOption', actualHandleOption);
       params.append('streamType', 'full');
 
@@ -2476,7 +2506,7 @@ function translateWithDeepSeek(text, targetLang) {
     chrome.storage.local.get(['lingoflow_settings'], (result) => {
       const settings = result.lingoflow_settings || {};
       const apiKey = (settings.deepseekApiKey || '').trim();
-      const model = (settings.deepseekModel || 'deepseek-v4-flash').trim();
+      const model = resolveModel('deepseek', settings.deepseekModel, settings.deepseekModelCustom);
 
       if (!apiKey) {
         reject(new Error('DeepSeek API key not set'));

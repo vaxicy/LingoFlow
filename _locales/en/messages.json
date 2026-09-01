@@ -1050,5 +1050,13 @@
   "guide_note": {
     "message": "💡 <strong>Tip:</strong> MyMemory and Google Translate need no API key — just select them in settings and skip the steps above.",
     "description": "Setup guide footer note"
+  },
+  "model_custom_option": {
+    "message": "🟣 Custom (type model manually)",
+    "description": "Last item in model select: type a model id yourself"
+  },
+  "model_custom_input_prompt": {
+    "message": "Please enter the model id:",
+    "description": "popup prompt for custom model input"
   }
 }
