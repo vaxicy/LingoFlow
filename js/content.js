@@ -2788,8 +2788,22 @@ function mapTargetLang(targetLang) {
 
       let node;
       while ((node = walker.nextNode())) {
-        const container = this.findTextContainer(node);
+        let container = this.findTextContainer(node);
         if (!container || container.dataset.lingoflowProcessed === 'true') continue;
+
+        // 容器内已含译文块（同容器其他兄弟元素先前已翻译）→ 不要整包跳过，
+        // 沿文本节点向上找"不含译文块"的最内层祖先作为新容器，只包裹剩余文本。
+        // （否则外层容器要么被整包吞块，要么被跳过留下漏翻文本）
+        if (container.querySelector('.lingoflow-block[data-lingoflow="true"]')) {
+          let cand = node.parentElement;
+          while (cand && cand !== container &&
+                 cand.querySelector('.lingoflow-block[data-lingoflow="true"]')) {
+            cand = cand.parentElement;
+          }
+          if (cand && cand !== container && !cand.closest('.lingoflow-ui')) {
+            container = cand;
+          }
+        }
         if (this.isNestedInDifferentContainer(node, container)) continue;
         // Skip UI chrome elements (nav, sidebar, header, toolbar, etc.)
         if (this.shouldSkipContainer(container)) continue;
