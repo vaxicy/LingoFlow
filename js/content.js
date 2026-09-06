@@ -1704,20 +1704,44 @@ function mapTargetLang(targetLang) {
       return stats.cjkCount >= 2 && stats.cjkRatio >= 0.3;
     },
 
-    // 页面翻译过滤：固定只翻译英文→中文
-    // （"翻译为"设置仅影响划词翻译，不影响页面翻译）
+    // 目标语言感知的"可译内容"判断（主内容区探测用）：
+    // 目标 = zh（默认）→ 与原 hasLatinText 行为完全一致（零回归）
+    // 目标 = en/es → 中文也算有效内容（支持中→英/西）
+    hasTranslatableText(text) {
+      if ((state.targetLanguage || 'zh') === 'zh') return this.hasLatinText(text);
+      return this.hasLatinText(text) || this.hasChineseText(text);
+    },
+
+    // 文本是否"已是目标语言"（翻译时应跳过）：
+    // 目标 = zh → 中文文本跳过（与旧版固定英→中行为一致）
+    // 目标 = en → 无西语特征字符的纯拉丁文本视为英文，跳过
+    // 目标 = es → 含西语特征字符的文本视为西语，跳过
+    isTargetLangText(text) {
+      const target = state.targetLanguage || 'zh';
+      if (target === 'zh') return isChineseText(text);
+      if (!this.hasLatinText(text) || this.hasChineseText(text)) return false;
+      if (target === 'es') {
+        const spanishChars = text.match(/[áéíóúüñ¿¡]/gi);
+        return !!(spanishChars && spanishChars.length >= 2);
+      }
+      return !/[áéíóúüñ¿¡]/i.test(text);
+    },
+
+    // 页面翻译过滤：跳过"已是目标语言"的文本
+    // （旧版固定只做英→中，中文站点选英文目标时会全部被拒 → "未找到可翻译的文本"）
     shouldTranslateText(text) {
       const normalized = this.normalizeText(text);
       if (normalized.length < 3) return false;
       if (normalized.length > 5000) return false;
       if (/^\d+([.,:/-]\d+)*$/.test(normalized)) return false;
-      if (!/[A-Za-z0-9]/.test(normalized.replace(/[^\p{L}\p{N}]/gu, ''))) return false;
+      if (!/\p{L}/u.test(normalized.replace(/[^\p{L}\p{N}]/gu, ''))) return false;
       if (isAllCapsShortLabel(normalized)) return false;
 
-      // 页面翻译固定英译中：只翻含英文的文本
-      if (isChineseText(normalized)) return false;
-      if (!/[A-Za-z]{2,}/.test(normalized)) return false;
-      if (hasMixedLatinAndChinese(normalized)) return false;
+      // 动态语言过滤：目标 = zh 时中文文本跳过（原行为）；目标 = en/es 时对应语言跳过
+      if (this.isTargetLangText(normalized)) return false;
+      if (!/\p{L}{2,}/u.test(normalized)) return false;
+      // 中英混合节点：目标 = zh 时跳过（原行为）；其他目标语言交给引擎整体处理
+      if ((state.targetLanguage || 'zh') === 'zh' && hasMixedLatinAndChinese(normalized)) return false;
       return true;
     },
 
@@ -1768,7 +1792,7 @@ function mapTargetLang(targetLang) {
       const text = this.getElementText(el);
 
       // Must have some Latin text to be considered content
-      if (text.length < 8 || !this.hasLatinText(text)) return false;
+      if (text.length < 8 || !this.hasTranslatableText(text)) return false;
 
       // TABLE elements and their parts are always data content
       if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
@@ -1802,7 +1826,7 @@ function mapTargetLang(targetLang) {
       // (typical for tree diagrams, org charts, flow charts)
       const textChildren = children.filter(c => {
         const ct = this.getElementText(c);
-        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+        return ct.length >= 2 && this.hasTranslatableText(ct) && c.children.length <= 6;
       });
       if (textChildren.length >= 3 && text.length >= 20) return true;
 
@@ -1840,7 +1864,7 @@ function mapTargetLang(targetLang) {
       const text = this.getElementText(el);
 
       // Must have some Latin text to be considered content
-      if (text.length < 8 || !this.hasLatinText(text)) return false;
+      if (text.length < 8 || !this.hasTranslatableText(text)) return false;
 
       // TABLE elements and their parts are always data content
       if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
@@ -1874,7 +1898,7 @@ function mapTargetLang(targetLang) {
       // (typical for tree diagrams, org charts, flow charts)
       const textChildren = children.filter(c => {
         const ct = this.getElementText(c);
-        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+        return ct.length >= 2 && this.hasTranslatableText(ct) && c.children.length <= 6;
       });
       if (textChildren.length >= 3 && text.length >= 20) return true;
 
@@ -1923,7 +1947,7 @@ function mapTargetLang(targetLang) {
       const text = this.getElementText(el);
 
       // Must have some Latin text to be considered content
-      if (text.length < 8 || !this.hasLatinText(text)) return false;
+      if (text.length < 8 || !this.hasTranslatableText(text)) return false;
 
       // TABLE elements and their parts are always data content
       if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
@@ -1957,7 +1981,7 @@ function mapTargetLang(targetLang) {
       // (typical for tree diagrams, org charts, flow charts)
       const textChildren = children.filter(c => {
         const ct = this.getElementText(c);
-        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+        return ct.length >= 2 && this.hasTranslatableText(ct) && c.children.length <= 6;
       });
       if (textChildren.length >= 3 && text.length >= 20) return true;
 
@@ -1973,7 +1997,7 @@ function mapTargetLang(targetLang) {
       const text = this.getElementText(el);
 
       // Must have some Latin text to be considered content
-      if (text.length < 8 || !this.hasLatinText(text)) return false;
+      if (text.length < 8 || !this.hasTranslatableText(text)) return false;
 
       // TABLE elements and their parts are always data content
       if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
@@ -2007,7 +2031,7 @@ function mapTargetLang(targetLang) {
       // (typical for tree diagrams, org charts, flow charts)
       const textChildren = children.filter(c => {
         const ct = this.getElementText(c);
-        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+        return ct.length >= 2 && this.hasTranslatableText(ct) && c.children.length <= 6;
       });
       if (textChildren.length >= 3 && text.length >= 20) return true;
 
@@ -2045,7 +2069,7 @@ function mapTargetLang(targetLang) {
       const text = this.getElementText(el);
 
       // Must have some Latin text to be considered content
-      if (text.length < 8 || !this.hasLatinText(text)) return false;
+      if (text.length < 8 || !this.hasTranslatableText(text)) return false;
 
       // TABLE elements and their parts are always data content
       if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
@@ -2079,7 +2103,7 @@ function mapTargetLang(targetLang) {
       // (typical for tree diagrams, org charts, flow charts)
       const textChildren = children.filter(c => {
         const ct = this.getElementText(c);
-        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+        return ct.length >= 2 && this.hasTranslatableText(ct) && c.children.length <= 6;
       });
       if (textChildren.length >= 3 && text.length >= 20) return true;
 
@@ -2150,7 +2174,7 @@ function mapTargetLang(targetLang) {
       const text = this.getElementText(el);
 
       // Must have some Latin text content (but can be short — cards are concise)
-      if (text.length < 10 || !this.hasLatinText(text)) return false;
+      if (text.length < 10 || !this.hasTranslatableText(text)) return false;
 
       // === TABLE fast-path: any table with Latin text is content ===
       if (tag === 'TABLE') return true;
@@ -2241,7 +2265,7 @@ function mapTargetLang(targetLang) {
       const headingTextMatch = this.getElementText(el).match(
         /^\s*\d+[\.\)]\s+[A-Z]/m
       );
-      if (headingTextMatch && text.length >= 15 && this.hasLatinText(text)) {
+      if (headingTextMatch && text.length >= 15 && this.hasTranslatableText(text)) {
         // Has a numbered heading + body text → it's a content section/card
         const childCount = el.children.length;
         if (childCount >= 1) return true;
@@ -2254,7 +2278,7 @@ function mapTargetLang(targetLang) {
         const strongOrBold = c.querySelector('strong, b, [style*="font-weight"]');
         if (!strongOrBold) return false;
         const ct = this.getElementText(c);
-        return ct.length >= 5 && this.hasLatinText(ct);
+        return ct.length >= 5 && this.hasTranslatableText(ct);
       });
       if (boldChildren.length >= 1 && text.length >= 30) return true;
 
@@ -2270,7 +2294,7 @@ function mapTargetLang(targetLang) {
       const text = this.getElementText(el);
 
       // Must have some Latin text to be considered content
-      if (text.length < 8 || !this.hasLatinText(text)) return false;
+      if (text.length < 8 || !this.hasTranslatableText(text)) return false;
 
       // TABLE elements and their parts are always data content
       if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
@@ -2304,7 +2328,7 @@ function mapTargetLang(targetLang) {
       // (typical for tree diagrams, org charts, flow charts)
       const textChildren = children.filter(c => {
         const ct = this.getElementText(c);
-        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+        return ct.length >= 2 && this.hasTranslatableText(ct) && c.children.length <= 6;
       });
       if (textChildren.length >= 3 && text.length >= 20) return true;
 
@@ -2340,7 +2364,7 @@ function mapTargetLang(targetLang) {
       // If it does, it's likely real content even if its class name matches
       // some UI patterns (e.g., "analytics-course" on a GA course page).
       const elText = this.getElementText(el);
-      const hasRealContent = elText.length > 35 && this.hasLatinText(elText);
+      const hasRealContent = elText.length > 35 && this.hasTranslatableText(elText);
 
       const uiPatterns = [
         // Navigation (high confidence)
@@ -2422,7 +2446,7 @@ function mapTargetLang(targetLang) {
       const text = this.getElementText(el);
 
       // Must have some Latin text to be considered content
-      if (text.length < 8 || !this.hasLatinText(text)) return false;
+      if (text.length < 8 || !this.hasTranslatableText(text)) return false;
 
       // TABLE elements and their parts are always data content
       if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
@@ -2456,7 +2480,7 @@ function mapTargetLang(targetLang) {
       // (typical for tree diagrams, org charts, flow charts)
       const textChildren = children.filter(c => {
         const ct = this.getElementText(c);
-        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+        return ct.length >= 2 && this.hasTranslatableText(ct) && c.children.length <= 6;
       });
       if (textChildren.length >= 3 && text.length >= 20) return true;
 
@@ -2482,7 +2506,7 @@ function mapTargetLang(targetLang) {
       // 0b. STRONG GUARD: Elements with substantial Latin text content are REAL CONTENT,
       //     not UI chrome. Skip ONLY for unambiguous structural chrome (NAV/HEADER/FOOTER).
       const containerText = this.getElementText(container);
-      if (containerText.length > 35 && this.hasLatinText(containerText)) {
+      if (containerText.length > 35 && this.hasTranslatableText(containerText)) {
         // Has real content → only skip if it's a pure structural chrome element
         if (!['NAV', 'ASIDE', 'HEADER', 'FOOTER'].includes(tag)) {
           const role = (container.getAttribute('role') || '').toLowerCase();
@@ -2511,7 +2535,7 @@ function mapTargetLang(targetLang) {
       // This prevents false positives like "content-panel" or "docs-header" on
       // elements that clearly contain substantial English text.
       const containerTextForCheck = this.getElementText(container);
-      const hasRealContainerContent = containerTextForCheck.length > 35 && this.hasLatinText(containerTextForCheck);
+      const hasRealContainerContent = containerTextForCheck.length > 35 && this.hasTranslatableText(containerTextForCheck);
 
       if (!hasRealContainerContent) {
         // HIGH-confidence patterns (almost always indicate UI chrome)
@@ -2601,7 +2625,7 @@ function mapTargetLang(targetLang) {
       const text = this.getElementText(el);
 
       // Must have some Latin text to be considered content
-      if (text.length < 8 || !this.hasLatinText(text)) return false;
+      if (text.length < 8 || !this.hasTranslatableText(text)) return false;
 
       // TABLE elements and their parts are always data content
       if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
@@ -2635,7 +2659,7 @@ function mapTargetLang(targetLang) {
       // (typical for tree diagrams, org charts, flow charts)
       const textChildren = children.filter(c => {
         const ct = this.getElementText(c);
-        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+        return ct.length >= 2 && this.hasTranslatableText(ct) && c.children.length <= 6;
       });
       if (textChildren.length >= 3 && text.length >= 20) return true;
 
@@ -2649,7 +2673,7 @@ function mapTargetLang(targetLang) {
       const hasContentChild = Array.from(element.children).some(child => {
         if (this.nestedBlockTags.has(child.tagName)) {
           const ct = this.getElementText(child);
-          return ct.length >= 5 && this.hasLatinText(ct);
+          return ct.length >= 5 && this.hasTranslatableText(ct);
         }
         return false;
       });
@@ -2707,7 +2731,7 @@ function mapTargetLang(targetLang) {
       const text = this.getElementText(el);
 
       // Must have some Latin text to be considered content
-      if (text.length < 8 || !this.hasLatinText(text)) return false;
+      if (text.length < 8 || !this.hasTranslatableText(text)) return false;
 
       // TABLE elements and their parts are always data content
       if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
@@ -2741,7 +2765,7 @@ function mapTargetLang(targetLang) {
       // (typical for tree diagrams, org charts, flow charts)
       const textChildren = children.filter(c => {
         const ct = this.getElementText(c);
-        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+        return ct.length >= 2 && this.hasTranslatableText(ct) && c.children.length <= 6;
       });
       if (textChildren.length >= 3 && text.length >= 20) return true;
 
@@ -2919,7 +2943,7 @@ function mapTargetLang(targetLang) {
     _hasSufficientContent(el) {
       if (!el) return false;
       const text = this.getElementText(el);
-      return text.length > 150 && this.hasLatinText(text);
+      return text.length > 150 && this.hasTranslatableText(text);
     },
 
     // Find the container with the largest amount of Latin text (likely the main article)
@@ -3454,7 +3478,7 @@ function mapTargetLang(targetLang) {
       const text = this.getElementText(el);
 
       // Must have some Latin text to be considered content
-      if (text.length < 8 || !this.hasLatinText(text)) return false;
+      if (text.length < 8 || !this.hasTranslatableText(text)) return false;
 
       // TABLE elements and their parts are always data content
       if (['TABLE', 'TBODY', 'THEAD', 'TR'].includes(tag)) return true;
@@ -3488,7 +3512,7 @@ function mapTargetLang(targetLang) {
       // (typical for tree diagrams, org charts, flow charts)
       const textChildren = children.filter(c => {
         const ct = this.getElementText(c);
-        return ct.length >= 2 && this.hasLatinText(ct) && c.children.length <= 6;
+        return ct.length >= 2 && this.hasTranslatableText(ct) && c.children.length <= 6;
       });
       if (textChildren.length >= 3 && text.length >= 20) return true;
 
