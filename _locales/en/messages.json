@@ -187,6 +187,34 @@
     "message": "Theme",
     "description": "Settings label"
   },
+  "translation_color": {
+    "message": "Translation Color",
+    "description": "Settings label: translation text color"
+  },
+  "color_follow": {
+    "message": "Follow Original",
+    "description": "Translation color option"
+  },
+  "color_red": {
+    "message": "Red",
+    "description": "Translation color option"
+  },
+  "color_blue": {
+    "message": "Blue",
+    "description": "Translation color option"
+  },
+  "color_green": {
+    "message": "Green",
+    "description": "Translation color option"
+  },
+  "color_orange": {
+    "message": "Orange",
+    "description": "Translation color option"
+  },
+  "color_purple": {
+    "message": "Purple",
+    "description": "Translation color option"
+  },
   "light": {
     "message": "Light",
     "description": "Theme option"

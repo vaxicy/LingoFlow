@@ -187,6 +187,34 @@
     "message": "主题",
     "description": "设置标签"
   },
+  "translation_color": {
+    "message": "译文颜色",
+    "description": "设置标签：译文文字颜色"
+  },
+  "color_follow": {
+    "message": "跟随原文",
+    "description": "译文颜色选项"
+  },
+  "color_red": {
+    "message": "红色",
+    "description": "译文颜色选项"
+  },
+  "color_blue": {
+    "message": "蓝色",
+    "description": "译文颜色选项"
+  },
+  "color_green": {
+    "message": "绿色",
+    "description": "译文颜色选项"
+  },
+  "color_orange": {
+    "message": "橙色",
+    "description": "译文颜色选项"
+  },
+  "color_purple": {
+    "message": "紫色",
+    "description": "译文颜色选项"
+  },
   "light": {
     "message": "浅色",
     "description": "主题选项"

@@ -1497,6 +1497,7 @@ function mapTargetLang(targetLang) {
             state.targetLanguage = s.targetLanguage || 'zh';
             state.existingBilingualStrategy = s.existingBilingualStrategy || 'skip';
             TranslationEngine.activeEngine = s.translationEngine || 'google';
+            applyTranslationColorStyle(s.translationColor || 'inherit');
             if (wasSelectionEnabled && !state.selectionTranslationEnabled) {
               UI.removeFloatingToolbar();
               UI.removeTranslationResult();
@@ -4038,6 +4039,27 @@ function mapTargetLang(targetLang) {
       console.warn('LingoFlow: Suppressed unhandled rejection:', msg);
     }
   });
+  // Translation color: inject/update a single <style> tag instead of touching
+  // rendered nodes — dynamic blocks pick it up automatically and mode
+  // switching logic is never involved.
+  let _translationColorStyleEl = null;
+  function applyTranslationColorStyle(color) {
+    try {
+      if (!color || color === 'inherit') {
+        if (_translationColorStyleEl) _translationColorStyleEl.remove();
+        _translationColorStyleEl = null;
+        return;
+      }
+      if (!_translationColorStyleEl || !_translationColorStyleEl.isConnected) {
+        _translationColorStyleEl = document.createElement('style');
+        _translationColorStyleEl.id = 'lingoflow-translation-color';
+        (document.head || document.documentElement).appendChild(_translationColorStyleEl);
+      }
+      _translationColorStyleEl.textContent =
+        '.lingoflow-translation, .lingoflow-translation-only { color: ' + color + ' !important; }';
+    } catch (_) {}
+  }
+
   // Initialize
   function init() {
     try {
@@ -4054,6 +4076,7 @@ function mapTargetLang(targetLang) {
           state.targetLanguage = result.lingoflow_settings.targetLanguage || 'zh';
           state.existingBilingualStrategy = result.lingoflow_settings.existingBilingualStrategy || 'skip';
           TranslationEngine.activeEngine = result.lingoflow_settings.translationEngine || 'google';
+          applyTranslationColorStyle(result.lingoflow_settings.translationColor || 'inherit');
         }
       });
 
@@ -4131,6 +4154,7 @@ function mapTargetLang(targetLang) {
           state.targetLanguage = settings.targetLanguage || 'zh';
           state.existingBilingualStrategy = settings.existingBilingualStrategy || 'skip';
           TranslationEngine.activeEngine = settings.translationEngine || 'google';
+          applyTranslationColorStyle(settings.translationColor || 'inherit');
 
           // 目标语言 / 翻译引擎变化 → 清空旧译文并用新设置自动重译
           // （用 oldValue/newValue 精确比较，改其它设置不会误触发）
