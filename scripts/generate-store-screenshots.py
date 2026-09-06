@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Generate English LingoFlow store screenshots (1280x800) in PIL."""
+import os
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps, ImageColor
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(os.environ.get("LINGOFLOW_ROOT", "."))
 OUT = ROOT / "store-assets" / "en" / "screenshots"
 OUT.mkdir(parents=True, exist_ok=True)
 ICON = ROOT / "icons" / "icon-128.png"
@@ -304,7 +305,7 @@ def screenshot_03_engines():
     y = draw_brand(draw, img, 74, 64)
     draw_text_block(draw, 74, y, "MULTIPLE ENGINES",
                     "Free, API & AI Models Clearly Labeled",
-                    "Choose the engine that fits your workflow: free built-in options, stable API services, or advanced AI models.",
+                    "Choose the engine that fits your workflow and pick a translation color to tell original and translated text apart.",
                     max_w=560)
     # settings panel
     x, y, w, h = 700, 190, 500, 460
@@ -314,24 +315,52 @@ def screenshot_03_engines():
     img = Image.alpha_composite(img.convert("RGBA"), overlay).convert("RGB")
     draw = ImageDraw.Draw(img)
     rounded_rect(draw, (x, y, x + w, y + h), COLORS["white"], outline="#e2e8f7", width=2, radius=28)
-    engines = [
-        ("Google Translate", "Free", "Fast and general-purpose for light web translation.", COLORS["green"]),
-        ("Microsoft Translator", "API", "Stable and professional for long-term reading.", COLORS["red"]),
-        ("Gemini AI", "API", "More natural, context-aware translations.", COLORS["red"]),
-        ("SiliconFlow AI", "API", "More model choices and custom endpoints.", COLORS["red"]),
+    rows = [
+        ("engine", "Google Translate", "Free", "Fast and general-purpose for light web translation.", COLORS["green"]),
+        ("engine", "Microsoft Translator", "API", "Stable and professional for long-term reading.", COLORS["red"]),
+        ("engine", "Gemini AI", "API", "More natural, context-aware translations.", COLORS["red"]),
+        ("color", "Translation Color", "Blue", "Pick a color to tell original and translated text apart at a glance.", None),
     ]
     cy = y + 24
-    for name, tag, desc, tag_color in engines:
-        draw.text((x + 28, cy), name, fill=COLORS["ink"], font=F["card_title"])
-        tw = draw.textlength(name, font=F["card_title"])
-        tag_x = x + 38 + int(tw)
-        tag_bg = "#d1fae5" if tag_color == COLORS["green"] else "#fee2e2"
-        draw.rounded_rectangle((tag_x, cy, tag_x + 60, cy + 24), radius=12, fill=tag_bg)
-        draw.text((tag_x + 30, cy + 2), tag, fill=tag_color, font=F["tiny"], anchor="ma")
-        cy += F["card_title"].size + 8
-        draw.text((x + 28, cy), desc, fill=COLORS["muted"], font=F["card_body"])
-        cy += F["card_body"].size + 26
-        draw.line([(x + 28, cy - 8), (x + w - 28, cy - 8)], fill="#e2e8f7", width=1)
+    for idx, (kind, *rest) in enumerate(rows):
+        if kind == "engine":
+            name, tag, desc, tag_color = rest
+            draw.text((x + 28, cy), name, fill=COLORS["ink"], font=F["card_title"])
+            tw = draw.textlength(name, font=F["card_title"])
+            tag_x = x + 38 + int(tw)
+            tag_bg = "#d1fae5" if tag_color == COLORS["green"] else "#fee2e2"
+            draw.rounded_rectangle((tag_x, cy, tag_x + 60, cy + 24), radius=12, fill=tag_bg)
+            draw.text((tag_x + 30, cy + 2), tag, fill=tag_color, font=F["tiny"], anchor="ma")
+            cy += F["card_title"].size + 8
+            draw.text((x + 28, cy), desc, fill=COLORS["muted"], font=F["card_body"])
+            cy += F["card_body"].size + 26
+        else:
+            name, select_text, desc, _ = rest
+            draw.text((x + 28, cy), name, fill=COLORS["ink"], font=F["card_title"])
+            sw = int(draw.textlength(select_text, font=F["small"]))
+            box_w = sw + 36
+            box_h = 30
+            sx = x + w - 28 - box_w
+            sy = cy - 1
+            draw.rounded_rectangle((sx, sy, sx + box_w, sy + box_h), radius=10, fill="#dbeafe", outline="#93c5fd", width=1)
+            draw.text((sx + box_w // 2, sy + box_h // 2 + 1), select_text, fill="#2563eb", font=F["small"], anchor="mm")
+            cy += F["card_title"].size + 10
+            # wrap desc to card width
+            max_dw = w - 56
+            line = ""
+            for word in desc.split():
+                test = (line + " " + word).strip()
+                if draw.textlength(test, font=F["card_body"]) <= max_dw:
+                    line = test
+                else:
+                    draw.text((x + 28, cy), line, fill=COLORS["muted"], font=F["card_body"])
+                    cy += F["card_body"].size + 6
+                    line = word
+            if line:
+                draw.text((x + 28, cy), line, fill=COLORS["muted"], font=F["card_body"])
+                cy += F["card_body"].size + 26
+        if idx < len(rows) - 1:
+            draw.line([(x + 28, cy - 8), (x + w - 28, cy - 8)], fill="#e2e8f7", width=1)
     img.save(OUT / "03-translation-engines.png")
 
 
