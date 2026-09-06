@@ -3585,6 +3585,19 @@ function mapTargetLang(targetLang) {
     },
 
     async translateAndRenderUnits(units, renderMode) {
+      // 嵌套单元过滤：若某单元容器包含同批其他单元的容器，丢弃外层单元（只译叶子）。
+      // 否则译文模式隐藏外层容器的 original div 时，内层已渲染的译文块会被一起藏掉，
+      // 表现为整页空白（双语模式因 original 可见而从未暴露此问题）。
+      if (units.length > 1) {
+        const containers = units.map(u => u.container);
+        units = units.filter((u, i) => {
+          for (let j = 0; j < containers.length; j++) {
+            if (j !== i && containers[i].contains(containers[j])) return false;
+          }
+          return true;
+        });
+      }
+
       const chunks = this.chunkUnits(units, 10);
       let chunkCursor = 0;
       let successCount = 0;
@@ -3649,6 +3662,13 @@ function mapTargetLang(targetLang) {
 
         // 普通单元：原有逻辑
         if (!container.isConnected || container.dataset.lingoflowProcessed === 'true') return;
+
+        // 容器内已含译文块（先前批次/动态增量渲染）→ 跳过外层，
+        // 避免包裹/隐藏外层时把内层译文块一起吞掉（译文模式空白页的跨批次形态）
+        if (container.querySelector('.lingoflow-block[data-lingoflow="true"]')) {
+          this.markProcessed(container);
+          return;
+        }
 
         this.markProcessed(container);
 
