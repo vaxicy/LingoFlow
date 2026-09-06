@@ -3325,16 +3325,21 @@ function mapTargetLang(targetLang) {
       if (!container || !container.parentNode) return false;
       if (translations.length === 0) return false;
 
-      // translation-only 模式下隐藏原文，只显示句级译文
+      // translation-only 模式：原容器移入 block 的隐藏 original div，只显示逐句译文
+      // （与 renderTranslationOnlyUnit 相同的 reparent 结构，避免原地隐藏导致空白页）
       if (renderMode === 'translation') {
         const range = document.createRange();
         range.selectNode(container);
         const marker = document.createComment('lingoflow-sentence-anchor');
         range.insertNode(marker);
 
-        const block = this.createTranslationOnlyBlock(
-          translations.join('\n')
-        );
+        const block = this.createBilingualBlock(translations.join('\n'), 'external');
+        const originalDiv = block.querySelector(':scope > .lingoflow-original');
+        if (originalDiv) {
+          originalDiv.setAttribute('data-lingoflow-hidden', 'true');
+          originalDiv.style.display = 'none';
+          originalDiv.appendChild(container);
+        }
         block.style.maxWidth = '100%';
         block.style.overflow = 'visible';
         this.copyLayoutMargins(container, block);
@@ -3345,7 +3350,6 @@ function mapTargetLang(targetLang) {
 
         marker.replaceWith(block);
         range.detach();
-        this.hideOriginalContainer(container);
         this.linkTranslationNode(container, block);
         return true;
       }
@@ -3528,20 +3532,25 @@ function mapTargetLang(targetLang) {
       // Skip UI chrome elements in translation-only mode too
       if (!container || !container.parentNode || this.shouldSkipContainer(container)) return false;
 
+      // 与双语 external 块相同的 reparent 结构：原容器移动进 block 内部的
+      // .lingoflow-original div 并将其隐藏。
+      // 不要用 container.hidden 原地隐藏 —— 那会破坏站点布局/嵌套单元，
+      // 且站点自身 JS 可能因 DOM 被改动而重渲染（曾导致整页空白）。
       const range = document.createRange();
       range.selectNode(container);
       const marker = document.createComment('lingoflow-translation-anchor');
       range.insertNode(marker);
 
-      const block = this.createTranslationOnlyBlock(translation);
-      // Constrain width to prevent overflow
-      block.style.maxWidth = '100%';
-      block.style.overflow = 'visible';
+      const block = this.createBilingualBlock(translation, 'external');
+      const originalDiv = block.querySelector(':scope > .lingoflow-original');
+      if (originalDiv) {
+        originalDiv.setAttribute('data-lingoflow-hidden', 'true');
+        originalDiv.style.display = 'none';
+        originalDiv.appendChild(container);
+      }
       this.copyLayoutMargins(container, block);
       marker.replaceWith(block);
       range.detach();
-
-      this.hideOriginalContainer(container);
       this.linkTranslationNode(container, block);
       return true;
     },
