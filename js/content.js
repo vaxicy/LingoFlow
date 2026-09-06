@@ -4087,6 +4087,35 @@ function mapTargetLang(targetLang) {
         // result box open so a slight scroll while reading doesn't clear it.
         UI.removeFloatingToolbar();
       }, { passive: true });
+      // 目标语言或翻译引擎变化时：清空已注入译文，并用新语言/新引擎自动重译。
+      // 否则旧译文块会一直留在页面上（而且 hasExistingTranslation 会因注入节点存在而跳过重译）。
+      function onTranslationSettingsChanged() {
+        // 页面还没翻译过 → 只更新状态，不打扰用户
+        const hasRendered = document.querySelector('.lingoflow-block[data-lingoflow="true"]');
+        if (!hasRendered) return;
+
+        // 先记住当前模式：restoreOriginal() 会把 activeTranslationMode 置为 null
+        const mode = state.activeTranslationMode;
+        if (mode !== 'bilingual' && mode !== 'translation') return;
+
+        PageTranslator.restoreOriginal();
+
+        const lang = state.targetLanguage || 'zh';
+        const langNames = {
+          zh: _getMessage('chinese', 'Chinese'),
+          en: _getMessage('english', 'English'),
+          es: _getMessage('spanish', 'Spanish')
+        };
+        const langName = langNames[lang] || lang;
+        UI.showNotification(`${langName} · ${_getMessage('retranslating', 're-translating…')}`, true);
+
+        // 等 restoreOriginal 的 DOM 清理落地后再重新翻译
+        setTimeout(() => {
+          if (mode === 'bilingual') PageTranslator.enableBilingualMode();
+          else PageTranslator.enableTranslationMode();
+        }, 120);
+      }
+
       // Listen for settings changes (guarded: a reloaded extension makes this
       // listener inert, but registering it must never throw).
       try {
@@ -4102,6 +4131,15 @@ function mapTargetLang(targetLang) {
           state.targetLanguage = settings.targetLanguage || 'zh';
           state.existingBilingualStrategy = settings.existingBilingualStrategy || 'skip';
           TranslationEngine.activeEngine = settings.translationEngine || 'google';
+
+          // 目标语言 / 翻译引擎变化 → 清空旧译文并用新设置自动重译
+          // （用 oldValue/newValue 精确比较，改其它设置不会误触发）
+          const oldS = changes.lingoflow_settings.oldValue || {};
+          const newS = changes.lingoflow_settings.newValue || {};
+          if (((oldS.targetLanguage || 'zh') !== (newS.targetLanguage || 'zh')) ||
+              ((oldS.translationEngine || 'google') !== (newS.translationEngine || 'google'))) {
+            onTranslationSettingsChanged();
+          }
 
           // If selection translation was just turned off, remove any visible toolbar/result
           if (wasSelectionEnabled && !state.selectionTranslationEnabled) {

@@ -579,6 +579,10 @@
     "message": "将页面文本替换为目标语言",
     "description": "弹出窗口中译文模式的描述"
   },
+  "retranslating": {
+    "message": "正在重新翻译…",
+    "description": "切换目标语言或引擎后自动重译时的提示"
+  },
   "bilingual_mode_desc_short": {
     "message": "在原文下方显示中文翻译",
     "description": "弹出窗口中双语模式的简短描述"
