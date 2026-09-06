@@ -69,6 +69,7 @@ function initModeSwitches() {
   }
   if (restoreButton) {
     restoreButton.addEventListener('click', () => {
+      _modeStateSeq++;
       setActiveMode(null);
       updateModeUI(null);
       sendMessageToContent({ action: 'restore_original' });
@@ -84,13 +85,12 @@ function initModeSwitches() {
   if (settingsBtn) settingsBtn.addEventListener('click', () => openSettingsPanel());
 }
 
-let _modeToggleLock = false;
+// 用户模式操作代数：每次手动切换/恢复都 +1，
+// 用于让迟到的 get_page_state 响应作废（防止竞态把已关闭的模式又打开）
+let _modeStateSeq = 0;
 
 function onModeToggle(mode) {
-  if (_modeToggleLock) return;
-  _modeToggleLock = true;
-  // Prevent rapid re-toggle for 400ms
-  setTimeout(() => { _modeToggleLock = false; }, 400);
+  _modeStateSeq++;
 
   const translateToggle = document.getElementById('mode-translate');
   const bilingualToggle = document.getElementById('mode-bilingual');
@@ -134,13 +134,19 @@ function setActiveMode(mode) {
 }
 
 function restoreModeState() {
+  const seqAtStart = _modeStateSeq;
   sendMessageToContent({ action: 'get_page_state' }, (response) => {
+    // 用户在响应返回前已手动操作过 → 这份页面状态已过期，绝不能再套用到 UI/storage
+    if (_modeStateSeq !== seqAtStart) return;
     if (response && response.received) {
       updateModeUI(response.mode || null);
-      setActiveMode(response.mode || null);
+      // 注意：这里只做只读同步，不再回写 storage ——
+      // 之前 setActiveMode(response.mode) 会和用户刚做的关闭操作竞态，
+      // 把已关闭的模式重新写回 storage（表现为"关不掉/自己开始翻译"）
     } else {
       // Content script 无响应，fallback 读 storage
       chrome.runtime.sendMessage({ action: 'get_settings' }, (resp) => {
+        if (_modeStateSeq !== seqAtStart) return;
         const settings = resp && resp.settings;
         updateModeUI(settings && settings.activeMode || null);
       });
