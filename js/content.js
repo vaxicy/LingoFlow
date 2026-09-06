@@ -3772,13 +3772,15 @@ function mapTargetLang(targetLang) {
       for (const el of all) {
         if (el.closest('.lingoflow-ui, [data-lingoflow="true"], [data-lingoflow-hidden]')) continue;
         if (el.closest('script, style, noscript, textarea')) continue;
-        // 交互元素不扫（按钮/链接/输入等由 UI 策略负责）
-        if (el.closest('a, button, input, select, label, [role="button"]')) continue;
         if (el.dataset && el.dataset.lingoflowProcessed === 'true') continue;
         // 自身或后代不能已有译文块
         if (el.querySelector('.lingoflow-block[data-lingoflow="true"]')) continue;
         const text = this.normalizeText(el.textContent);
         if (!text || !this.shouldTranslateText(text)) continue;
+        // 交互元素内的短标签（"Sign up"/"Aplicar" 等动作词）不扫；
+        // 较长的内容文本（公司名、链接标题等，常包在 <a> 里）仍然要翻
+        const interactive = el.closest('a, button, input, select, label, [role="button"], summary');
+        if (interactive && text.length < 15) continue;
         // 只取"最深"元素：子元素里不再有合格文本（避免整棵树重复包）
         const childHasText = Array.from(el.children).some(c =>
           this.shouldTranslateText(this.normalizeText(c.textContent)));
