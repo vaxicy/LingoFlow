@@ -2832,7 +2832,7 @@ function createInlineHandler(initialMessage) {
   }
 
   async function enableTranslationMode() {
-    return runTranslation('bilingual');
+    return runTranslation('translation');
   }
 
   function handleActionInline(msg) {

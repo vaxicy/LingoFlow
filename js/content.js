@@ -79,8 +79,8 @@ function mapTargetLang(targetLang) {
       zh: '正在查找页面文本...'
     },
     noText: {
-      en: 'No translatable text found.',
-      zh: '未找到可翻译的文本'
+      en: 'No translatable text found. Page translation may not work on some sites (image-based content). Try selection translation instead.',
+      zh: '未找到可翻译的文本。网页翻译在部分网站（如全图片内容/特殊框架）可能不适用，可尝试划词翻译：选中文字后使用悬浮工具条'
     },
     found: {
       en: count => `Found ${count} text blocks. Translating...`,
@@ -3883,7 +3883,7 @@ function mapTargetLang(targetLang) {
         // Show persistent notification (won't auto-dismiss until result comes in)
         UI.showNotification(statusText('found', units.length), true);
 
-        const result = await this.translateAndRenderUnits(units, 'bilingual');
+        const result = await this.translateAndRenderUnits(units, 'translation');
         const { successCount, failCount, stoppedByInvalidContext } = result;
 
         if (stoppedByInvalidContext) {
@@ -3900,9 +3900,9 @@ function mapTargetLang(targetLang) {
 
         if (successCount > 0) {
           state.isTranslated = true;
-          state.isBilingualMode = true;
-          this.scheduleSecondScan('bilingual');
-          this.startDynamicTranslationObserver('bilingual');
+          state.isBilingualMode = false;
+          this.scheduleSecondScan('translation');
+          this.startDynamicTranslationObserver('translation');
         } else {
           state.isBilingualMode = false;
         }
