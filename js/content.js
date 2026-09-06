@@ -3763,6 +3763,46 @@ function mapTargetLang(targetLang) {
       return !!document.querySelector('iframe, frame');
     },
 
+    // 兜底清扫：主收集器（结构启发式）偶尔会漏掉混合容器里的残留文本
+    // （如 sibling 已翻导致整容器被跳过）。用宽松规则补一刀：
+    // 只收集"最深的有合格文本元素"，且不带任何 LingoFlow 标记、不在交互元素里。
+    collectResidualUnits(root) {
+      const out = [];
+      const all = root.querySelectorAll('*');
+      for (const el of all) {
+        if (el.closest('.lingoflow-ui, [data-lingoflow="true"], [data-lingoflow-hidden]')) continue;
+        if (el.closest('script, style, noscript, textarea')) continue;
+        // 交互元素不扫（按钮/链接/输入等由 UI 策略负责）
+        if (el.closest('a, button, input, select, label, [role="button"]')) continue;
+        if (el.dataset && el.dataset.lingoflowProcessed === 'true') continue;
+        // 自身或后代不能已有译文块
+        if (el.querySelector('.lingoflow-block[data-lingoflow="true"]')) continue;
+        const text = this.normalizeText(el.textContent);
+        if (!text || !this.shouldTranslateText(text)) continue;
+        // 只取"最深"元素：子元素里不再有合格文本（避免整棵树重复包）
+        const childHasText = Array.from(el.children).some(c =>
+          this.shouldTranslateText(this.normalizeText(c.textContent)));
+        if (childHasText) continue;
+        out.push({ container: el, text, targetLang: mapTargetLang(state.targetLanguage) });
+      }
+      return out;
+    },
+
+    scheduleResidualSweep(renderMode) {
+      if (state._residualSweepTimer) clearTimeout(state._residualSweepTimer);
+      state._residualSweepTimer = setTimeout(() => {
+        state._residualSweepTimer = null;
+        try {
+          if (state.activeTranslationMode !== renderMode || state.isTranslating) return;
+          const root = state.translationRoot || document.body;
+          const units = this.collectResidualUnits(root);
+          if (!units.length) return;
+          console.log('LingoFlow: residual sweep found ' + units.length + ' leftover units');
+          this.translateAndRenderUnits(units.slice(0, 60), renderMode);
+        } catch (_) {}
+      }, 2500);
+    },
+
     isTopFrame() {
       try {
         return window.top === window;
@@ -3948,6 +3988,7 @@ function mapTargetLang(targetLang) {
           state.isBilingualMode = false;
           this.scheduleSecondScan('translation');
           this.startDynamicTranslationObserver('translation');
+          this.scheduleResidualSweep('translation');
         } else {
           state.isBilingualMode = false;
         }
@@ -4037,6 +4078,7 @@ function mapTargetLang(targetLang) {
           state.isTranslated = true;
           this.scheduleSecondScan('bilingual');
           this.startDynamicTranslationObserver('bilingual');
+          this.scheduleResidualSweep('bilingual');
         }
         state.isBilingualMode = successCount > 0;
       } catch (err) {
@@ -4051,6 +4093,10 @@ function mapTargetLang(targetLang) {
       const scrollX = window.scrollX;
       const scrollY = window.scrollY;
       this.stopDynamicTranslationObserver();
+      if (state._residualSweepTimer) {
+        clearTimeout(state._residualSweepTimer);
+        state._residualSweepTimer = null;
+      }
       clearTimeout(state.hoverParagraphTimer);
       state.hoverParagraphTimer = null;
       state.hoverParagraphTarget = null;
