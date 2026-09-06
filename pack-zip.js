@@ -33,7 +33,8 @@ function shouldExclude(filePath) {
 }
 
 const base = path.resolve('d:\\迅雷下载\\vibe coding\\Chrome Extensions\\LingoFlow');
-const outZip = path.join(base, 'release', 'lingoflow-1.2.1.zip');
+// 用户指定的默认输出文件夹（2026-09-07 确认）
+const outZip = path.resolve('d:\\迅雷下载\\vibe coding', 'lingoflow-1.2.1.zip');
 
 function collectFiles(dir, list = []) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
