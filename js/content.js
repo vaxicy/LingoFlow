@@ -4056,7 +4056,9 @@ function mapTargetLang(targetLang) {
         (document.head || document.documentElement).appendChild(_translationColorStyleEl);
       }
       _translationColorStyleEl.textContent =
-        '.lingoflow-translation, .lingoflow-translation-only { color: ' + color + ' !important; }';
+        '.lingoflow-translation, .lingoflow-translation-only, ' +
+        '.lingoflow-inline-translation, .lingoflow-sentence-trans ' +
+        '{ color: ' + color + ' !important; }';
     } catch (_) {}
   }
 
