@@ -372,8 +372,8 @@
     "description": "未保存更改确认"
   },
   "translate_to": {
-    "message": "划词翻译为",
-    "description": "划词翻译目标语言设置标签"
+    "message": "翻译为",
+    "description": "翻译目标语言设置标签（同时作用于网页翻译与划词翻译）"
   },
   "ui_language": {
     "message": "界面语言",
@@ -576,7 +576,7 @@
     "description": "模型选择描述"
   },
   "translate_page_desc": {
-    "message": "将页面英文替换为中文译文",
+    "message": "将页面文本替换为目标语言",
     "description": "弹出窗口中译文模式的描述"
   },
   "bilingual_mode_desc_short": {
@@ -1058,6 +1058,10 @@
   "custom_model_badge": {
     "message": "手动",
     "description": "Model select 中 Custom 项的 badge"
+  },
+  "spanish": {
+    "message": "西班牙语",
+    "description": "语言选项：西班牙语"
   },
   "model_custom_input_placeholder_siliconflow": {
     "message": "自定义模型 id（例：Qwen/Qwen2-7B-Instruct）",

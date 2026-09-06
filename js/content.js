@@ -1,4 +1,14 @@
 // LingoFlow Content Script
+
+// 统一目标语言代码映射（供划词翻译与网页翻译共用）
+// zh → zh-CN（Google/通用格式）；es → es（西班牙文）；en → en
+function mapTargetLang(targetLang) {
+  const t = String(targetLang || '').toLowerCase();
+  if (t === 'zh' || t.indexOf('zh') === 0) return 'zh-CN';
+  if (t.indexOf('es') === 0) return 'es';
+  if (t.indexOf('en') === 0) return 'en';
+  return 'zh-CN'; // 向后兼容：未知沿用原默认
+}
 // Handles all in-page interactions
 
 (function () {
@@ -323,8 +333,7 @@
     googleTranslator: {
       translate: async (text, targetLang) => {
         // Map target language to Google format
-        const tl = targetLang === 'zh' ? 'zh-CN' :
-                   targetLang === 'en' ? 'en' : 'zh-CN';
+        const tl = mapTargetLang(targetLang);
 
         // Truncate very long text
         const maxLen = 2000;
@@ -386,8 +395,7 @@
     // Background.js reads translationEngine from settings and dispatches to the correct API.
     backgroundTranslator: {
       translate: async (text, targetLang) => {
-        const tl = targetLang === 'zh' ? 'zh-CN' :
-                   targetLang === 'en' ? 'en' : 'zh-CN';
+        const tl = mapTargetLang(targetLang);
         const maxLen = 5000;
         const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
 
@@ -464,8 +472,7 @@
       const list = Array.isArray(texts) ? texts : [];
       if (!list.length) return [];
 
-      const tl = targetLang === 'zh' ? 'zh-CN' :
-                 targetLang === 'en' ? 'en' : 'zh-CN';
+      const tl = mapTargetLang(targetLang);
 
       return new Promise((resolve) => {
         const timeoutId = setTimeout(() => {
@@ -2081,13 +2088,23 @@
     hasExistingTranslation(container) {
       if (state.existingBilingualStrategy === 'translate_english') return false;
 
-      // Only check the container's OWN text for mixed Chinese+English.
-      // This is the ONLY reliable signal of genuine pre-existing translation.
-      // All sibling/parent/ancestor checks have been removed because they cause
-      // severe self-interference during batch rendering (paragraph N+1 detects
-      // paragraph N's freshly-inserted Chinese translation as "existing bilingual").
-      const text = this.getElementText(container);
-      return this.hasLatinText(text) && this.hasChineseText(text);
+      // 优先用「是否已有 LingoFlow 注入的译文节点」判定——不依赖字符集。
+      // 英文与西班牙文同属拉丁字母，无法用字符区分，必须靠注入标记。
+      if (container.querySelector && container.querySelector('[data-lingoflow="true"]')) return true;
+      if (container.getAttribute && container.getAttribute('data-lingoflow-rendered') === 'true') return true;
+      // 容器自身就是注入的译文节点
+      if (container.getAttribute && container.getAttribute('data-lingoflow') === 'true') return true;
+
+      // 目标为中文时，保留原来的「中英混排」字符集判定，
+      // 用于识别页面自带的双语内容（非 LingoFlow 注入）。
+      const target = String(state.targetLanguage || 'zh').toLowerCase();
+      if (target === 'zh' || target.indexOf('zh') === 0) {
+        const text = this.getElementText(container);
+        return this.hasLatinText(text) && this.hasChineseText(text);
+      }
+
+      // 目标为英文/西班牙文：拉丁字母之间无法用字符集区分，只依赖上面的注入节点判定。
+      return false;
     },
 
     shouldSkipTextNode(node) {
@@ -2772,7 +2789,7 @@
         .map(unit => ({
           container: unit.container,
           text: this.normalizeText(unit.textParts.join(' ')),
-          targetLang: 'zh-CN'  // 页面翻译固定英译中
+          targetLang: mapTargetLang(state.targetLanguage)  // 按设置的目标语言（中/英/西）
         }))
         .filter(unit => this.shouldTranslateText(unit.text));
 
@@ -2787,7 +2804,7 @@
             sentenceUnits.push({
               container: unit.container,
               text: sentences[i],
-              targetLang: 'zh-CN',
+              targetLang: mapTargetLang(state.targetLanguage),
               _isSentence: true,           // 句级单元标记
               _sentenceIndex: i,          // 句子序号
               _sentenceTotal: sentences.length,  // 总句数
@@ -3638,8 +3655,8 @@
 
           if (!activeChunk.length) continue;
 
-          // 页面翻译固定英译中，所有 unit 的 targetLang 都是 'zh-CN'
-          const batchTargetLang = activeChunk[0]?.targetLang || 'zh-CN';
+          // 批次使用设置的目标语言（中/英/西），不再固定英译中
+          const batchTargetLang = activeChunk[0]?.targetLang || mapTargetLang(state.targetLanguage);
           console.log('LingoFlow: translateAndRenderUnits batch:', activeChunk.length, 'texts, engine=', TranslationEngine.activeEngine);
           const translations = await TranslationEngine.translateMany(
             activeChunk.map(unit => unit.text),

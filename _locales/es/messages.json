@@ -1,398 +1,398 @@
 {
   "name": {
-    "message": "LingoFlow 🌐 Foreign Web Reader",
-    "description": "Extension name (English)"
+    "message": "LingoFlow 🌐 Lector de webs en otros idiomas",
+    "description": "Extension name (Spanish)"
   },
   "short_name": {
     "message": "LingoFlow",
     "description": "Extension short name"
   },
   "description": {
-    "message": "Foreign Web Reader with selection & full-page translation. Supports multiple translation engines with customizable UI themes.",
-    "description": "Extension description (English)"
+    "message": "Lector de webs extranjeras con traducción de selección y de página completa. Compatible con varios motores de traducción y temas de interfaz personalizables.",
+    "description": "Extension description (Spanish)"
   },
   "app_name": {
-    "message": "LingoFlow - Reading Assistant",
+    "message": "LingoFlow - Asistente de lectura",
     "description": "Application name"
   },
   "app_description": {
-    "message": "Modern Reading Assistant. Read any website effortlessly.",
+    "message": "Asistente de lectura moderno. Lee cualquier sitio web sin esfuerzo.",
     "description": "Application description"
   },
   "extension_description": {
-    "message": "Modern Reading Assistant / 外文网站阅读助手",
+    "message": "Asistente de lectura moderno",
     "description": "Extension description"
   },
   "translate": {
-    "message": "Translate",
+    "message": "Traducir",
     "description": "Translate button"
   },
   "translation_result": {
-    "message": "Translation",
+    "message": "Traducción",
     "description": "Translation result panel title"
   },
   "copy": {
-    "message": "Copy",
+    "message": "Copiar",
     "description": "Copy button"
   },
   "save": {
-    "message": "Save",
+    "message": "Guardar",
     "description": "Save button"
   },
   "translate_selection": {
-    "message": "Translate Selection",
+    "message": "Traducir selección",
     "description": "Context menu item"
   },
   "save_to_vocabulary": {
-    "message": "Save to Vocabulary",
+    "message": "Guardar en vocabulario",
     "description": "Context menu item"
   },
   "copy_text": {
-    "message": "Copy Text",
+    "message": "Copiar texto",
     "description": "Context menu item"
   },
   "translate_page": {
-    "message": "Translation Mode",
+    "message": "Modo de traducción",
     "description": "Popup button"
   },
   "bilingual_mode": {
-    "message": "Bilingual Mode",
+    "message": "Modo bilingüe",
     "description": "Popup button"
   },
   "restore_original": {
-    "message": "Restore Original",
+    "message": "Restaurar original",
     "description": "Popup button"
   },
   "incognito_mode": {
-    "message": "Incognito Mode",
+    "message": "Modo incógnito",
     "description": "Incognito mode toggle"
   },
   "incognito_mode_desc": {
-    "message": "When enabled, no translation history is saved",
+    "message": "Si está activado, no se guarda el historial de traducciones",
     "description": "Incognito mode toggle description"
   },
   "incognito_active_banner": {
-    "message": "Incognito mode is on — translations won't be saved to history",
+    "message": "El modo incógnito está activado: las traducciones no se guardarán en el historial",
     "description": "Banner shown when incognito mode is active"
   },
   "vocabulary": {
-    "message": "Vocabulary",
+    "message": "Vocabulario",
     "description": "Popup button"
   },
   "history": {
-    "message": "History",
+    "message": "Historial",
     "description": "Popup button"
   },
   "settings": {
-    "message": "Settings",
+    "message": "Ajustes",
     "description": "Popup button"
   },
   "settings_title": {
-    "message": "LingoFlow Settings",
+    "message": "Ajustes de LingoFlow",
     "description": "Settings page title"
   },
   "vocabulary_title": {
-    "message": "Vocabulary",
+    "message": "Vocabulario",
     "description": "Vocabulary page title"
   },
   "history_title": {
-    "message": "History",
+    "message": "Historial",
     "description": "History page title"
   },
   "search": {
-    "message": "Search...",
+    "message": "Buscar...",
     "description": "Search placeholder"
   },
   "search_results": {
-    "message": "Search Results",
+    "message": "Resultados de búsqueda",
     "description": "Search results title"
   },
   "no_results": {
-    "message": "No results found",
+    "message": "No se encontraron resultados",
     "description": "No results message"
   },
   "no_saved_items": {
-    "message": "No saved items yet",
+    "message": "Aún no hay elementos guardados",
     "description": "Empty vocabulary message"
   },
   "no_history": {
-    "message": "No history yet",
+    "message": "Aún no hay historial",
     "description": "Empty history message"
   },
   "save_hint": {
-    "message": "Select text on any webpage and click \"Save\" to add to vocabulary",
+    "message": "Selecciona texto en cualquier página web y haz clic en \"Guardar\" para añadirlo al vocabulario",
     "description": "Vocabulary empty hint"
   },
   "history_hint": {
-    "message": "Translation history will appear here",
+    "message": "El historial de traducciones aparecerá aquí",
     "description": "History empty hint"
   },
   "history_incognito_title": {
-    "message": "Incognito mode is on",
+    "message": "El modo incógnito está activado",
     "description": "Empty history title when incognito is active"
   },
   "history_incognito_hint": {
-    "message": "Current translations won't be saved to history",
+    "message": "Las traducciones actuales no se guardarán en el historial",
     "description": "Empty history hint when incognito is active"
   },
   "delete_confirm": {
-    "message": "Are you sure you want to delete?",
+    "message": "¿Seguro que quieres eliminar?",
     "description": "Delete confirmation message"
   },
   "clear_confirm": {
-    "message": "Are you sure you want to clear all?",
+    "message": "¿Seguro que quieres borrar todo?",
     "description": "Clear all confirmation message"
   },
   "copied": {
-    "message": "Copied!",
+    "message": "¡Copiado!",
     "description": "Copy success notification"
   },
   "saved": {
-    "message": "Saved!",
+    "message": "¡Guardado!",
     "description": "Save success notification"
   },
   "cleared": {
-    "message": "Cleared!",
+    "message": "¡Borrado!",
     "description": "Clear success notification"
   },
   "export_csv": {
-    "message": "Export CSV",
+    "message": "Exportar CSV",
     "description": "Export CSV button"
   },
   "export_json": {
-    "message": "Export JSON",
+    "message": "Exportar JSON",
     "description": "Export JSON button"
   },
   "clear_all": {
-    "message": "Clear All",
+    "message": "Borrar todo",
     "description": "Clear all button"
   },
   "ready": {
-    "message": "Ready",
+    "message": "Listo",
     "description": "Status ready"
   },
   "not_supported": {
-    "message": "This page is not supported",
+    "message": "Esta página no es compatible",
     "description": "Page not supported status"
   },
   "error_cannot_access": {
-    "message": "Error: Cannot access this page",
+    "message": "Error: no se puede acceder a esta página",
     "description": "Error message for inaccessible page"
   },
   "target_language": {
-    "message": "Target Language",
+    "message": "Idioma de destino",
     "description": "Settings label"
   },
   "theme": {
-    "message": "Theme",
+    "message": "Tema",
     "description": "Settings label"
   },
   "light": {
-    "message": "Light",
+    "message": "Claro",
     "description": "Theme option"
   },
   "dark": {
-    "message": "Dark",
+    "message": "Oscuro",
     "description": "Theme option"
   },
   "selection_translation": {
-    "message": "Selection Translation",
+    "message": "Traducción de selección",
     "description": "Settings label"
   },
   "selection_translation_desc": {
-    "message": "Show translation toolbar when text is selected",
+    "message": "Mostrar barra de traducción al seleccionar texto",
     "description": "Settings description"
   },
   "existing_bilingual_content": {
-    "message": "Existing bilingual content",
+    "message": "Contenido bilingüe existente",
     "description": "Settings label"
   },
   "existing_bilingual_content_desc": {
-    "message": "Choose how to handle pages that already include translations",
+    "message": "Elige cómo tratar las páginas que ya incluyen traducciones",
     "description": "Settings description"
   },
   "skip_existing_bilingual": {
-    "message": "Skip",
+    "message": "Omitir",
     "description": "Existing bilingual content option"
   },
   "translate_english_only": {
-    "message": "English only",
+    "message": "Solo inglés",
     "description": "Existing bilingual content option"
   },
   "history_limit": {
-    "message": "History Limit",
+    "message": "Límite del historial",
     "description": "Settings label"
   },
   "history_limit_desc": {
-    "message": "Maximum number of history records",
+    "message": "Número máximo de registros del historial",
     "description": "Settings description"
   },
   "clear_history": {
-    "message": "Clear History",
+    "message": "Borrar historial",
     "description": "Settings button"
   },
   "clear_history_desc": {
-    "message": "Delete all translation history",
+    "message": "Eliminar todo el historial de traducciones",
     "description": "Settings description"
   },
   "export_vocabulary": {
-    "message": "Export Vocabulary",
+    "message": "Exportar vocabulario",
     "description": "Settings button"
   },
   "export_vocabulary_desc": {
-    "message": "Export saved words and sentences",
+    "message": "Exportar palabras y frases guardadas",
     "description": "Settings description"
   },
   "privacy": {
-    "message": "Privacy",
+    "message": "Privacidad",
     "description": "Settings section"
   },
   "privacy_text": {
-    "message": "LingoFlow does not collect any personal data. All data is stored locally in your browser. No login or registration required.",
+    "message": "LingoFlow no recopila ningún dato personal. Todos los datos se guardan localmente en tu navegador. No requiere iniciar sesión ni registrarse.",
     "description": "Privacy description"
   },
   "version": {
-    "message": "Version 1.0.0",
+    "message": "Versión 1.0.0",
     "description": "Version text"
   },
   "word": {
-    "message": "Word",
+    "message": "Palabra",
     "description": "Item type"
   },
   "sentence": {
-    "message": "Sentence",
+    "message": "Frase",
     "description": "Item type"
   },
   "all": {
-    "message": "All",
+    "message": "Todo",
     "description": "Filter option"
   },
   "words": {
-    "message": "Words",
+    "message": "Palabras",
     "description": "Filter option"
   },
   "sentences": {
-    "message": "Sentences",
+    "message": "Frases",
     "description": "Filter option"
   },
   "source": {
-    "message": "Source",
+    "message": "Fuente",
     "description": "Source URL label"
   },
   "date": {
-    "message": "Date",
+    "message": "Fecha",
     "description": "Date label"
   },
   "delete": {
-    "message": "Delete",
+    "message": "Eliminar",
     "description": "Delete button"
   },
   "no_definition": {
-    "message": "No definition found",
+    "message": "No se encontró definición",
     "description": "Hover card message"
   },
   "page_not_supported": {
-    "message": "This page is not supported",
+    "message": "Esta página no es compatible",
     "description": "Status message for chrome:// pages"
   },
   "chinese": {
-    "message": "Chinese",
+    "message": "Chino",
     "description": "Language option"
   },
   "english": {
-    "message": "English",
+    "message": "Inglés",
     "description": "Language option"
   },
   "clear": {
-    "message": "Clear",
+    "message": "Limpiar",
     "description": "Clear button"
   },
   "save_settings": {
-    "message": "Save Changes",
+    "message": "Guardar cambios",
     "description": "Settings page save button"
   },
   "cancel": {
-    "message": "Cancel",
+    "message": "Cancelar",
     "description": "Settings page cancel button"
   },
   "settings_saved": {
-    "message": "Settings saved",
+    "message": "Ajustes guardados",
     "description": "Settings saved notification"
   },
   "settings_auto_saved": {
-    "message": "Auto-saved",
+    "message": "Guardado automático",
     "description": "Settings auto-saved status"
   },
   "settings_saving": {
-    "message": "Saving...",
+    "message": "Guardando...",
     "description": "Settings saving status"
   },
   "translation_in_progress": {
-    "message": "Translating...",
+    "message": "Traduciendo...",
     "description": "Translation in progress notice"
   },
   "saving": {
-    "message": "Saving...",
+    "message": "Guardando...",
     "description": "Saving in progress notice"
   },
   "settings_save_failed": {
-    "message": "Save failed",
+    "message": "Error al guardar",
     "description": "Settings save failed status"
   },
   "settings_unsaved": {
-    "message": "Unsaved changes",
+    "message": "Cambios sin guardar",
     "description": "Settings unsaved status"
   },
   "auto_save_settings": {
-    "message": "Auto-save Settings",
+    "message": "Guardado automático de ajustes",
     "description": "Auto-save settings toggle label"
   },
   "auto_save_settings_desc": {
-    "message": "Save changes immediately",
+    "message": "Guardar los cambios inmediatamente",
     "description": "Auto-save settings toggle description"
   },
   "done": {
-    "message": "Done",
+    "message": "Hecho",
     "description": "Done button"
   },
   "free": {
-    "message": "Free",
+    "message": "Gratis",
     "description": "Free pricing badge"
   },
   "paid": {
-    "message": "Paid",
+    "message": "De pago",
     "description": "Paid pricing badge"
   },
   "settings_canceled": {
-    "message": "Canceled",
+    "message": "Cancelado",
     "description": "Settings canceled notification"
   },
   "unsaved_changes": {
-    "message": "You have unsaved changes. Are you sure you want to leave?",
+    "message": "Tienes cambios sin guardar. ¿Seguro que quieres salir?",
     "description": "Unsaved changes confirmation"
   },
   "translate_to": {
-    "message": "Translate to",
+    "message": "Traducir a",
     "description": "Translation target language setting label (applies to both page and selection translation)"
   },
   "ui_language": {
-    "message": "UI Language",
+    "message": "Idioma de la interfaz",
     "description": "UI language setting label"
   },
   "ui_language_desc": {
-    "message": "Language of the extension interface",
+    "message": "Idioma de la interfaz de la extensión",
     "description": "UI language setting description"
   },
   "follow_system": {
-    "message": "Follow System",
+    "message": "Seguir el sistema",
     "description": "UI language option"
   },
   "translation_engine": {
-    "message": "Translation Engine",
+    "message": "Motor de traducción",
     "description": "Translation engine setting label"
   },
   "translation_engine_desc": {
-    "message": "Select translation service provider",
+    "message": "Selecciona el proveedor de traducción",
     "description": "Translation engine setting description"
   },
   "engine_google": {
@@ -400,7 +400,7 @@
     "description": "Google Translate engine option"
   },
   "engine_mymemory": {
-    "message": "MyMemory (Free)",
+    "message": "MyMemory (gratis)",
     "description": "MyMemory translation engine option"
   },
   "engine_siliconflow": {
@@ -436,131 +436,131 @@
     "description": "Alibaba Bailian translation engine option"
   },
   "engine_custom": {
-    "message": "Custom (OpenAI Compatible)",
+    "message": "Personalizado (compatible con OpenAI)",
     "description": "Custom OpenAI-compatible translation engine option"
   },
   "engine_translatejs": {
-    "message": "translate.js (Free, No Key)",
+    "message": "translate.js (gratis, sin clave)",
     "description": "translate.js free translation engine option, no API key required"
   },
   "custom_api_key_label": {
-    "message": "API Key",
+    "message": "Clave API",
     "description": "Custom engine API Key label"
   },
   "custom_api_key_desc": {
-    "message": "Your API key for the OpenAI-compatible service",
+    "message": "Tu clave API para el servicio compatible con OpenAI",
     "description": "Custom engine API Key description"
   },
   "custom_api_host_label": {
-    "message": "Base URL",
+    "message": "URL base",
     "description": "Custom engine Base URL label"
   },
   "custom_api_host_desc": {
-    "message": "Service address, must expose /v1/chat/completions",
+    "message": "Dirección del servicio, debe exponer /v1/chat/completions",
     "description": "Custom engine Base URL description"
   },
   "custom_model_label": {
-    "message": "Model",
+    "message": "Modelo",
     "description": "Custom engine Model label"
   },
   "custom_model_desc": {
-    "message": "Model name used for translation",
+    "message": "Nombre del modelo usado para traducir",
     "description": "Custom engine Model description"
   },
   "baidullm_api_key_label": {
-    "message": "Baidu LLM API Key",
+    "message": "Clave API de Baidu LLM",
     "description": "Baidu LLM translation API Key label"
   },
   "baidullm_api_key_desc": {
-    "message": "API Key from API Key Management page (used for Bearer Token auth)",
+    "message": "Clave API de la página de gestión de claves (autenticación Bearer Token)",
     "description": "Baidu LLM API key description"
   },
   "bailian_api_key_label": {
-    "message": "Bailian API Key",
+    "message": "Clave API de Bailian",
     "description": "Alibaba Bailian API Key label"
   },
   "bailian_api_key_desc": {
-    "message": "Alibaba Bailian API key (free quota at aliyun.com)",
+    "message": "Clave API de Alibaba Bailian (cuota gratuita en aliyun.com)",
     "description": "Alibaba Bailian API key description"
   },
   "bailian_api_host_label": {
-    "message": "Bailian API Host",
+    "message": "Host de la API de Bailian",
     "description": "Alibaba Bailian compatible endpoint label"
   },
   "bailian_api_host_desc": {
-    "message": "Bailian OpenAI-compatible Host (leave empty to use default dashscope.aliyuncs.com; fill in your workspace console address)",
+    "message": "Host compatible con OpenAI de Bailian (déjalo vacío para usar dashscope.aliyuncs.com; rellena la dirección de tu espacio de trabajo)",
     "description": "Alibaba Bailian API Host description"
   },
   "baidu_app_id_label": {
-    "message": "Baidu APP ID",
+    "message": "APP ID de Baidu",
     "description": "Baidu Translate APP ID label"
   },
   "baidu_app_id_desc": {
-    "message": "APP ID from Developer Info (required for both General and LLM translation)",
+    "message": "APP ID de la información de desarrollador (obligatorio para traducción general y LLM)",
     "description": "Baidu Translate APP ID description"
   },
   "baidu_secret_key_label": {
-    "message": "Baidu Secret Key",
+    "message": "Clave secreta de Baidu",
     "description": "Baidu Translate secret key label"
   },
   "baidu_secret_key_desc": {
-    "message": "Baidu Translate open platform application secret key (only for General Translation)",
+    "message": "Clave secreta de la aplicación en la plataforma abierta de Baidu (solo traducción general)",
     "description": "Baidu Translate secret key description"
   },
   "youdao_app_key_label": {
-    "message": "Youdao App Key",
+    "message": "App Key de Youdao",
     "description": "Youdao App Key label"
   },
   "youdao_app_key_desc": {
-    "message": "Youdao Zhiyun application ID (AppKey)",
+    "message": "ID de aplicación de Youdao Zhiyun (AppKey)",
     "description": "Youdao App Key description"
   },
   "youdao_app_secret_label": {
-    "message": "Youdao App Secret",
+    "message": "App Secret de Youdao",
     "description": "Youdao App Secret label"
   },
   "youdao_app_secret_desc": {
-    "message": "Youdao Zhiyun application secret",
+    "message": "Secreto de aplicación de Youdao Zhiyun",
     "description": "Youdao App Secret description"
   },
   "microsoft_api_key_label": {
-    "message": "Microsoft API Key",
+    "message": "Clave API de Microsoft",
     "description": "Microsoft API Key label"
   },
   "microsoft_api_key_desc": {
-    "message": "Azure Translator key (2M chars/month free)",
+    "message": "Clave de Azure Translator (2 M de caracteres/mes gratis)",
     "description": "Microsoft API Key description"
   },
   "microsoft_region_label": {
-    "message": "Region",
+    "message": "Región",
     "description": "Microsoft region label"
   },
   "microsoft_region_desc": {
-    "message": "Azure Translator resource region",
+    "message": "Región del recurso de Azure Translator",
     "description": "Microsoft region description"
   },
   "gemini_api_key_label": {
-    "message": "Gemini API Key",
+    "message": "Clave API de Gemini",
     "description": "Gemini API Key label"
   },
   "gemini_api_key_desc": {
-    "message": "Google AI Studio API key",
+    "message": "Clave API de Google AI Studio",
     "description": "Gemini API Key description"
   },
   "gemini_model_label": {
-    "message": "Gemini Model",
+    "message": "Modelo Gemini",
     "description": "Gemini model selector label"
   },
   "gemini_model_desc": {
-    "message": "Choose a Gemini model for AI translation",
+    "message": "Elige un modelo Gemini para la traducción con IA",
     "description": "Gemini model selector description"
   },
   "api_key_label": {
-    "message": "API Key",
+    "message": "Clave API",
     "description": "API Key label"
   },
   "api_key_desc": {
-    "message": "SiliconFlow API key (free at siliconflow.cn)",
+    "message": "Clave API de SiliconFlow (gratis en siliconflow.cn)",
     "description": "API Key description"
   },
   "api_key_placeholder": {
@@ -568,167 +568,167 @@
     "description": "API Key input placeholder"
   },
   "model_label": {
-    "message": "AI Model",
+    "message": "Modelo de IA",
     "description": "Model selector label"
   },
   "model_desc": {
-    "message": "Select an AI model for translation",
+    "message": "Selecciona un modelo de IA para traducir",
     "description": "Model selector description"
   },
   "translate_page_desc": {
-    "message": "Replace page text with the target language",
+    "message": "Reemplazar el texto de la página por el idioma de destino",
     "description": "Translation mode description in popup"
   },
   "bilingual_mode_desc_short": {
-    "message": "Show translation below original",
+    "message": "Mostrar la traducción debajo del original",
     "description": "Bilingual mode short description in popup"
   },
   "mode_original": {
-    "message": "Current: Original",
+    "message": "Actual: original",
     "description": "Popup current mode status"
   },
   "mode_bilingual": {
-    "message": "Current: Bilingual Mode",
+    "message": "Actual: modo bilingüe",
     "description": "Popup current mode status"
   },
   "mode_translation": {
-    "message": "Current: Translation Mode",
+    "message": "Actual: modo de traducción",
     "description": "Popup current mode status"
   },
   "display_mode": {
-    "message": "Display Mode",
+    "message": "Modo de visualización",
     "description": "Popup mode section label"
   },
   "free_models": {
-    "message": "Free Models",
+    "message": "Modelos gratuitos",
     "description": "Model selection group header for free models"
   },
   "paid_models": {
-    "message": "Paid Models",
+    "message": "Modelos de pago",
     "description": "Model selection group header for paid models"
   },
   "position_above": {
-    "message": "Above",
+    "message": "Arriba",
     "description": "Toolbar position option (above)"
   },
   "position_below": {
-    "message": "Below",
+    "message": "Abajo",
     "description": "Toolbar position option (below)"
   },
   "toolbar_position": {
-    "message": "Toolbar Position",
+    "message": "Posición de la barra",
     "description": "Toolbar position setting label"
   },
   "toolbar_position_desc": {
-    "message": "Where to show the selection toolbar",
+    "message": "Dónde mostrar la barra de selección",
     "description": "Toolbar position setting description"
   },
   "hover_paragraph_translation": {
-    "message": "Hover Paragraph Translation",
+    "message": "Traducción de párrafo al pasar el cursor",
     "description": "Settings toggle"
   },
   "hover_paragraph_translation_desc": {
-    "message": "Show bilingual translation when hovering over paragraphs",
+    "message": "Mostrar traducción bilingüe al pasar el cursor sobre los párrafos",
     "description": "Settings toggle description"
   },
   "feature_settings": {
-    "message": "Features",
+    "message": "Funciones",
     "description": "Settings section title"
   },
   "ui_settings": {
-    "message": "Interface",
+    "message": "Interfaz",
     "description": "Settings section title"
   },
   "data_settings": {
-    "message": "Data & History",
+    "message": "Datos e historial",
     "description": "Settings section title"
   },
   "backup_settings": {
-    "message": "Backup & Restore",
+    "message": "Copia de seguridad y restauración",
     "description": "Backup section title"
   },
   "backup_export": {
-    "message": "Export Backup",
+    "message": "Exportar copia de seguridad",
     "description": "Export backup button / row title"
   },
   "backup_export_desc": {
-    "message": "Export all settings, history and vocabulary",
+    "message": "Exportar todos los ajustes, historial y vocabulario",
     "description": "Export backup description"
   },
   "backup_import": {
-    "message": "Import Backup",
+    "message": "Importar copia de seguridad",
     "description": "Import backup button / row title"
   },
   "backup_import_desc": {
-    "message": "Restore all data from a backup file",
+    "message": "Restaurar todos los datos desde un archivo de copia",
     "description": "Import backup description"
   },
   "import_invalid": {
-    "message": "Invalid backup file",
+    "message": "Archivo de copia de seguridad no válido",
     "description": "Import error: file not a valid backup"
   },
   "import_confirm": {
-    "message": "Importing will overwrite current settings, history and vocabulary. Continue?",
+    "message": "Importar sobrescribirá los ajustes, el historial y el vocabulario actuales. ¿Continuar?",
     "description": "Import confirmation prompt"
   },
   "import_success": {
-    "message": "Backup imported",
+    "message": "Copia de seguridad importada",
     "description": "Import success message"
   },
   "import_failed": {
-    "message": "Import failed",
+    "message": "Error al importar",
     "description": "Import failure message"
   },
   "export_success": {
-    "message": "Backup exported",
+    "message": "Copia de seguridad exportada",
     "description": "Export success message"
   },
   "advanced_settings": {
-    "message": "Advanced",
+    "message": "Avanzado",
     "description": "Settings section title"
   },
   "help_support_settings": {
-    "message": "Help & Support",
+    "message": "Ayuda y soporte",
     "description": "Settings section title"
   },
   "preferences_settings": {
-    "message": "Preferences",
+    "message": "Preferencias",
     "description": "Settings section title"
   },
   "setup_guide": {
-    "message": "API Setup Guide",
+    "message": "Guía de configuración de API",
     "description": "Setup guide link text"
   },
   "setup_guide_desc": {
-    "message": "Configure translation engines",
+    "message": "Configurar los motores de traducción",
     "description": "Setup guide link description"
   },
   "support_lingoflow": {
-    "message": "Support LingoFlow",
+    "message": "Apoyar LingoFlow",
     "description": "Support link title"
   },
   "support_lingoflow_desc": {
-    "message": "WeChat and PayPal donation",
+    "message": "Donación por WeChat y PayPal",
     "description": "Support link description"
   },
   "support_kicker": {
-    "message": "Voluntary support",
+    "message": "Apoyo voluntario",
     "description": "Support page kicker"
   },
   "support_page_title": {
-    "message": "Support LingoFlow",
+    "message": "Apoyar LingoFlow",
     "description": "Support page title"
   },
   "support_page_intro": {
-    "message": "LingoFlow is free to use. If it helps you read foreign-language websites more comfortably, you can support its development.",
+    "message": "LingoFlow es gratuito. Si te ayuda a leer sitios web en otros idiomas con más comodidad, puedes apoyar su desarrollo.",
     "description": "Support page intro"
   },
   "support_wechat_title": {
-    "message": "WeChat Appreciation",
+    "message": "WeChat",
     "description": "WeChat support title"
   },
   "support_wechat_desc": {
-    "message": "Scan with WeChat to support LingoFlow.",
+    "message": "Escanea con WeChat para apoyar LingoFlow.",
     "description": "WeChat support description"
   },
   "support_paypal_title": {
@@ -736,323 +736,323 @@
     "description": "PayPal support title"
   },
   "support_paypal_desc": {
-    "message": "For international users.",
+    "message": "Para usuarios internacionales.",
     "description": "PayPal support description"
   },
   "support_paypal_note": {
-    "message": "Your support helps cover development time, translation testing, and ongoing maintenance.",
+    "message": "Tu apoyo ayuda a cubrir el tiempo de desarrollo, las pruebas de traducción y el mantenimiento.",
     "description": "PayPal support note"
   },
   "support_paypal_button": {
-    "message": "Support with PayPal",
+    "message": "Apoyar con PayPal",
     "description": "PayPal support button"
   },
   "support_footer": {
-    "message": "Thank you for helping keep LingoFlow free and improving.",
+    "message": "Gracias por ayudar a mantener LingoFlow gratis y en mejora.",
     "description": "Support page footer"
   },
   "setup_guide_title": {
-    "message": "🔌 Setup Guide",
+    "message": "🔌 Guía de configuración",
     "description": "Setup guide page title"
   },
   "setup_guide_subtitle": {
-    "message": "Get an API key for each translation engine and paste it into LingoFlow settings",
+    "message": "Obtén una clave API para cada motor de traducción y pégala en los ajustes de LingoFlow",
     "description": "Setup guide page subtitle"
   },
   "guide_free_quota": {
-    "message": "Free Quota",
+    "message": "Cuota gratuita",
     "description": "Setup guide badge: free quota"
   },
   "guide_free_models": {
-    "message": "Free Models",
+    "message": "Modelos gratuitos",
     "description": "Setup guide badge: free models"
   },
   "guide_generic": {
-    "message": "Generic",
+    "message": "Genérico",
     "description": "Setup guide badge: generic"
   },
   "guide_low_price": {
-    "message": "Pay-as-you-go · Low Cost",
+    "message": "Pago por uso · Bajo costo",
     "description": "Setup guide badge: low cost"
   },
   "guide_azure_paid": {
-    "message": "Azure Paid",
+    "message": "Azure de pago",
     "description": "Setup guide badge: Azure paid"
   },
   "guide_need_apply": {
-    "message": "Application Required",
+    "message": "Se requiere solicitud",
     "description": "Setup guide badge: application required"
   },
   "guide_ai_translate": {
-    "message": "AI Translation",
+    "message": "Traducción con IA",
     "description": "Setup guide badge: AI translation"
   },
   "guide_bailian_desc": {
-    "message": "Alibaba Cloud Bailian (Qwen) offers an OpenAI-compatible API with a free quota and fast speed.",
+    "message": "Alibaba Cloud Bailian (Qwen) ofrece una API compatible con OpenAI con cuota gratuita y gran velocidad.",
     "description": "Alibaba Bailian setup guide description"
   },
   "guide_bailian_s1": {
-    "message": "Visit the Alibaba Cloud Bailian console and sign in with your Alibaba Cloud account",
+    "message": "Visita la consola de Alibaba Cloud Bailian e inicia sesión con tu cuenta",
     "description": "Alibaba Bailian step 1"
   },
   "guide_bailian_s2": {
-    "message": "Go to \"API-KEY Management\" and click \"Create new API-KEY\"",
+    "message": "Ve a «Gestión de API-KEY» y haz clic en «Crear nueva API-KEY»",
     "description": "Alibaba Bailian step 2"
   },
   "guide_bailian_s3": {
-    "message": "Copy the API Key that starts with <code>sk-</code>",
+    "message": "Copia la clave API que empieza por <code>sk-</code>",
     "description": "Alibaba Bailian step 3"
   },
   "guide_bailian_s4": {
-    "message": "In LingoFlow settings, choose \"Alibaba Bailian\", paste the key and pick a model. For a dedicated workspace, fill in the console address in the Host field",
+    "message": "En los ajustes de LingoFlow elige «Alibaba Bailian», pega la clave y elige un modelo. Para un espacio dedicado, rellena la dirección en el campo Host",
     "description": "Alibaba Bailian step 4"
   },
   "guide_go_bailian": {
-    "message": "Go to Alibaba Bailian to get an API Key",
+    "message": "Ir a Alibaba Bailian para obtener una clave API",
     "description": "Alibaba Bailian CTA"
   },
   "guide_siliconflow_desc": {
-    "message": "AI translation with multiple open-source models. Free models need no payment.",
+    "message": "Traducción con IA mediante varios modelos de código abierto. Los modelos gratuitos no requieren pago.",
     "description": "SiliconFlow setup guide description"
   },
   "guide_siliconflow_s1": {
-    "message": "Visit the SiliconFlow website, sign up and sign in",
+    "message": "Visita el sitio de SiliconFlow, regístrate e inicia sesión",
     "description": "SiliconFlow step 1"
   },
   "guide_siliconflow_s2": {
-    "message": "Go to \"API Key Management\" and click \"Create new key\"",
+    "message": "Ve a «Gestión de claves API» y haz clic en «Crear nueva clave»",
     "description": "SiliconFlow step 2"
   },
   "guide_siliconflow_s3": {
-    "message": "Copy the API Key that starts with <code>sk-</code>",
+    "message": "Copia la clave API que empieza por <code>sk-</code>",
     "description": "SiliconFlow step 3"
   },
   "guide_siliconflow_s4": {
-    "message": "In LingoFlow settings, choose \"SiliconFlow AI\", paste the key and select a model",
+    "message": "En los ajustes de LingoFlow elige «SiliconFlow AI», pega la clave y selecciona un modelo",
     "description": "SiliconFlow step 4"
   },
   "guide_go_siliconflow": {
-    "message": "Go to SiliconFlow to get an API Key",
+    "message": "Ir a SiliconFlow para obtener una clave API",
     "description": "SiliconFlow CTA"
   },
   "guide_nim_desc": {
-    "message": "NVIDIA NIM provides 57+ free inference endpoints with an OpenAI-compatible API, covering many open-source models.",
+    "message": "NVIDIA NIM ofrece más de 57 endpoints de inferencia gratuitos con API compatible con OpenAI.",
     "description": "NVIDIA NIM setup guide description"
   },
   "guide_nim_s1": {
-    "message": "Visit build.nvidia.com, sign up or sign in with an NVIDIA account (supports Google / GitHub sign-in)",
+    "message": "Visita build.nvidia.com, regístrate o inicia sesión con una cuenta NVIDIA",
     "description": "NVIDIA NIM step 1"
   },
   "guide_nim_s2": {
-    "message": "Go to the <code>Models</code> page, filter <code>Free Endpoint</code>, and click into any free model you want to use",
+    "message": "Ve a la página <code>Models</code>, filtra <code>Free Endpoint</code> y entra en cualquier modelo gratuito",
     "description": "NVIDIA NIM step 2"
   },
   "guide_nim_s3": {
-    "message": "On the model detail page, click <strong>Generate API Key</strong> in the top-right corner of the code sample area and copy the key (only shown once)",
+    "message": "En la página del modelo haz clic en <strong>Generate API Key</strong> arriba a la derecha y copia la clave (solo se muestra una vez)",
     "description": "NVIDIA NIM step 3"
   },
   "guide_nim_s4": {
-    "message": "In the same code sample, find the <strong>Base URL</strong> (usually <code>https://integrate.api.nvidia.com/v1</code>) and the <strong>model name</strong> (e.g. <code>z-ai/glm-5.2</code>)",
+    "message": "En el mismo ejemplo encuentra la <strong>Base URL</strong> (normalmente <code>https://integrate.api.nvidia.com/v1</code>) y el <strong>nombre del modelo</strong>",
     "description": "NVIDIA NIM step 4"
   },
   "guide_nim_s5": {
-    "message": "Back in LingoFlow settings, choose \"Custom (OpenAI Compatible)\" and fill in Host / API Key / Model",
+    "message": "En los ajustes de LingoFlow elige «Personalizado (compatible con OpenAI)» y rellena Host / clave API / modelo",
     "description": "NVIDIA NIM step 5"
   },
   "guide_go_nim": {
-    "message": "Go to NVIDIA NIM to get a free endpoint",
+    "message": "Ir a NVIDIA NIM para obtener un endpoint gratuito",
     "description": "NVIDIA NIM CTA"
   },
   "guide_gemini_desc": {
-    "message": "Google AI Studio offers the Gemini API with a free quota and fast speed.",
+    "message": "Google AI Studio ofrece la API de Gemini con cuota gratuita y gran velocidad.",
     "description": "Gemini setup guide description"
   },
   "guide_gemini_s1": {
-    "message": "Visit Google AI Studio and sign in with your Google account",
+    "message": "Visita Google AI Studio e inicia sesión con tu cuenta de Google",
     "description": "Gemini step 1"
   },
   "guide_gemini_s2": {
-    "message": "Click \"Get API key\" → \"Create API key\"",
+    "message": "Haz clic en «Get API key» → «Create API key»",
     "description": "Gemini step 2"
   },
   "guide_gemini_s3": {
-    "message": "Copy the API Key",
+    "message": "Copia la clave API",
     "description": "Gemini step 3"
   },
   "guide_gemini_s4": {
-    "message": "In LingoFlow settings, choose \"Gemini AI\", paste the key and select a model",
+    "message": "En los ajustes de LingoFlow elige «Gemini AI», pega la clave y selecciona un modelo",
     "description": "Gemini step 4"
   },
   "guide_go_gemini": {
-    "message": "Go to Google AI Studio to get an API Key",
+    "message": "Ir a Google AI Studio para obtener una clave API",
     "description": "Gemini CTA"
   },
   "guide_baidu_desc": {
-    "message": "Baidu Translate open platform, stable in China, with enough free quota for personal use.",
+    "message": "Plataforma abierta de Baidu Translate, estable en China, con cuota gratuita suficiente para uso personal.",
     "description": "Baidu Translate setup guide description"
   },
   "guide_baidu_s1": {
-    "message": "Visit the Baidu Translate open platform and sign in with your Baidu account",
+    "message": "Visita la plataforma abierta de Baidu Translate e inicia sesión con tu cuenta de Baidu",
     "description": "Baidu Translate step 1"
   },
   "guide_baidu_s2": {
-    "message": "Register as a developer, create a general translation app, and get the APP ID and secret key",
+    "message": "Regístrate como desarrollador, crea una app de traducción general y obtén el APP ID y la clave secreta",
     "description": "Baidu Translate step 2"
   },
   "guide_baidu_s3": {
-    "message": "Copy the APP ID (application ID) and Secret Key",
+    "message": "Copia el APP ID (ID de aplicación) y la clave secreta",
     "description": "Baidu Translate step 3"
   },
   "guide_baidu_s4": {
-    "message": "In LingoFlow settings, choose \"Baidu Translate\", and paste the APP ID and secret key",
+    "message": "En los ajustes de LingoFlow elige «Baidu Translate» y pega el APP ID y la clave secreta",
     "description": "Baidu Translate step 4"
   },
   "guide_go_baidu": {
-    "message": "Go to the Baidu Translate open platform",
+    "message": "Ir a la plataforma abierta de Baidu Translate",
     "description": "Baidu Translate CTA"
   },
   "guide_custom_title": {
-    "message": "Custom Endpoint",
+    "message": "Endpoint personalizado",
     "description": "Custom endpoint card title"
   },
   "guide_custom_desc": {
-    "message": "Any service exposing an OpenAI <code>/v1/chat/completions</code>-compatible API can be connected, including Zhipu AI, local Ollama, OpenRouter, and more.",
+    "message": "Cualquier servicio que exponga una API compatible con OpenAI <code>/v1/chat/completions</code> puede conectarse, incluidos Zhipu AI, Ollama local, OpenRouter y más.",
     "description": "Custom endpoint description"
   },
   "guide_custom_s1": {
-    "message": "Confirm your API provider exposes an OpenAI-compatible chat completions endpoint",
+    "message": "Confirma que tu proveedor expone un endpoint de chat completions compatible con OpenAI",
     "description": "Custom endpoint step 1"
   },
   "guide_custom_s2": {
-    "message": "Get the Base URL (e.g. <code>https://open.bigmodel.cn/api/paas/v4</code>) and the API Key from your provider",
+    "message": "Obtén la URL base (p. ej. <code>https://open.bigmodel.cn/api/paas/v4</code>) y la clave API de tu proveedor",
     "description": "Custom endpoint step 2"
   },
   "guide_custom_s3": {
-    "message": "Confirm the model name to use (e.g. <code>glm-4-flash</code>)",
+    "message": "Confirma el nombre del modelo a usar (p. ej. <code>glm-4-flash</code>)",
     "description": "Custom endpoint step 3"
   },
   "guide_custom_s4": {
-    "message": "In LingoFlow settings, choose \"Custom (OpenAI Compatible)\" and fill in Host / API Key / Model",
+    "message": "En los ajustes de LingoFlow elige «Personalizado (compatible con OpenAI)» y rellena Host / clave API / modelo",
     "description": "Custom endpoint step 4"
   },
   "guide_deepseek_desc": {
-    "message": "High-quality AI translation at a low price. DeepSeek V4 Flash is recommended.",
+    "message": "Traducción con IA de alta calidad a bajo precio. Se recomienda DeepSeek V4 Flash.",
     "description": "DeepSeek setup guide description"
   },
   "guide_deepseek_s1": {
-    "message": "Visit the DeepSeek open platform, sign up and sign in",
+    "message": "Visita la plataforma abierta de DeepSeek, regístrate e inicia sesión",
     "description": "DeepSeek step 1"
   },
   "guide_deepseek_s2": {
-    "message": "Go to the \"API Keys\" page and click \"Create new API key\"",
+    "message": "Ve a la página «API Keys» y haz clic en «Crear nueva clave API»",
     "description": "DeepSeek step 2"
   },
   "guide_deepseek_s3": {
-    "message": "Copy the API Key that starts with <code>sk-</code> (note: shown only once)",
+    "message": "Copia la clave API que empieza por <code>sk-</code> (nota: solo se muestra una vez)",
     "description": "DeepSeek step 3"
   },
   "guide_deepseek_s4": {
-    "message": "In LingoFlow settings, choose \"DeepSeek AI\", paste the key and select a model",
+    "message": "En los ajustes de LingoFlow elige «DeepSeek AI», pega la clave y selecciona un modelo",
     "description": "DeepSeek step 4"
   },
   "guide_go_deepseek": {
-    "message": "Go to the DeepSeek open platform to get an API Key",
+    "message": "Ir a la plataforma abierta de DeepSeek",
     "description": "DeepSeek CTA"
   },
   "guide_microsoft_desc": {
-    "message": "Azure AI service with stable, professional translation quality. Requires an Azure account.",
+    "message": "Servicio de Azure AI con calidad de traducción estable y profesional. Requiere una cuenta de Azure.",
     "description": "Microsoft Translator setup guide description"
   },
   "guide_microsoft_s1": {
-    "message": "Visit the Azure portal, sign in or sign up for an Azure account",
+    "message": "Visita el portal de Azure, inicia sesión o crea una cuenta",
     "description": "Microsoft Translator step 1"
   },
   "guide_microsoft_s2": {
-    "message": "Create a \"Translator\" resource and get the key and region",
+    "message": "Crea un recurso «Translator» y obtén la clave y la región",
     "description": "Microsoft Translator step 2"
   },
   "guide_microsoft_s3": {
-    "message": "Copy the key (either of the two keys works)",
+    "message": "Copia la clave (vale cualquiera de las dos)",
     "description": "Microsoft Translator step 3"
   },
   "guide_microsoft_s4": {
-    "message": "In LingoFlow settings, choose \"Microsoft Translator\" and paste the key",
+    "message": "En los ajustes de LingoFlow elige «Microsoft Translator» y pega la clave",
     "description": "Microsoft Translator step 4"
   },
   "guide_go_microsoft": {
-    "message": "Go to the Azure portal to get the key",
+    "message": "Ir al portal de Azure para obtener la clave",
     "description": "Microsoft Translator CTA"
   },
   "guide_youdao_desc": {
-    "message": "NetEase Youdao Zhiyun translation API, fast in China. Requires real-name verification.",
+    "message": "API de traducción de NetEase Youdao Zhiyun, rápida en China. Requiere verificación de identidad.",
     "description": "Youdao Translate setup guide description"
   },
   "guide_youdao_s1": {
-    "message": "Visit the Youdao Zhiyun AI open platform, sign up and complete real-name verification",
+    "message": "Visita la plataforma abierta de Youdao Zhiyun AI, regístrate y completa la verificación de identidad",
     "description": "Youdao Translate step 1"
   },
   "guide_youdao_s2": {
-    "message": "Go to \"App Management\", create an app, and get the App Key and App Secret",
+    "message": "Ve a «Gestión de aplicaciones», crea una app y obtén el App Key y el App Secret",
     "description": "Youdao Translate step 2"
   },
   "guide_youdao_s3": {
-    "message": "Copy the App Key (application ID) and App Secret (application secret)",
+    "message": "Copia el App Key (ID de aplicación) y el App Secret (secreto de aplicación)",
     "description": "Youdao Translate step 3"
   },
   "guide_youdao_s4": {
-    "message": "In LingoFlow settings, choose \"Youdao Translate\" and paste the App Key and App Secret",
+    "message": "En los ajustes de LingoFlow elige «Youdao Translate» y pega el App Key y el App Secret",
     "description": "Youdao Translate step 4"
   },
   "guide_go_youdao": {
-    "message": "Go to Youdao Zhiyun to get the App Key",
+    "message": "Ir a Youdao Zhiyun para obtener el App Key",
     "description": "Youdao Translate CTA"
   },
   "guide_youdaollm_desc": {
-    "message": "Youdao Zhiyun large-model translation API, AI-based with higher translation quality.",
+    "message": "API de traducción con modelo grande de Youdao Zhiyun, basada en IA y de mayor calidad.",
     "description": "Youdao LLM setup guide description"
   },
   "guide_youdaollm_s1": {
-    "message": "Apply on Youdao Zhiyun as well and enter the \"Large Model Translation\" service",
+    "message": "Solicítalo también en Youdao Zhiyun y entra en el servicio «Traducción con modelo grande»",
     "description": "Youdao LLM step 1"
   },
   "guide_youdaollm_s2": {
-    "message": "Get the App Key and App Secret, and choose the large-model variant",
+    "message": "Obtén el App Key y el App Secret y elige la variante de modelo grande",
     "description": "Youdao LLM step 2"
   },
   "guide_youdaollm_s3": {
-    "message": "In LingoFlow settings, choose \"Youdao LLM\", paste the key and select a model",
+    "message": "En los ajustes de LingoFlow elige «Youdao LLM», pega la clave y selecciona un modelo",
     "description": "Youdao LLM step 3"
   },
   "guide_go_youdaollm": {
-    "message": "Go to Youdao Zhiyun",
+    "message": "Ir a Youdao Zhiyun",
     "description": "Youdao LLM CTA"
   },
   "guide_baidullm_desc": {
-    "message": "Baidu Translate open platform large-model text translation API, high-quality AI translation.",
+    "message": "API de traducción de texto con modelo grande de la plataforma abierta de Baidu, traducción con IA de alta calidad.",
     "description": "Baidu LLM setup guide description"
   },
   "guide_baidullm_s1": {
-    "message": "Visit the Baidu Translate open platform and enter \"Large Model Text Translation\"",
+    "message": "Visita la plataforma abierta de Baidu Translate y entra en «Traducción de texto con modelo grande»",
     "description": "Baidu LLM step 1"
   },
   "guide_baidullm_s2": {
-    "message": "Create an API Key in \"API Key Management\" (format: <code>bce-v3/ALTAK-...</code>)",
+    "message": "Crea una clave API en «Gestión de claves API» (formato: <code>bce-v3/ALTAK-...</code>)",
     "description": "Baidu LLM step 2"
   },
   "guide_baidullm_s3": {
-    "message": "Copy the API Key and paste it into LingoFlow settings",
+    "message": "Copia la clave API y pégala en los ajustes de LingoFlow",
     "description": "Baidu LLM step 3"
   },
   "guide_go_baidullm": {
-    "message": "Go to Baidu LLM translation",
+    "message": "Ir a la traducción con modelo grande de Baidu",
     "description": "Baidu LLM CTA"
   },
   "guide_note": {
-    "message": "💡 <strong>Tip:</strong> MyMemory and Google Translate need no API key — just select them in settings and skip the steps above.",
+    "message": "💡 <strong>Consejo:</strong> MyMemory y Google Translate no necesitan clave API: solo selecciónalos en los ajustes y omite los pasos anteriores.",
     "description": "Setup guide footer note"
   },
   "model_custom_option": {
-    "message": "Custom (type model manually)",
+    "message": "Personalizado (escribe el modelo manualmente)",
     "description": "Last item in model select: type a model id yourself"
   },
   "custom_model_badge": {
@@ -1060,39 +1060,39 @@
     "description": "Badge for the Custom item in model select"
   },
   "spanish": {
-    "message": "Spanish",
+    "message": "Español",
     "description": "Language option: Spanish"
   },
   "model_custom_input_placeholder_siliconflow": {
-    "message": "custom model id (e.g. Qwen/Qwen2-7B-Instruct)",
+    "message": "id de modelo personalizado (p. ej. Qwen/Qwen2-7B-Instruct)",
     "description": "SiliconFlow custom model input placeholder"
   },
   "model_custom_input_placeholder_bailian": {
-    "message": "custom model id (e.g. qwen3-max)",
+    "message": "id de modelo personalizado (p. ej. qwen3-max)",
     "description": "Bailian custom model input placeholder"
   },
   "model_custom_input_placeholder_gemini": {
-    "message": "custom model id (e.g. gemini-2.0-pro)",
+    "message": "id de modelo personalizado (p. ej. gemini-2.0-pro)",
     "description": "Gemini custom model input placeholder"
   },
   "model_custom_input_placeholder_deepseek": {
-    "message": "custom model id",
+    "message": "id de modelo personalizado",
     "description": "DeepSeek custom model input placeholder"
   },
   "model_custom_input_placeholder_youdaollm": {
-    "message": "custom handleOption (e.g. 0 / 3)",
+    "message": "handleOption personalizado (p. ej. 0 / 3)",
     "description": "YoudaoLLM custom model input placeholder"
   },
   "model_custom_label": {
-    "message": "Custom",
+    "message": "Personalizado",
     "description": "trigger label shown when user picked the custom option"
   },
   "model_custom_desc": {
-    "message": "Type a model name below",
+    "message": "Escribe un nombre de modelo abajo",
     "description": "trigger description for the custom option"
   },
   "model_custom_input_prompt": {
-    "message": "Please enter the model id:",
+    "message": "Introduce el id del modelo:",
     "description": "popup prompt for custom model input"
   }
 }

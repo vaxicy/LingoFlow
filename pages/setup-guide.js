@@ -11,8 +11,15 @@
   var STORAGE_KEY = 'lingoflow_ui_lang';
   var buttons = document.querySelectorAll('.lang-switch button');
 
+  function localeDir(lang) {
+    var l = (lang || '').toLowerCase();
+    if (l === 'zh' || l.indexOf('zh') === 0) return 'zh_CN';
+    if (l.indexOf('es') === 0) return 'es';
+    return 'en';
+  }
+
   function applyLang(lang) {
-    var dir = lang === 'zh' || (lang || '').startsWith('zh') ? 'zh_CN' : 'en';
+    var dir = localeDir(lang);
     return fetch(chrome.runtime.getURL('_locales/' + dir + '/messages.json'))
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -33,7 +40,8 @@
           b.classList.toggle('active', b.getAttribute('data-lang') === lang);
         });
         try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) {}
-        document.documentElement.lang = lang === 'zh' ? 'zh' : 'en';
+        var l = (lang || '').toLowerCase();
+        document.documentElement.lang = (l.indexOf('zh') === 0) ? 'zh-CN' : (l.indexOf('es') === 0 ? 'es' : 'en');
       })
       .catch(function (err) { console.warn('LingoFlow setup guide: failed to load locale', dir, err); });
   }
@@ -41,10 +49,12 @@
   function detectLang() {
     try {
       var saved = localStorage.getItem(STORAGE_KEY);
-      if (saved === 'zh' || saved === 'en') return saved;
+      if (saved === 'zh' || saved === 'en' || saved === 'es') return saved;
     } catch (e) {}
     var nav = (navigator.language || navigator.userLanguage || 'zh').toLowerCase();
-    return nav.startsWith('zh') ? 'zh' : 'en';
+    if (nav.indexOf('zh') === 0) return 'zh';
+    if (nav.indexOf('es') === 0) return 'es';
+    return 'en';
   }
 
   buttons.forEach(function (b) {

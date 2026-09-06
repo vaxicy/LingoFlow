@@ -16,7 +16,10 @@
   var buttons = document.querySelectorAll('.lang-switch button');
 
   function dirFor(lang) {
-    return lang === 'zh' || (lang || '').toLowerCase().startsWith('zh') ? 'zh_CN' : 'en';
+    var l = (lang || '').toLowerCase();
+    if (l === 'zh' || l.indexOf('zh') === 0) return 'zh_CN';
+    if (l.indexOf('es') === 0) return 'es';
+    return 'en';
   }
 
   function applyI18n(lang) {
@@ -37,7 +40,8 @@
           b.classList.toggle('active', b.getAttribute('data-lang') === lang);
         });
         try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) {}
-        document.documentElement.lang = lang === 'zh' ? 'zh' : 'en';
+        var l = (lang || '').toLowerCase();
+        document.documentElement.lang = (l.indexOf('zh') === 0) ? 'zh-CN' : (l.indexOf('es') === 0 ? 'es' : 'en');
       })
       .catch(function (err) { console.warn('LingoFlow support: failed to load locale', dir, err); });
   }
@@ -47,12 +51,14 @@
     try {
       chrome.storage.local.get(['lingoflow_settings'], function (result) {
         var ui = result && result.lingoflow_settings && result.lingoflow_settings.uiLanguage;
-        if (ui === 'zh' || ui === 'en') return cb(ui);
+        if (ui === 'zh' || ui === 'en' || ui === 'es') return cb(ui);
         var saved;
         try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) {}
-        if (saved === 'zh' || saved === 'en') return cb(saved);
+        if (saved === 'zh' || saved === 'en' || saved === 'es') return cb(saved);
         var nav = (navigator.language || navigator.userLanguage || 'zh').toLowerCase();
-        cb(nav.startsWith('zh') ? 'zh' : 'en');
+        if (nav.indexOf('zh') === 0) return cb('zh');
+        if (nav.indexOf('es') === 0) return cb('es');
+        cb('en');
       });
     } catch (_) {
       cb('en');

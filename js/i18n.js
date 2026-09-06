@@ -7,9 +7,9 @@ let _manualMessages = null;
 
 /**
  * Set manual UI language.
- * @param {string} lang - 'auto' | 'zh' | 'en'
+ * @param {string} lang - 'auto' | 'zh' | 'en' | 'es'
  *   'auto': use chrome.i18n (browser locale)
- *   'zh' / 'en': manually load and apply the corresponding locale file
+ *   'zh' / 'en' / 'es': manually load and apply the corresponding locale file
  */
 function setLanguage(lang) {
   if (lang === 'auto') {
@@ -20,8 +20,9 @@ function setLanguage(lang) {
     return Promise.resolve();
   }
 
-  // Map lang code to directory name
-  const dir = (lang === 'zh' || lang.startsWith('zh')) ? 'zh_CN' : lang;
+  // Map lang code to directory name (zh → zh_CN; en → en; es → es)
+  const lower = String(lang || '').toLowerCase();
+  const dir = (lower === 'zh' || lower.indexOf('zh') === 0) ? 'zh_CN' : lower;
 
   return fetch(chrome.runtime.getURL('_locales/' + dir + '/messages.json'))
     .then(r => {

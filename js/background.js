@@ -639,6 +639,38 @@ function resolveModel(provider, selected, custom) {
   return chosen;
 }
 
+// ===== 统一目标语言映射 =====
+// 支持的目标语言：中文(zh) / 英文(en) / 西班牙文(es)
+// LLM 引擎需要自然语言名（"Simplified Chinese" / "English" / "Spanish"），
+// 传统翻译 API 需要各自的语言代码（Google: es / 有道: es / 百度: spa / 微软: es ...）。
+function getTargetLanguageName(targetLang) {
+  const t = String(targetLang || '').toLowerCase();
+  if (t === 'zh' || t.indexOf('zh') === 0) return 'Simplified Chinese';
+  if (t.indexOf('en') === 0) return 'English';
+  if (t.indexOf('es') === 0) return 'Spanish';
+  return 'Simplified Chinese';
+}
+
+// 各引擎的目标语言代码表
+const ENGINE_LANG_CODES = {
+  google:    { zh: 'zh-CN',   en: 'en', es: 'es'  },
+  mymemory:  { zh: 'zh-CN',   en: 'en', es: 'es'  },
+  youdao:    { zh: 'zh-CHS',  en: 'en', es: 'es'  },
+  youdaollm: { zh: 'zh-CHS',  en: 'en', es: 'es'  },
+  microsoft: { zh: 'zh-Hans', en: 'en', es: 'es'  },
+  baidu:     { zh: 'zh',      en: 'en', es: 'spa' },
+  baidullm:  { zh: 'zh',      en: 'en', es: 'spa' },
+  deepseek:  { zh: 'Chinese', en: 'English', es: 'Spanish' }
+};
+
+function getEngineLangCode(engine, targetLang) {
+  const t = String(targetLang || '').toLowerCase();
+  const table = ENGINE_LANG_CODES[engine] || ENGINE_LANG_CODES.google;
+  if (t === 'zh' || t.indexOf('zh') === 0) return table.zh;
+  if (t.indexOf('es') === 0) return table.es;
+  return table.en;
+}
+
 // Translation dispatcher — routes to the selected engine
 function lookupDictionary(text, targetLang, sendResponse) {
   const word = String(text || '').trim().replace(/^[^A-Za-z]+|[^A-Za-z'-]+$/g, '');
@@ -1016,8 +1048,7 @@ function getSiliconFlowFallbackModels(selectedModel) {
 }
 
 function getSiliconFlowTargetName(targetLang) {
-  return targetLang === 'zh' || targetLang === 'zh-CN' ? 'Simplified Chinese' :
-         targetLang === 'en' ? 'English' : 'Simplified Chinese';
+  return getTargetLanguageName(targetLang);
 }
 
 function createSiliconFlowTextChunks(texts, model) {
@@ -1479,8 +1510,7 @@ const BAILIAN_FALLBACK_MODELS = [
 ];
 
 function getBailianTargetName(targetLang) {
-  return (targetLang === 'zh' || targetLang === 'zh-CN') ? 'Simplified Chinese'
-       : (targetLang === 'en') ? 'English' : 'Simplified Chinese';
+  return getTargetLanguageName(targetLang);
 }
 
 // Bailian single-text translation (model fallback, then Google)
@@ -1576,8 +1606,7 @@ function translateWithBailian(text, targetLang, sendResponse) {
 // Users fill in their own Base URL + API Key + Model. Any service that
 // exposes a standard /v1/chat/completions endpoint works here.
 function getCustomTargetName(targetLang) {
-  return (targetLang === 'zh' || targetLang === 'zh-CN') ? 'Simplified Chinese'
-       : (targetLang === 'en') ? 'English' : 'Simplified Chinese';
+  return getTargetLanguageName(targetLang);
 }
 
 function translateWithCustom(text, targetLang, sendResponse) {
@@ -1767,8 +1796,7 @@ async function translateBatchWithCustom(texts, targetLang, sendResponse) {
 // Gemini AI Translation (Google AI Studio API key required)
 // Docs: https://ai.google.dev/gemini-api/docs/text-generation
 function translateWithGemini(text, targetLang, sendResponse) {
-  const target = targetLang === 'zh' ? 'Simplified Chinese' :
-                 targetLang === 'en' ? 'English' : 'Simplified Chinese';
+  const target = getTargetLanguageName(targetLang);
 
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = result.lingoflow_settings || {};
@@ -1943,8 +1971,7 @@ async function runGeminiChunkQueue(chunks, context) {
 }
 
 function translateGeminiChunk(chunk, targetLang, apiKey, model, attempt) {
-  const target = targetLang === 'zh' || targetLang === 'zh-CN' ? 'Simplified Chinese' :
-                 targetLang === 'en' ? 'English' : 'Simplified Chinese';
+  const target = getTargetLanguageName(targetLang);
   const payload = chunk.map((item, offset) => ({
     id: offset,
     text: item.text
@@ -2070,8 +2097,7 @@ function translateBatchWithGoogleBatch(texts, targetLang) {
   const list = Array.isArray(texts) ? texts.filter(t => typeof t === 'string' && t.trim()) : [];
   if (!list.length) return Promise.resolve([]);
 
-  const tl = targetLang === 'zh' ? 'zh-CN' :
-             targetLang === 'en' ? 'en' : 'zh-CN';
+  const tl = getEngineLangCode('google', targetLang);
 
   // Split into batches of ~4000 chars each (Google free endpoint soft limit)
   const batches = [];
@@ -2168,8 +2194,10 @@ function delay(ms) {
 function translateWithMyMemory(text, targetLang, sendResponse) {
   // MyMemory does NOT support 'auto' as source language.
   // We infer source from the target: if target is 'zh' we assume source is 'en'.
-  const src = targetLang === 'zh' || targetLang.startsWith('zh') ? 'en' : 'zh-CN';
-  const tgt = targetLang === 'zh' ? 'zh-CN' : (targetLang === 'en' ? 'en' : 'zh-CN');
+  const tgt = getEngineLangCode('mymemory', targetLang);
+  // MyMemory 不支持源语言 auto，按最常见的网页翻译场景推断：
+  //   译中文 → 源英文（英译中）   译英文 → 源中文（中译英）   译西班牙文 → 源英文（英译西）
+  const src = (tgt === 'en') ? 'zh-CN' : 'en';
 
   const maxLen = 1000; // Increased from 500; MyMemory free tier supports up to ~1000 chars
   const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
@@ -2251,8 +2279,7 @@ function translateWithMyMemory(text, targetLang, sendResponse) {
 // Youdao Translate (Youdao Zhiyun NMT API v3)
 // Docs: https://ai.youdao.com/DOCSIRMA/html/trans/api/wbfy/
 function translateWithYoudao(text, targetLang, sendResponse) {
-  const youdaoTarget = targetLang === 'zh' ? 'zh-CHS' :
-                       targetLang === 'en' ? 'en' : 'zh-CHS';
+  const youdaoTarget = getEngineLangCode('youdao', targetLang);
 
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = result.lingoflow_settings || {};
@@ -2396,8 +2423,7 @@ function sha256Youdao(message) {
 // Youdao LLM Translate (Youdao Zhiyun Large Model Translation API)
 // Docs: https://ai.youdao.com/DOCSIRMA/html/trans/api/dmxfy/
 function translateWithYoudaoLLM(text, targetLang, sendResponse) {
-  const youdaoTarget = targetLang === 'zh' ? 'zh-CHS' :
-                       targetLang === 'en' ? 'en' : 'zh-CHS';
+  const youdaoTarget = getEngineLangCode('youdao', targetLang);
 
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = result.lingoflow_settings || {};
@@ -2524,8 +2550,7 @@ function translateWithDeepSeek(text, targetLang) {
         return;
       }
 
-      const targetLangName = targetLang === 'zh' || targetLang === 'zh-CN' ? 'Chinese' :
-                             targetLang === 'en' || targetLang === 'en-US' ? 'English' : targetLang;
+      const targetLangName = getEngineLangCode('deepseek', targetLang);
 
       const maxLen = 4000;
       const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
@@ -2698,8 +2723,7 @@ function translateOneYoudaoLLM(text, targetLang) {
 // Microsoft Translator (Azure AI Translator - free tier: 2M chars/month)
 // Docs: https://learn.microsoft.com/azure/ai-services/translator/
 function translateWithMicrosoft(text, targetLang, sendResponse) {
-  const target = targetLang === 'zh' ? 'zh-Hans' :
-                 targetLang === 'en' ? 'en' : 'zh-Hans';
+  const target = getEngineLangCode('microsoft', targetLang);
 
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = result.lingoflow_settings || {};
@@ -2756,8 +2780,7 @@ function translateWithMicrosoft(text, targetLang, sendResponse) {
 
 // Google Translate (non-official free endpoint)
 function translateWithGoogle(text, targetLang, sendResponse) {
-  const tl = targetLang === 'zh' ? 'zh-CN' :
-             targetLang === 'en' ? 'en' : 'zh-CN';
+  const tl = getEngineLangCode('google', targetLang);
 
   const maxLen = 2000;
   const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
@@ -2808,8 +2831,7 @@ function translateWithGoogle(text, targetLang, sendResponse) {
 // Sign = MD5(appid + q + salt + secretKey)
 // NOTE: q in sign must be RAW text (not URL-encoded); UTF-8 encoding required for MD5
 function translateWithBaidu(text, targetLang, sendResponse) {
-  const baiduTarget = targetLang === 'zh' ? 'zh' :
-                      targetLang === 'en' ? 'en' : 'zh';
+  const baiduTarget = getEngineLangCode('baidu', targetLang);
 
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = result.lingoflow_settings || {};
@@ -3086,8 +3108,7 @@ function translateWithBaiduLLM(text, targetLang) {
       }
 
       // Target language mapping — note: 'to' field does NOT support auto per doc
-      const targetLangMap = { 'zh': 'zh', 'en': 'en' };
-      const btTarget = targetLangMap[targetLang] || 'zh';
+      const btTarget = getEngineLangCode('baidullm', targetLang);
       const maxLen = 6000;
       const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
 
