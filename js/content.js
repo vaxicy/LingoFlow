@@ -3592,7 +3592,9 @@ function mapTargetLang(targetLang) {
         const containers = units.map(u => u.container);
         units = units.filter((u, i) => {
           for (let j = 0; j < containers.length; j++) {
-            if (j !== i && containers[i].contains(containers[j])) return false;
+            // 注意：contains() 对节点自身也返回 true，句级单元共享同一容器，
+            // 必须先排除同容器（否则长段落全被误杀，表现为"部分替换"）
+            if (j !== i && containers[j] !== containers[i] && containers[i].contains(containers[j])) return false;
           }
           return true;
         });
