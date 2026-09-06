@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LingoFlow Store Screenshots</title>
+  <style>
+    :root {
+      --blue: #62a8ff;
+      --violet: #7468ff;
+      --lavender: #b9b0ff;
+      --ink: #111827;
+      --muted: #61708a;
+      --panel: rgba(255, 255, 255, 0.84);
+      --line: rgba(108, 120, 255, 0.18);
+      --shadow: 0 30px 80px rgba(62, 88, 220, 0.18);
+      --gradient: linear-gradient(135deg, #62a8ff 0%, #7468ff 58%, #a99cff 100%);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #eef4ff;
+      color: var(--ink);
+      font-family: Inter, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    .slide {
+      position: relative;
+      width: 1280px;
+      height: 800px;
+      overflow: hidden;
+      padding: 64px 74px;
+      background:
+        radial-gradient(circle at 12% 8%, rgba(98, 168, 255, 0.26), transparent 34%),
+        radial-gradient(circle at 86% 12%, rgba(185, 176, 255, 0.34), transparent 31%),
+        linear-gradient(145deg, #f8fbff 0%, #edf3ff 100%);
+    }
+
+    .slide::before,
+    .slide::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      pointer-events: none;
+      filter: blur(2px);
+    }
+
+    .slide::before {
+      right: -120px;
+      bottom: -150px;
+      width: 440px;
+      height: 440px;
+      background: rgba(116, 104, 255, 0.14);
+    }
+
+    .slide::after {
+      left: -170px;
+      top: 260px;
+      width: 360px;
+      height: 360px;
+      background: rgba(98, 168, 255, 0.14);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 38px;
+      color: #6979ff;
+      font-size: 34px;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+
+    .brand img {
+      width: 72px;
+      height: 72px;
+      border-radius: 20px;
+      filter: drop-shadow(0 14px 28px rgba(82, 109, 255, 0.24));
+    }
+
+    .kicker {
+      color: var(--violet);
+      font-size: 19px;
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 710px;
+      font-size: 64px;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 640px;
+      margin: 22px 0 0;
+      color: var(--muted);
+      font-size: 24px;
+      line-height: 1.55;
+      font-weight: 680;
+    }
+
+    .hero-grid {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+      gap: 46px;
+      align-items: center;
+    }
+
+    .card {
+      position: relative;
+      z-index: 1;
+      border: 1px solid var(--line);
+      border-radius: 30px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.58)),
+        var(--panel);
+      box-shadow: var(--shadow);
+    }
+
+    .browser {
+      overflow: hidden;
+    }
+
+    .browser-bar {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      height: 48px;
+      padding: 0 20px;
+      background: rgba(255, 255, 255, 0.68);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #ff6b6b;
+    }
+
+    .dot:nth-child(2) {
+      background: #fbbf24;
+    }
+
+    .dot:nth-child(3) {
+      background: #34d399;
+    }
+
+    .url {
+      flex: 1;
+      margin-left: 12px;
+      height: 24px;
+      border-radius: 999px;
+      background: rgba(110, 124, 160, 0.14);
+    }
+
+    .article {
+      padding: 38px 44px 42px;
+    }
+
+    .article h2 {
+      margin: 0 0 22px;
+      font-size: 36px;
+      line-height: 1.18;
+    }
+
+    .para {
+      margin: 0 0 22px;
+      color: #233047;
+      font-size: 21px;
+      line-height: 1.55;
+      font-weight: 650;
+    }
+
+    .translation {
+      margin-top: -8px;
+      margin-bottom: 24px;
+      padding-left: 16px;
+      border-left: 4px solid rgba(116, 104, 255, 0.42);
+      color: #6571a8;
+      font-size: 21px;
+      line-height: 1.58;
+      font-weight: 700;
+    }
+
+    .popup {
+      width: 330px;
+      padding: 22px;
+      border-radius: 26px;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(98, 168, 255, 0.22), transparent 42%),
+        linear-gradient(160deg, rgba(255,255,255,0.96), rgba(243,246,255,0.94));
+      box-shadow: 0 28px 70px rgba(36, 57, 180, 0.22);
+      border: 1px solid rgba(103, 116, 255, 0.18);
+    }
+
+    .popup-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      color: #6979ff;
+      font-size: 25px;
+      font-weight: 900;
+    }
+
+    .popup-head img {
+      width: 42px;
+      height: 42px;
+    }
+
+    .mode {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 62px;
+      margin-bottom: 10px;
+      padding: 0 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      font-size: 17px;
+      font-weight: 860;
+    }
+
+    .toggle {
+      width: 58px;
+      height: 34px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #62a8ff, #7468ff);
+      padding: 4px;
+    }
+
+    .toggle::after {
+      content: "";
+      display: block;
+      width: 26px;
+      height: 26px;
+      margin-left: 24px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 4px 12px rgba(42, 55, 120, 0.24);
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 12px 0;
+    }
+
+    .mini {
+      min-height: 74px;
+      padding: 12px 8px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--line);
+      color: #61708a;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 820;
+    }
+
+    .status {
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--line);
+      color: #26324a;
+      font-weight: 850;
+    }
+
+    .toolbar {
+      position: absolute;
+      left: 80px;
+      top: 520px;
+      display: flex;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 22px;
+      color: #fff;
+      background: #29254e;
+      box-shadow: 0 18px 48px rgba(34, 31, 74, 0.28);
+      font-size: 18px;
+      font-weight: 820;
+    }
+
+    .tool {
+      padding: 14px 18px;
+      border-radius: 16px;
+      background: rgba(120, 96, 255, 0.18);
+    }
+
+    .dict-card {
+      position: relative;
+      width: 580px;
+      padding: 32px;
+      border-radius: 28px;
+      color: #fff;
+      background: #29254e;
+      box-shadow: 0 28px 72px rgba(30, 24, 68, 0.34);
+    }
+
+    .dict-card h2 {
+      margin: 0 0 8px;
+      font-size: 40px;
+    }
+
+    .phonetic {
+      margin-bottom: 22px;
+      color: #bdb7df;
+      font-size: 22px;
+      font-weight: 820;
+    }
+
+    .meaning {
+      display: grid;
+      grid-template-columns: 68px 1fr;
+      gap: 14px;
+      margin: 15px 0;
+      align-items: start;
+      color: #edeaff;
+      font-size: 20px;
+      line-height: 1.45;
+      font-weight: 760;
+    }
+
+    .pos {
+      padding: 5px 12px;
+      border-radius: 999px;
+      background: rgba(184, 173, 255, 0.18);
+      color: #d8d1ff;
+      text-align: center;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .quote {
+      margin-top: 22px;
+      padding-left: 16px;
+      border-left: 3px solid rgba(184, 173, 255, 0.45);
+      color: #bdb7df;
+      font-size: 18px;
+      font-style: italic;
+      line-height: 1.5;
+      font-weight: 760;
+    }
+
+    .settings {
+      width: 420px;
+      padding: 24px;
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.84);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .setting-row {
+      padding: 18px 0;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .setting-row:last-child {
+      border-bottom: none;
+    }
+
+    .label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--ink);
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .desc {
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.45;
+      font-weight: 720;
+    }
+
+    .select {
+      min-width: 150px;
+      padding: 12px 16px;
+      border-radius: 14px;
+      color: #4f46e5;
+      background: rgba(116, 104, 255, 0.1);
+      border: 1px solid rgba(116, 104, 255, 0.18);
+      font-size: 15px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .tag {
+      padding: 6px 11px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .free {
+      color: #047857;
+      background: rgba(16, 185, 129, 0.12);
+    }
+
+    .paid {
+      color: #dc2626;
+      background: rgba(248, 113, 113, 0.12);
+    }
+
+    .library {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 18px;
+    }
+
+    .library-card {
+      min-height: 210px;
+      padding: 24px;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid var(--line);
+      box-shadow: 0 18px 42px rgba(61, 99, 242, 0.1);
+    }
+
+    .library-card h3 {
+      margin: 0 0 14px;
+      font-size: 24px;
+    }
+
+    .library-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.55;
+      font-weight: 690;
+    }
+
+    .pill-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .pill {
+      padding: 10px 14px;
+      border-radius: 999px;
+      color: #5b54e8;
+      background: rgba(116, 104, 255, 0.1);
+      font-weight: 850;
+    }
+
+    .support-card-mini {
+      display: grid;
+      grid-template-columns: 190px 1fr;
+      gap: 24px;
+      align-items: center;
+      padding: 28px;
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.82);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+    }
+
+    .privacy-card-mini {
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    }
+
+    .support-card-mini img {
+      width: 190px;
+      border-radius: 18px;
+      background: #fff;
+    }
+
+    .privacy-panel {
+      display: grid;
+      gap: 14px;
+    }
+
+    .privacy-row {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .privacy-dot {
+      width: 12px;
+      height: 12px;
+      margin-top: 7px;
+      border-radius: 50%;
+      background: var(--gradient);
+      box-shadow: 0 0 0 6px rgba(116, 104, 255, 0.12);
+    }
+
+    .privacy-row strong {
+      display: block;
+      color: var(--ink);
+      font-size: 20px;
+      line-height: 1.25;
+      font-weight: 920;
+    }
+
+    .privacy-row p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.45;
+      font-weight: 720;
+    }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 24px;
+      min-height: 54px;
+      padding: 0 26px;
+      border-radius: 18px;
+      color: #fff;
+      background: var(--gradient);
+      font-size: 18px;
+      font-weight: 900;
+      box-shadow: 0 16px 36px rgba(61, 99, 242, 0.24);
+    }
+
+    .absolute-pop {
+      position: absolute;
+      right: 82px;
+      top: 165px;
+      z-index: 3;
+    }
+  </style>
+</head>
+<body>
+  <section class="slide" id="screenshot-01-bilingual">
+    <div class="brand"><img src="../../../icons/icon-128.png" alt="">LingoFlow</div>
+    <div class="hero-grid">
+      <div>
+        <div class="kicker">外文网页阅读助手</div>
+        <h1>英文原文与中文译文上下对齐</h1>
+        <p class="lead">双语模式将每段译文放在原文下方，保持页面布局、行距和阅读节奏。支持中、英、西多语言互译。</p>
+      </div>
+      <div class="browser card">
+        <div class="browser-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url"></span></div>
+        <div class="article">
+          <h2>How will OpenAI compete?</h2>
+          <p class="para">Great products start with clear thinking, patient iteration, and a strong sense of what users truly need.</p>
+          <p class="translation">优秀产品始于清晰思考、耐心迭代，以及对用户真实需求的敏锐理解。</p>
+          <p class="para">The best tools feel quiet in your workflow, but powerful exactly when you need them.</p>
+          <p class="translation">最好的工具会安静地融入工作流，并在你需要时刚好发挥力量。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="screenshot-02-selection">
+    <div class="brand"><img src="../../../icons/icon-128.png" alt="">LingoFlow</div>
+    <div class="hero-grid">
+      <div>
+        <div class="kicker">划词翻译</div>
+        <h1>选中单词查词典，选中句子直接翻译</h1>
+        <p class="lead">复制、保存和右键菜单共用同一套结果，生词本会保存原文与译文。</p>
+      </div>
+      <div class="dict-card">
+        <h2>demands</h2>
+        <div class="phonetic">/dɪˈmændz/</div>
+        <div class="meaning"><span class="pos">noun</span><span>需求；市场中消费者愿意购买的数量。</span></div>
+        <div class="meaning"><span class="pos">verb</span><span>强烈要求；需要某种能力或条件。</span></div>
+        <div class="quote">“The role demands strong problem-solving skills.”</div>
+      </div>
+    </div>
+    <div class="toolbar"><span class="tool">翻译</span><span class="tool">复制</span><span class="tool">保存</span></div>
+  </section>
+
+  <section class="slide" id="screenshot-03-engines">
+    <div class="brand"><img src="../../../icons/icon-128.png" alt="">LingoFlow</div>
+    <div class="hero-grid">
+      <div>
+        <div class="kicker">多翻译引擎</div>
+        <h1>免费、API、AI 模型清晰标注</h1>
+        <p class="lead">按你的使用场景选择 Google、Microsoft、Gemini、硅基流动、DeepSeek 等引擎，还能给译文挑个醒目的颜色。</p>
+      </div>
+      <div class="settings">
+        <div class="setting-row">
+          <div class="label">Google 翻译 <span class="tag free">免费</span></div>
+          <div class="desc">快速通用，适合轻量网页翻译。</div>
+        </div>
+        <div class="setting-row">
+          <div class="label">Microsoft Translator <span class="tag paid">API</span></div>
+          <div class="desc">稳定专业，适合长期阅读场景。</div>
+        </div>
+        <div class="setting-row">
+          <div class="label">Gemini AI <span class="tag paid">API</span></div>
+          <div class="desc">适合更自然的语义翻译。</div>
+        </div>
+        <div class="setting-row">
+          <div class="label">译文颜色
+            <span class="select" style="color:#2563eb;background:rgba(37,99,235,0.12);border-color:rgba(37,99,235,0.3);">蓝色 ▾</span>
+          </div>
+          <div class="desc">红、蓝、绿、橙、紫，译文与原文一眼区分。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="screenshot-04-library">
+    <div class="brand"><img src="../../../icons/icon-128.png" alt="">LingoFlow</div>
+    <div class="hero-grid">
+      <div>
+        <div class="kicker">学习与回顾</div>
+        <h1>生词本、历史记录和设置都在一个弹窗里</h1>
+        <p class="lead">保存你划词翻译过的单词和句子，也可以关闭历史记录，保持阅读更自在。</p>
+      </div>
+      <div class="library">
+        <div class="library-card">
+          <h3>生词本</h3>
+          <p>保存单词、句子、释义和来源页面，方便之后复习。</p>
+          <div class="pill-row"><span class="pill">单词</span><span class="pill">句子</span></div>
+        </div>
+        <div class="library-card">
+          <h3>历史记录</h3>
+          <p>记录翻译内容，也可以在设置里一键关闭。</p>
+          <div class="pill-row"><span class="pill">搜索</span><span class="pill">清空</span></div>
+        </div>
+        <div class="library-card">
+          <h3>译文模式</h3>
+          <p>用译文直接替换原文，适合沉浸式阅读；也可随时恢复原文。</p>
+          <div class="pill-row"><span class="pill">替换原文</span><span class="pill">一键还原</span></div>
+        </div>
+        <div class="library-card">
+          <h3>多语方向</h3>
+          <p>不管网页是什么语言，都翻译成你选的目标语言。</p>
+          <div class="pill-row"><span class="pill">中文</span><span class="pill">English</span><span class="pill">Español</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" id="screenshot-05-support">
+    <div class="brand"><img src="../../../icons/icon-128.png" alt="">LingoFlow</div>
+    <div class="hero-grid">
+      <div>
+        <div class="kicker">隐私友好</div>
+        <h1>阅读记录和生词都由你掌控</h1>
+        <p class="lead">翻译历史、生词本和 API 设置保存在浏览器本地。你可以随时关闭历史记录，或一键恢复原文。</p>
+      </div>
+      <div class="support-card-mini privacy-card-mini">
+        <div class="privacy-panel">
+          <div class="privacy-row">
+            <span class="privacy-dot"></span>
+            <div>
+              <strong>本地保存</strong>
+              <p>历史记录、生词本和设置保存在你的浏览器里。</p>
+            </div>
+          </div>
+          <div class="privacy-row">
+            <span class="privacy-dot"></span>
+            <div>
+              <strong>历史可关闭</strong>
+              <p>不想记录时，可以在设置里关闭保存历史。</p>
+            </div>
+          </div>
+          <div class="privacy-row">
+            <span class="privacy-dot"></span>
+            <div>
+              <strong>一键恢复原文</strong>
+              <p>随时删除 LingoFlow 插入的翻译节点。</p>
+            </div>
+          </div>
+        </div>
+        <div>
+          <h2 style="font-size:34px;margin:0 0 12px;">轻量、可控、适合长期阅读</h2>
+          <p class="lead" style="font-size:20px;margin:0;">适合阅读文档、博客、课程和外文资料，不打断页面原本的使用方式。</p>
+          <div class="button">开始外文阅读</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</body>
+</html>
