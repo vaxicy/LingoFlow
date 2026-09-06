@@ -7,6 +7,7 @@ const zlib = require('zlib');
 const EXCLUDE_PATTERNS = [
   /[\\\/]\.codebuddy([\\\/]|$)/,           // .codebuddy/ or .codebuddy (no path part)
   /[\\\/]\.git([\\\/]|$)/,                 // .git/ or .git
+  /[\\\/]node_modules([\\\/]|$)/,          // node_modules/ (dev dependency)
   /[\\\/]assets([\\\/]|$)/,               // assets/ or assets (donation QR — not part of extension)
   /[\\\/]release([\\\/]|$)/,              // release/ (store assets + zip builds, not part of extension)
   /[\\\/]store-assets([\\\/]|$)/,          // legacy path (moved into release/)
@@ -32,7 +33,7 @@ function shouldExclude(filePath) {
 }
 
 const base = path.resolve('d:\\迅雷下载\\vibe coding\\Chrome Extensions\\LingoFlow');
-const outZip = path.join(base, 'release', 'lingoflow-1.2.0.zip');
+const outZip = path.join(base, 'release', 'lingoflow-1.2.1.zip');
 
 function collectFiles(dir, list = []) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
