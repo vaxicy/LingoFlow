@@ -128,7 +128,7 @@
     "description": "空历史消息"
   },
   "save_hint": {
-    "message": "选中文本并保存，会出现在这里",
+    "message": "选中网页文本并保存，会出现在生词本里",
     "description": "收藏为空提示"
   },
   "history_hint": {

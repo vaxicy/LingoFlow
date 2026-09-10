@@ -128,7 +128,7 @@
     "description": "Empty history message"
   },
   "save_hint": {
-    "message": "Select text on any webpage and click \"Save\" to add to vocabulary",
+    "message": "Select text on any webpage and click \"Save\" — it will appear in your vocabulary book",
     "description": "Vocabulary empty hint"
   },
   "history_hint": {

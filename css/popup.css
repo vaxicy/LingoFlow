@@ -500,6 +500,17 @@ body[data-theme="light"] .tab-btn.active {
 #page-words .popup-panel.vocab-inline .panel-header {
   grid-template-columns: 1fr auto;
 }
+.vocab-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(214, 217, 255, 0.78);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+.vocab-title svg { color: var(--lf-lavender); }
+body[data-theme="light"] .vocab-title { color: #554bed; }
 #page-words .popup-panel.vocab-inline .panel-search { margin: 0; }
 
 .popup-panel {
