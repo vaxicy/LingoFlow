@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Privacy Policy - LingoFlow</title>
+  <title>LingoFlow Privacy Policy | 隐私政策</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -33,9 +33,21 @@
       padding-bottom: 8px;
       border-bottom: 1px solid #eee;
     }
+    h3 {
+      font-size: 15px;
+      font-weight: 600;
+      margin: 20px 0 8px;
+      color: #2b3550;
+    }
     p, li { font-size: 15px; color: #444; }
     ul { padding-left: 24px; margin: 8px 0; }
     li { margin-bottom: 6px; }
+    code {
+      background: #f1f3f9;
+      padding: 1px 6px;
+      border-radius: 5px;
+      font-size: 13px;
+    }
     .meta { font-size: 13px; color: #999; margin-bottom: 32px; }
     a { color: #4a6cf7; text-decoration: none; }
     a:hover { text-decoration: underline; }
@@ -49,70 +61,200 @@
       color: #2e7d32;
       margin-left: 8px;
     }
+    /* Language tabs */
+    .lang-tabs {
+      display: inline-flex;
+      gap: 6px;
+      padding: 4px;
+      margin: 4px 0 20px;
+      background: #f1f3f9;
+      border-radius: 999px;
+    }
+    .lang-tab {
+      padding: 6px 18px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: #66718d;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .18s ease, color .18s ease;
+    }
+    .lang-tab:hover { color: #2b3550; }
+    .lang-tab.active {
+      background: #4a6cf7;
+      color: #fff;
+    }
+    .lang-content { display: none; }
+    .lang-content.active { display: block; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Privacy Policy <span class="badge">LingoFlow</span></h1>
-    <p class="meta">Last updated: September 11, 2026 &nbsp;&nbsp;|&nbsp;&nbsp; Effective date: July 8, 2026</p>
+    <h1>LingoFlow <span class="badge">Privacy Policy · 隐私政策</span></h1>
 
-    <h2>1. Overview</h2>
-    <p>LingoFlow is a browser extension that helps you read foreign-language websites. This Privacy Policy explains how (and how little) we handle your data.</p>
+    <nav class="lang-tabs" aria-label="Language switcher">
+      <button class="lang-tab" data-lang="en" type="button">English</button>
+      <button class="lang-tab" data-lang="zh" type="button">中文</button>
+    </nav>
 
-    <h2>2. Data We Collect</h2>
-    <p><strong>We do not collect any personal data.</strong></p>
-    <ul>
-      <li>No user accounts or login required.</li>
-      <li>No tracking scripts, analytics, or cookies.</li>
-      <li>No data sent to our servers at any time.</li>
-      <li>No third-party advertising or analytics services.</li>
-    </ul>
+    <!-- ============ English ============ -->
+    <section class="lang-content" data-lang="en" lang="en">
+      <p class="meta">Last updated: September 11, 2026 &nbsp;&nbsp;|&nbsp;&nbsp; Effective date: July 8, 2026</p>
 
-    <h2>3. Local Storage</h2>
-    <p>All data stays in your browser's local storage (<code>chrome.storage.local</code>):</p>
-    <ul>
-      <li><strong>Settings</strong> — your translation engine preference, theme, language choice, and API keys.</li>
-      <li><strong>Vocabulary</strong> — words and sentences you manually save for learning.</li>
-      <li><strong>History</strong> — recent translation records (only if you enable this feature).</li>
-      <li><strong>Dictionary cache</strong> — recent word lookups cached locally to make repeat queries instant (expires automatically).</li>
-    </ul>
-    <p>This data never leaves your device. You can delete it at any time by clearing the extension data from Chrome's extension management page.</p>
+      <h2>1. Overview</h2>
+      <p>LingoFlow is a browser extension that helps you read foreign-language websites. This Privacy Policy explains how (and how little) we handle your data.</p>
 
-    <h2>4. API Keys</h2>
-    <p>LingoFlow supports optional integration with third-party translation APIs. When you provide an API key:</p>
-    <ul>
-      <li>The key is stored <strong>only in your browser's local storage</strong>.</li>
-      <li>We never see, collect, or transmit your API keys to any server we operate.</li>
-      <li>The key is sent directly from your browser to the chosen translation service provider when you request a translation.</li>
-      <li>You are responsible for keeping your own API keys secure.</li>
-    </ul>
+      <h2>2. Data We Collect</h2>
+      <p><strong>We do not collect any personal data.</strong></p>
+      <ul>
+        <li>No user accounts or login required.</li>
+        <li>No tracking scripts, analytics, or cookies.</li>
+        <li>No data sent to our servers at any time.</li>
+        <li>No third-party advertising or analytics services.</li>
+      </ul>
 
-    <h2>5. Third-Party Services</h2>
-    <p>When you use translation features with an external engine enabled, the selected text is sent directly to the corresponding translation service provider's API endpoint for processing. The specific service depends on which engine you have configured. Please review each service provider's own privacy policy for details on how they handle translation requests.</p>
+      <h2>3. Local Storage</h2>
+      <p>All data stays in your browser's local storage (<code>chrome.storage.local</code>):</p>
+      <ul>
+        <li><strong>Settings</strong> — your translation engine preference, theme, language choice, and API keys.</li>
+        <li><strong>Vocabulary</strong> — words and sentences you manually save for learning.</li>
+        <li><strong>History</strong> — recent translation records (only if you enable this feature).</li>
+        <li><strong>Dictionary cache</strong> — recent word lookups cached locally to make repeat queries instant (expires automatically).</li>
+      </ul>
+      <p>This data never leaves your device. You can delete it at any time by clearing the extension data from Chrome's extension management page.</p>
 
-    <h3>Offline Dictionary (no data transmitted)</h3>
-    <p>LingoFlow bundles an offline English–Chinese dictionary (derived from ECDICT, MIT licensed) inside the extension. Single-word lookups are resolved <strong>locally on your device</strong> — no network request is made and no data leaves your browser.</p>
+      <h2>4. API Keys</h2>
+      <p>LingoFlow supports optional integration with third-party translation APIs. When you provide an API key:</p>
+      <ul>
+        <li>The key is stored <strong>only in your browser's local storage</strong>.</li>
+        <li>We never see, collect, or transmit your API keys to any server we operate.</li>
+        <li>The key is sent directly from your browser to the chosen translation service provider when you request a translation.</li>
+        <li>You are responsible for keeping your own API keys secure.</li>
+      </ul>
 
-    <h3>Online Dictionary Fallback</h3>
-    <p>If a word is not found in the offline dictionary, LingoFlow may send <strong>only that word</strong> to one of the following online sources, depending on your settings:</p>
-    <ul>
-      <li>Your configured AI or translation engine (requires your own API key).</li>
-      <li>Microsoft Azure Dictionary service (only if you have configured a Microsoft key).</li>
-      <li>The free public dictionary service <code>api.dictionaryapi.dev</code> — no account and no API key are required or sent.</li>
-    </ul>
-    <p>Only the queried word is transmitted. LingoFlow never sends page content, browsing history, or any identifiers along with these requests.</p>
+      <h2>5. Third-Party Services</h2>
+      <p>When you use translation features with an external engine enabled, the selected text is sent directly to the corresponding translation service provider's API endpoint for processing. The specific service depends on which engine you have configured. Please review each service provider's own privacy policy for details on how they handle translation requests.</p>
 
-    <h2>6. Children's Privacy</h2>
-    <p>LingoFlow does not knowingly collect personal information from children under 13 years of age.</p>
+      <h3>Offline Dictionary (no data transmitted)</h3>
+      <p>LingoFlow bundles an offline English–Chinese dictionary (derived from ECDICT, MIT licensed) inside the extension. Single-word lookups are resolved <strong>locally on your device</strong> — no network request is made and no data leaves your browser.</p>
 
-    <h2>7. Changes to This Policy</h2>
-    <p>We may update this Privacy Policy from time to time. Any changes will be posted on this page with an updated revision date.</p>
+      <h3>Online Dictionary Fallback</h3>
+      <p>If a word is not found in the offline dictionary, LingoFlow may send <strong>only that word</strong> to one of the following online sources, depending on your settings:</p>
+      <ul>
+        <li>Your configured AI or translation engine (requires your own API key).</li>
+        <li>Microsoft Azure Dictionary service (only if you have configured a Microsoft key).</li>
+        <li>The free public dictionary service <code>api.dictionaryapi.dev</code> — no account and no API key are required or sent.</li>
+      </ul>
+      <p>Only the queried word is transmitted. LingoFlow never sends page content, browsing history, or any identifiers along with these requests.</p>
 
-    <h2>8. Contact</h2>
-    <p>If you have questions about this Privacy Policy, please open an issue on our GitHub repository or contact us through the support channel provided in the extension settings.</p>
+      <h2>6. Children's Privacy</h2>
+      <p>LingoFlow does not knowingly collect personal information from children under 13 years of age.</p>
 
-    <br>
-    <p style="color:#999;font-size:13px;">---<br>This policy was written in compliance with the Chrome Web Store Developer Program Policies regarding User Data Disclosure.</p>
+      <h2>7. Changes to This Policy</h2>
+      <p>We may update this Privacy Policy from time to time. Any changes will be posted on this page with an updated revision date.</p>
+
+      <h2>8. Contact</h2>
+      <p>If you have questions about this Privacy Policy, please open an issue on our GitHub repository or contact us through the support channel provided in the extension settings.</p>
+
+      <br>
+      <p style="color:#999;font-size:13px;">---<br>This policy was written in compliance with the Chrome Web Store Developer Program Policies regarding User Data Disclosure.</p>
+    </section>
+
+    <!-- ============ 中文 ============ -->
+    <section class="lang-content" data-lang="zh" lang="zh-CN">
+      <p class="meta">最后更新：2026 年 9 月 11 日 &nbsp;&nbsp;|&nbsp;&nbsp; 生效日期：2026 年 7 月 8 日</p>
+
+      <h2>1. 概述</h2>
+      <p>LingoFlow 是一款帮助你阅读外文网站的浏览器扩展。本隐私政策说明我们如何处理（以及处理得有多少）你的数据。</p>
+
+      <h2>2. 我们收集的数据</h2>
+      <p><strong>我们不收集任何个人数据。</strong></p>
+      <ul>
+        <li>无需注册账号或登录。</li>
+        <li>没有追踪脚本、统计分析或 Cookie。</li>
+        <li>任何数据都不会发送到我们的服务器。</li>
+        <li>没有第三方广告或统计服务。</li>
+      </ul>
+
+      <h2>3. 本地存储</h2>
+      <p>所有数据都保存在你浏览器的本地存储中（<code>chrome.storage.local</code>）：</p>
+      <ul>
+        <li><strong>设置</strong> — 翻译引擎选择、主题、界面语言以及 API 密钥。</li>
+        <li><strong>生词本</strong> — 你手动保存的单词和句子。</li>
+        <li><strong>历史记录</strong> — 最近的翻译记录（仅在你开启该功能时）。</li>
+        <li><strong>词典缓存</strong> — 最近查询过的单词缓存在本地，用于加快重复查询（会自动过期）。</li>
+      </ul>
+      <p>这些数据永远不会离开你的设备。你可以随时在 Chrome 的扩展管理页面清除扩展数据来删除它们。</p>
+
+      <h2>4. API 密钥</h2>
+      <p>LingoFlow 支持可选地接入第三方翻译 API。当你填写 API 密钥时：</p>
+      <ul>
+        <li>密钥<strong>仅保存在你浏览器的本地存储中</strong>。</li>
+        <li>我们不会查看、收集你的密钥，也不会将其传输到我们运营的任何服务器。</li>
+        <li>只有你在发起翻译请求时，密钥才会从你的浏览器直接发送给你所选择的翻译服务提供商。</li>
+        <li>你有责任妥善保管自己的 API 密钥。</li>
+      </ul>
+
+      <h2>5. 第三方服务</h2>
+      <p>当你在使用翻译功能并启用了外部引擎时，所选文本会直接发送到对应翻译服务提供商的 API 接口进行处理。具体发送给哪家服务取决于你配置的引擎。请查阅各服务提供商自己的隐私政策，了解他们如何处理翻译请求。</p>
+
+      <h3>离线词典（不传输任何数据）</h3>
+      <p>LingoFlow 在扩展内打包了一份离线英汉词典（基于 ECDICT，MIT 协议）。查询单个单词时会在<strong>你的设备本地</strong>完成解析——不发起网络请求，也没有任何数据离开你的浏览器。</p>
+
+      <h3>在线词典兜底</h3>
+      <p>如果离线词典中没有收录该单词，根据你的设置，LingoFlow 可能会<strong>仅将该单词</strong>发送到以下在线来源之一：</p>
+      <ul>
+        <li>你配置的 AI 或翻译引擎（需要你自己的 API 密钥）。</li>
+        <li>Microsoft Azure 词典服务（仅在你配置了 Microsoft 密钥时）。</li>
+        <li>免费的公共词典服务 <code>api.dictionaryapi.dev</code> —— 无需账号，也不需要发送任何密钥。</li>
+      </ul>
+      <p>仅发送被查询的单词本身。LingoFlow 不会随这些请求附带页面内容、浏览历史或任何标识符。</p>
+
+      <h2>6. 儿童隐私</h2>
+      <p>LingoFlow 不会有意收集 13 岁以下儿童的个人信息。</p>
+
+      <h2>7. 政策变更</h2>
+      <p>我们可能会不时更新本隐私政策。任何修改都会发布在本页面并更新修订日期。</p>
+
+      <h2>8. 联系我们</h2>
+      <p>如果你对本隐私政策有疑问，请在我们的 GitHub 仓库提交 issue，或通过扩展设置中提供的支持渠道与我们联系。</p>
+
+      <br>
+      <p style="color:#999;font-size:13px;">---<br>本政策依据 Chrome 网上应用店开发者计划政策中关于用户数据披露的要求编写。</p>
+    </section>
   </div>
+
+  <script>
+    (function () {
+      var STORAGE_KEY = 'lingoflow_privacy_lang';
+      var tabs = document.querySelectorAll('.lang-tab');
+      var panels = document.querySelectorAll('.lang-content');
+      var html = document.documentElement;
+
+      function detectDefaultLang() {
+        try {
+          var saved = localStorage.getItem(STORAGE_KEY);
+          if (saved === 'en' || saved === 'zh') return saved;
+        } catch (e) {}
+        var browser = (navigator.language || navigator.userLanguage || 'en').toLowerCase();
+        return browser.indexOf('zh') === 0 ? 'zh' : 'en';
+      }
+
+      function switchLang(lang) {
+        try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) {}
+        html.lang = lang === 'zh' ? 'zh-CN' : 'en';
+        tabs.forEach(function (t) { t.classList.toggle('active', t.dataset.lang === lang); });
+        panels.forEach(function (p) { p.classList.toggle('active', p.dataset.lang === lang); });
+      }
+
+      tabs.forEach(function (t) {
+        t.addEventListener('click', function () { switchLang(t.dataset.lang); });
+      });
+      switchLang(detectDefaultLang());
+    })();
+  </script>
 </body>
 </html>
