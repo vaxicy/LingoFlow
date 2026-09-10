@@ -1,0 +1,13 @@
+Offline dictionary data in this directory is derived from:
+
+  ECDICT - Free English to Chinese Dictionary Database
+  https://github.com/skywind3000/ECDICT
+  Copyright (c) skywind3000
+  Licensed under the MIT License.
+
+The MIT License permits use, copy, modification, merge, publication,
+distribution, sublicensing and/or sale of the data, provided that the
+above copyright notice and this permission notice are included.
+
+Data was filtered and repacked (per-initial-letter JSON shards) by LingoFlow.
+Build script: ../tools/build_ecdict.py

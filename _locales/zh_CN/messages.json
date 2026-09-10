@@ -171,6 +171,22 @@
     "message": "详细释义超时，已显示简版译文",
     "description": "弹窗词典：详细释义超时提示"
   },
+  "dictionary_source": {
+    "message": "词典数据源",
+    "description": "设置：词典数据源"
+  },
+  "dictionary_source_desc": {
+    "message": "离线词典毫秒级响应；AI 释义更详细但较慢",
+    "description": "设置：词典数据源说明"
+  },
+  "dictionary_source_offline": {
+    "message": "离线优先",
+    "description": "设置：离线词典优先"
+  },
+  "dictionary_source_ai": {
+    "message": "AI 优先",
+    "description": "设置：AI 释义优先"
+  },
   "dict_searching": {
     "message": "搜索中…",
     "description": "弹窗词典搜索中状态"

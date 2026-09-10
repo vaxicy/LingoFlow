@@ -171,6 +171,22 @@
     "message": "Definiciones agotadas, se muestra la traducción simple",
     "description": "Popup diccionario: aviso de tiempo de espera agotado"
   },
+  "dictionary_source": {
+    "message": "Fuente del diccionario",
+    "description": "Ajustes: fuente del diccionario"
+  },
+  "dictionary_source_desc": {
+    "message": "El diccionario sin conexión responde al instante; la IA da definiciones más ricas pero es más lenta",
+    "description": "Ajustes: descripción de la fuente del diccionario"
+  },
+  "dictionary_source_offline": {
+    "message": "Sin conexión primero",
+    "description": "Ajustes: priorizar sin conexión"
+  },
+  "dictionary_source_ai": {
+    "message": "IA primero",
+    "description": "Ajustes: priorizar IA"
+  },
   "dict_searching": {
     "message": "Buscando…",
     "description": "Estado de búsqueda del diccionario en el popup"

@@ -171,6 +171,22 @@
     "message": "Definitions timed out, showing plain translation",
     "description": "Popup dictionary: definitions timeout hint"
   },
+  "dictionary_source": {
+    "message": "Dictionary Source",
+    "description": "Settings: dictionary source"
+  },
+  "dictionary_source_desc": {
+    "message": "Offline dictionary responds instantly; AI gives richer entries but is slower",
+    "description": "Settings: dictionary source description"
+  },
+  "dictionary_source_offline": {
+    "message": "Offline First",
+    "description": "Settings: offline first"
+  },
+  "dictionary_source_ai": {
+    "message": "AI First",
+    "description": "Settings: AI first"
+  },
   "dict_searching": {
     "message": "Searching…",
     "description": "Popup dictionary searching state"

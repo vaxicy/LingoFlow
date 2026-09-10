@@ -337,6 +337,10 @@ function renderDictCard(r, originalText, resultEl) {
     });
     html += '</div>';
   }
+  const metaBits = [r.note, r.tags].filter(Boolean);
+  if (metaBits.length) {
+    html += '<div class="dict-card-syn">' + escapeHtml(metaBits.join(' · ')) + '</div>';
+  }
   html += '</div>';
 
   resultEl.innerHTML = html;
@@ -829,7 +833,8 @@ function initSettingsPanel() {
     'popup-existing-bilingual-strategy',
     'popup-history-limit',
     'popup-incognito-mode',
-    'popup-translation-color'
+    'popup-translation-color',
+    'popup-dictionary-source'
   ];
 
   controls.forEach(id => {
@@ -1998,6 +2003,8 @@ function applyPopupSettings(settings) {
   if (translationColor) translationColor.value = settings.translationColor || 'inherit';
   const incognitoMode = document.getElementById('popup-incognito-mode');
   if (incognitoMode) incognitoMode.checked = settings.incognitoMode === true;
+  const dictionarySource = document.getElementById('popup-dictionary-source');
+  if (dictionarySource) dictionarySource.value = settings.dictionarySource || 'offline';
   updateIncognitoBanner(settings.incognitoMode === true);
 
   document.querySelectorAll('[data-popup-theme]').forEach(button => {
@@ -2057,7 +2064,8 @@ function getPopupSettingsFromUI() {
     existingBilingualStrategy: document.getElementById('popup-existing-bilingual-strategy')?.value || 'skip',
     historyLimit: parseInt(document.getElementById('popup-history-limit')?.value, 10) || 50,
     incognitoMode: document.getElementById('popup-incognito-mode')?.checked === true,
-    translationColor: document.getElementById('popup-translation-color')?.value || 'inherit'
+    translationColor: document.getElementById('popup-translation-color')?.value || 'inherit',
+    dictionarySource: document.getElementById('popup-dictionary-source')?.value || 'offline'
   };
 }
 

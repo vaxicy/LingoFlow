@@ -1,0 +1,172 @@
+{
+  "version": 1,
+  "source": "ECDICT (skywind3000/ECDICT, MIT)",
+  "buildTime": "2026-09-10",
+  "top": 150000,
+  "keepEn": false,
+  "count": 59137,
+  "shards": [
+    {
+      "k": "a",
+      "words": 3548,
+      "infl": 2367,
+      "bytes": 379358
+    },
+    {
+      "k": "b",
+      "words": 3630,
+      "infl": 2910,
+      "bytes": 371016
+    },
+    {
+      "k": "c",
+      "words": 5476,
+      "infl": 4546,
+      "bytes": 615643
+    },
+    {
+      "k": "d",
+      "words": 3433,
+      "infl": 3075,
+      "bytes": 386782
+    },
+    {
+      "k": "e",
+      "words": 2360,
+      "infl": 1866,
+      "bytes": 266229
+    },
+    {
+      "k": "f",
+      "words": 2409,
+      "infl": 2042,
+      "bytes": 269364
+    },
+    {
+      "k": "g",
+      "words": 2048,
+      "infl": 1504,
+      "bytes": 212646
+    },
+    {
+      "k": "h",
+      "words": 2442,
+      "infl": 1649,
+      "bytes": 248853
+    },
+    {
+      "k": "i",
+      "words": 2390,
+      "infl": 1589,
+      "bytes": 276205
+    },
+    {
+      "k": "j",
+      "words": 641,
+      "infl": 429,
+      "bytes": 63427
+    },
+    {
+      "k": "k",
+      "words": 702,
+      "infl": 364,
+      "bytes": 62811
+    },
+    {
+      "k": "l",
+      "words": 2047,
+      "infl": 1386,
+      "bytes": 209464
+    },
+    {
+      "k": "m",
+      "words": 3614,
+      "infl": 2321,
+      "bytes": 374357
+    },
+    {
+      "k": "n",
+      "words": 1355,
+      "infl": 693,
+      "bytes": 133491
+    },
+    {
+      "k": "o",
+      "words": 1420,
+      "infl": 1146,
+      "bytes": 163392
+    },
+    {
+      "k": "p",
+      "words": 4452,
+      "infl": 3498,
+      "bytes": 521124
+    },
+    {
+      "k": "q",
+      "words": 255,
+      "infl": 222,
+      "bytes": 28797
+    },
+    {
+      "k": "r",
+      "words": 3080,
+      "infl": 3009,
+      "bytes": 371415
+    },
+    {
+      "k": "s",
+      "words": 6305,
+      "infl": 5530,
+      "bytes": 728104
+    },
+    {
+      "k": "t",
+      "words": 2882,
+      "infl": 2252,
+      "bytes": 317695
+    },
+    {
+      "k": "u",
+      "words": 1775,
+      "infl": 709,
+      "bytes": 190457
+    },
+    {
+      "k": "v",
+      "words": 901,
+      "infl": 615,
+      "bytes": 98652
+    },
+    {
+      "k": "w",
+      "words": 1586,
+      "infl": 1239,
+      "bytes": 167545
+    },
+    {
+      "k": "x",
+      "words": 40,
+      "infl": 17,
+      "bytes": 3317
+    },
+    {
+      "k": "y",
+      "words": 198,
+      "infl": 132,
+      "bytes": 18858
+    },
+    {
+      "k": "z",
+      "words": 148,
+      "infl": 74,
+      "bytes": 13956
+    },
+    {
+      "k": "_",
+      "words": 0,
+      "infl": 3,
+      "bytes": 72
+    }
+  ]
+}

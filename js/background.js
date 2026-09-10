@@ -77,6 +77,7 @@ chrome.runtime.onInstalled.addListener(() => {
           autoSaveSettings: true,
           hoverParagraphTranslation: false,
           dictionaryAiEnhance: true,
+          dictionarySource: 'offline',
           existingBilingualStrategy: 'skip',
           historyLimit: 50,
           activeMode: null,
@@ -608,6 +609,7 @@ function getDefaultSettings(overrides = {}) {
     autoSaveSettings: true,
     hoverParagraphTranslation: false,
     dictionaryAiEnhance: true,
+    dictionarySource: 'offline',
     incognitoMode: false,
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
@@ -720,46 +722,66 @@ function lookupDictionary(text, targetLang, sendResponse) {
     dictionaryCache.delete(cacheKey);
   }
 
-  // 单词直接走 AI 详细释义（9s 限时）；失败依次回退 Microsoft 词典 / 纯翻译
-  const aiFinal = callDictionaryAI(word, wordLang, targetLang || 'zh');
-  withTimeout(aiFinal, 9000)
-    .then(result => {
+  const markFallbackCache = (final) => dictionaryCache.set(
+    cacheKey,
+    Object.assign({}, final, { __fallback: true, __ts: Date.now() })
+  );
+
+  // ① 离线词库 ECDICT：毫秒级，中文释义 + 词性 + 词形还原
+  const offlinePath = () => ecdictLookup(word, wordLang).then(result => {
+    dictCacheSet(cacheKey, result);
+    sendResponse({ success: true, result });
+  });
+
+  // ② 在线链：AI 详细释义 → 免费词典（英文原义）→ Microsoft 词典 → 纯翻译
+  const onlinePath = () => new Promise((resolve, reject) => {
+    const aiFinal = callDictionaryAI(word, wordLang, targetLang || 'zh');
+    withTimeout(aiFinal, 9000)
+      .then(result => {
+        if (!result.translation) result.translation = word;
+        dictCacheSet(cacheKey, result);
+        sendResponse({ success: true, result });
+        resolve();
+      })
+      .catch(() => {
+        withTimeout(fetchFreeDictionarySupplement(word, wordLang), 3500)
+          .then(result => {
+            dictCacheSet(cacheKey, result);
+            sendResponse({ success: true, result });
+            resolve();
+          })
+          .catch(() => {
+            chrome.storage.local.get(['lingoflow_settings'], (res) => {
+              const s = res.lingoflow_settings || {};
+              if ((s.microsoftApiKey || '').trim()) {
+                withTimeout(microsoftDictionaryLookup(word, targetLang), 4500)
+                  .then(result => {
+                    dictCacheSet(cacheKey, result);
+                    sendResponse({ success: true, result });
+                    resolve();
+                  })
+                  .catch(() => { fallbackDictionaryTranslation(word, targetLang, sendResponse, markFallbackCache); resolve(); });
+              } else {
+                fallbackDictionaryTranslation(word, targetLang, sendResponse, markFallbackCache);
+                resolve();
+              }
+            });
+          });
+      });
+    // AI 即使超时，结果落地后仍写入缓存供下次秒回
+    aiFinal.then(result => {
       if (!result.translation) result.translation = word;
       dictCacheSet(cacheKey, result);
-      sendResponse({ success: true, result });
-    })
-    .catch(() => {
-      // AI 失败：免费词典（英文原义）→ Microsoft 词典（词性+多义项）→ 纯翻译
-      withTimeout(fetchFreeDictionarySupplement(word, wordLang), 3500)
-        .then(result => {
-          dictCacheSet(cacheKey, result);
-          sendResponse({ success: true, result });
-        })
-        .catch(() => {
-          chrome.storage.local.get(['lingoflow_settings'], (res) => {
-            const s = res.lingoflow_settings || {};
-            const markFallbackCache = (final) => dictionaryCache.set(
-              cacheKey,
-              Object.assign({}, final, { __fallback: true, __ts: Date.now() })
-            );
-            if ((s.microsoftApiKey || '').trim()) {
-              withTimeout(microsoftDictionaryLookup(word, targetLang), 4500)
-                .then(result => {
-                  dictCacheSet(cacheKey, result);
-                  sendResponse({ success: true, result });
-                })
-                .catch(() => fallbackDictionaryTranslation(word, targetLang, sendResponse, markFallbackCache));
-            } else {
-              fallbackDictionaryTranslation(word, targetLang, sendResponse, markFallbackCache);
-            }
-          });
-        });
-    });
-  // AI 即使超时，结果落地后仍写入缓存供下次秒回
-  aiFinal.then(result => {
-    if (!result.translation) result.translation = word;
-    dictCacheSet(cacheKey, result);
-  }).catch(() => {});
+    }).catch(() => {});
+  });
+
+  chrome.storage.local.get(['lingoflow_settings'], (res) => {
+    const s = res.lingoflow_settings || {};
+    const preferAI = (s.dictionarySource || 'offline') === 'ai';
+    const first = preferAI ? onlinePath : offlinePath;
+    const second = preferAI ? offlinePath : onlinePath;
+    first().catch(() => second().catch(() => {}));
+  });
 }
 
 // 词典结果缓存：内存 Map + 持久化到 chrome.storage.local（7 天过期，最多 300 条）
@@ -883,6 +905,90 @@ function fetchFreeDictionarySupplement(word, wordLang) {
         clearTimeout(timeoutId);
         reject(error);
       });
+  });
+}
+
+// ---- ECDICT 离线词库（skywind3000/ECDICT, MIT）----
+// 数据文件：dict/<a-z|_>.json，按首字母分片懒加载
+const ecdictShardCache = new Map();
+
+function ecdictShardLetter(word) {
+  const c = String(word || '').charAt(0).toLowerCase();
+  return (c >= 'a' && c <= 'z') ? c : '_';
+}
+
+function loadEcdictShard(letter) {
+  if (ecdictShardCache.has(letter)) return Promise.resolve(ecdictShardCache.get(letter));
+  const url = chrome.runtime.getURL('dict/' + letter + '.json');
+  return fetch(url)
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .then(data => {
+      ecdictShardCache.set(letter, data);
+      return data;
+    });
+}
+
+function ecdictBuildResult(query, entry, baseWord) {
+  const phonetic = entry[0] || '';
+  const translation = entry[1] || '';
+  const posRatio = entry[2] || '';
+  const tag = entry[3] || '';
+  const collins = entry[4] || 0;
+  const oxford = entry[5] || 0;
+  const frq = entry[6] || 0;
+
+  const meanings = [];
+  String(translation).split(/\n+/).forEach(line => {
+    const text = String(line || '').trim();
+    if (!text) return;
+    const matched = text.match(/^([a-zA-Z]+\.)\s*(.*)$/);
+    if (matched) meanings.push({ partOfSpeech: matched[1], definition: matched[2] || matched[1] });
+    else meanings.push({ partOfSpeech: '', definition: text });
+  });
+
+  const first = meanings[0];
+  const result = {
+    mode: 'word',
+    word: baseWord || query,
+    phonetic: phonetic,
+    // 译文行只取纯释义（不带词性前缀），避免气泡里与首条释义重复
+    translation: first ? first.definition : '',
+    meanings: meanings.slice(0, 6),
+    examples: [],
+    posRatio: posRatio,
+    tags: tag,
+    collins: collins,
+    oxford: oxford,
+    frq: frq,
+    source: 'ecdict'
+  };
+  if (baseWord && baseWord !== query) result.note = `${query} 是 ${baseWord} 的变形`;
+  return result;
+}
+
+function ecdictLookup(word, wordLang) {
+  const w = String(word || '').toLowerCase();
+  if (!w) return Promise.reject(new Error('empty word'));
+  if (wordLang && wordLang !== 'en') return Promise.reject(new Error('ecdict is en-zh only'));
+
+  return loadEcdictShard(ecdictShardLetter(w)).then(data => {
+    const entry = data.words && data.words[w];
+    if (entry) return ecdictBuildResult(w, entry, w);
+
+    const infl = data.infl && data.infl[w];
+    if (infl) {
+      const base = String(infl[0] || '').toLowerCase();
+      const baseLetter = infl[1] || ecdictShardLetter(base);
+      return loadEcdictShard(baseLetter).then(baseData => {
+        const baseEntry = baseData.words && baseData.words[base];
+        if (!baseEntry) throw new Error('base missing');
+        return ecdictBuildResult(w, baseEntry, base);
+      });
+    }
+    throw new Error('not found');
   });
 }
 
