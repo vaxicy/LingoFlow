@@ -722,6 +722,15 @@ function lookupDictionary(text, targetLang, sendResponse) {
     dictionaryCache.delete(cacheKey);
   }
 
+  // 目标语言非中文：离线词库不适用，直接走翻译引擎（单一译文）
+  if (!isZhTarget(targetLang)) {
+    fallbackDictionaryTranslation(word, targetLang, sendResponse, (final) => dictionaryCache.set(
+      cacheKey,
+      Object.assign({}, final, { __fallback: true, __ts: Date.now() })
+    ));
+    return;
+  }
+
   const markFallbackCache = (final) => dictionaryCache.set(
     cacheKey,
     Object.assign({}, final, { __fallback: true, __ts: Date.now() })
@@ -911,6 +920,11 @@ function fetchFreeDictionarySupplement(word, wordLang) {
 // ---- ECDICT 离线词库（skywind3000/ECDICT, MIT）----
 // 数据文件：dict/<a-z|_>.json，按首字母分片懒加载
 const ecdictShardCache = new Map();
+
+// 离线词库 ECDICT 仅提供 英→中；非中文目标语言直接交给翻译引擎
+function isZhTarget(lang) {
+  return /^zh/i.test(String(lang || '').trim());
+}
 
 function ecdictShardLetter(word) {
   const c = String(word || '').charAt(0).toLowerCase();

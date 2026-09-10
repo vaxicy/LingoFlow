@@ -1049,6 +1049,17 @@ body[data-theme="light"] .tab-btn.active {
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
+.settings-row-hint {
+  display: block;
+  margin-top: 3px;
+  padding-left: 7px;
+  border-left: 2px solid rgba(184, 173, 255, 0.3);
+  color: rgba(214, 217, 255, 0.52);
+  font-size: 10.2px;
+  font-weight: 600;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
 
 .panel-select {
   flex: 0 0 auto;

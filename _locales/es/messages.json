@@ -187,6 +187,10 @@
     "message": "IA primero",
     "description": "Ajustes: priorizar IA"
   },
+  "dictionary_source_zh_only": {
+    "message": "El diccionario sin conexión es solo inglés → chino. Con cualquier otro idioma de destino, las palabras se traducen directamente con tu motor de traducción (traducción simple, sin entrada de diccionario).",
+    "description": "Ajustes: el diccionario sin conexión es solo en-zh"
+  },
   "dict_searching": {
     "message": "Buscando…",
     "description": "Estado de búsqueda del diccionario en el popup"

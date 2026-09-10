@@ -232,13 +232,15 @@ function runDictSearch(text, resultEl) {
 
   const targetLang = getDictTargetLang();
   const isSentence = /\s/.test(String(text || '').trim());
+  // 离线词库为英→中，目标语言非中文时一律直接走翻译引擎
+  const zhTarget = /^zh/i.test(String(targetLang || '').trim());
 
-  // 句子：直接走当前翻译引擎
-  if (isSentence) {
+  // 句子 或 非中文目标语言：直接走当前翻译引擎
+  if (isSentence || !zhTarget) {
     chrome.runtime.sendMessage({ action: 'translate', text: text, targetLang: targetLang }, (res) => {
       if (chrome.runtime.lastError) return;
       if (res && res.success && res.translation) {
-        renderQuickCard(text, res.translation, resultEl, true);
+        renderQuickCard(text, res.translation, resultEl, true); // 简版卡片：不显示"生成释义"提示
       } else {
         resultEl.innerHTML = '<div class="dict-empty">' +
           escapeHtml(getMessage('dict_error') || 'Lookup failed') + '</div>';

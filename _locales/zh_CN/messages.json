@@ -187,6 +187,10 @@
     "message": "AI 优先",
     "description": "设置：AI 释义优先"
   },
+  "dictionary_source_zh_only": {
+    "message": "离线词典仅支持英→中。若目标语言不是中文，单词将直接由翻译引擎给出单一译文，不显示词典条目。",
+    "description": "设置：离线词典仅英中提示"
+  },
   "dict_searching": {
     "message": "搜索中…",
     "description": "弹窗词典搜索中状态"

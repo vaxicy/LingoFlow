@@ -187,6 +187,10 @@
     "message": "AI First",
     "description": "Settings: AI first"
   },
+  "dictionary_source_zh_only": {
+    "message": "The offline dictionary is English → Chinese only. With any other target language, words are translated directly by your translation engine (single translation, no dictionary entry).",
+    "description": "Settings: offline dictionary is en-zh only"
+  },
   "dict_searching": {
     "message": "Searching…",
     "description": "Popup dictionary searching state"
