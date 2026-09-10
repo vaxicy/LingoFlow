@@ -94,6 +94,26 @@
       </button>
     </div>
 
+    <!-- Dictionary Search -->
+    <div class="popup-dict">
+      <div class="dict-search-row">
+        <label class="dict-input-wrap">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input id="popup-dict-input" type="search" class="dict-input" data-i18n-placeholder="dict_search_placeholder" placeholder="Search a word…">
+        </label>
+        <button class="dict-search-btn" id="popup-dict-search" type="button" aria-label="Search">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+          </svg>
+        </button>
+      </div>
+      <div class="dict-result" id="popup-dict-result" hidden></div>
+    </div>
+
     <!-- Status -->
     <div class="popup-status" id="status">
       <div class="status-indicator"></div>
@@ -737,6 +757,17 @@
             <option value="orange" data-i18n="color_orange">Orange</option>
             <option value="purple" data-i18n="color_purple">Purple</option>
           </select>
+        </div>
+
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
+            <strong data-i18n="dictionary_ai_enhance">AI Dictionary Enhancement</strong>
+            <span data-i18n="dictionary_ai_enhance_desc">Use your AI engine (Gemini/DeepSeek/SiliconFlow/Bailian/Custom) to define words when free dictionaries lack an entry</span>
+          </div>
+          <label class="panel-switch">
+            <input type="checkbox" id="popup-dictionary-ai-enhance">
+            <span></span>
+          </label>
         </div>
 
         <div class="settings-row settings-row-inline">

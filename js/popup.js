@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize mode switches + buttons
   initModeSwitches();
   initPanels();
+  initDictionarySearch();
   initBackup();
   loadPopupLanguage();
 
@@ -182,6 +183,146 @@ function updateModeUI(mode) {
   if (status) {
     status.classList.toggle('is-active', !!mode);
   }
+}
+
+// ======================== Dictionary Search ========================
+
+function escapeHtml(str) {
+  return String(str == null ? '' : str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function getDictTargetLang() {
+  const sel = document.getElementById('popup-translate-to');
+  if (sel && sel.value) return sel.value;
+  if (panelState.savedSettings && panelState.savedSettings.targetLanguage) {
+    return panelState.savedSettings.targetLanguage;
+  }
+  return 'zh';
+}
+
+function initDictionarySearch() {
+  const input = document.getElementById('popup-dict-input');
+  const btn = document.getElementById('popup-dict-search');
+  const result = document.getElementById('popup-dict-result');
+  if (!input || !btn || !result) return;
+
+  const doSearch = () => {
+    const text = input.value.trim();
+    if (!text) { input.focus(); return; }
+    runDictSearch(text, result);
+  };
+
+  btn.addEventListener('click', doSearch);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
+  });
+}
+
+function runDictSearch(text, resultEl) {
+  resultEl.hidden = false;
+  resultEl.className = 'dict-result';
+  resultEl.innerHTML = '<div class="dict-loading">' +
+    (getMessage('dict_searching') || 'Searching…') + '</div>';
+
+  chrome.runtime.sendMessage(
+    { action: 'lookup_dictionary', text: text, targetLang: getDictTargetLang() },
+    (response) => {
+      if (chrome.runtime.lastError) {
+        resultEl.innerHTML = '<div class="dict-empty">' +
+          escapeHtml(getMessage('dict_error') || 'Lookup failed') + '</div>';
+        return;
+      }
+      const r = response && response.success && response.result ? response.result : null;
+      if (!r) {
+        resultEl.innerHTML = '<div class="dict-empty">' +
+          escapeHtml(getMessage('dict_not_found') || 'No result found') + '</div>';
+        return;
+      }
+      renderDictCard(r, text, resultEl);
+    }
+  );
+}
+
+function renderDictCard(r, originalText, resultEl) {
+  const word = r.word || originalText;
+  const phonetic = r.phonetic ? '/' + escapeHtml(r.phonetic) + '/' : '';
+  const meanings = Array.isArray(r.meanings) ? r.meanings : [];
+  const examples = Array.isArray(r.examples) ? r.examples : [];
+
+  let html = '<div class="dict-card">';
+  html += '<div class="dict-card-head">';
+  html += '<div><div class="dict-card-word">' + escapeHtml(word) + '</div>';
+  if (phonetic) html += '<div class="dict-card-phonetic">' + phonetic + '</div>';
+  html += '</div>';
+  html += '<button class="dict-card-save" type="button" data-text="' + escapeHtml(word) +
+    '" data-translation="' + escapeHtml(r.translation || '') + '" title="' +
+    escapeHtml(getMessage('save_to_vocabulary') || 'Save') + '" aria-label="' +
+    escapeHtml(getMessage('save_to_vocabulary') || 'Save') + '">' +
+    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+    '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>' +
+    '<polyline points="17 21 17 13 7 13 7 21"/></svg></button>';
+  html += '</div>';
+
+  if (meanings.length) {
+    html += '<div class="dict-meaning">';
+    meanings.forEach((m) => {
+      html += '<div class="dict-meaning-row">';
+      if (m.partOfSpeech) {
+        html += '<span class="dict-card-pos">' + escapeHtml(m.partOfSpeech) + '</span>';
+      }
+      html += '<div class="dict-card-def">' + escapeHtml(m.definition || '');
+      if (m.synonyms && m.synonyms.length) {
+        html += '<div class="dict-card-syn">' + escapeHtml(m.synonyms.join(', ')) + '</div>';
+      }
+      html += '</div></div>';
+    });
+    html += '</div>';
+  } else if (r.translation) {
+    html += '<div class="dict-meaning"><div class="dict-meaning-row">' +
+      '<div class="dict-card-def">' + escapeHtml(r.translation) + '</div></div></div>';
+  }
+
+  if (examples.length) {
+    html += '<div class="dict-card-examples">';
+    examples.forEach((ex) => {
+      html += '<div class="dict-card-example">' + escapeHtml(ex) + '</div>';
+    });
+    html += '</div>';
+  }
+  html += '</div>';
+
+  resultEl.innerHTML = html;
+
+  const saveBtn = resultEl.querySelector('.dict-card-save');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => {
+      saveDictToVocabulary(
+        saveBtn.getAttribute('data-text'),
+        saveBtn.getAttribute('data-translation'),
+        saveBtn
+      );
+    });
+  }
+}
+
+function saveDictToVocabulary(text, translation, btn) {
+  chrome.runtime.sendMessage(
+    { action: 'save_to_vocabulary', data: { text: text, translation: translation || '', type: 'word' } },
+    () => {
+      if (btn) {
+        btn.classList.add('is-saved');
+        const saved = getMessage('saved') || 'Saved';
+        btn.title = saved;
+        btn.setAttribute('aria-label', saved);
+      }
+      showStatus(getMessage('saved_to_vocabulary') || 'Saved to vocabulary', 'success');
+    }
+  );
 }
 
 function initPanels() {
@@ -1728,6 +1869,8 @@ function applyPopupSettings(settings) {
   if (selectionTranslation) selectionTranslation.checked = settings.selectionTranslation !== false;
   const hoverParagraphTranslation = document.getElementById('popup-hover-paragraph-translation');
   if (hoverParagraphTranslation) hoverParagraphTranslation.checked = settings.hoverParagraphTranslation === true;
+  const dictionaryAiEnhance = document.getElementById('popup-dictionary-ai-enhance');
+  if (dictionaryAiEnhance) dictionaryAiEnhance.checked = settings.dictionaryAiEnhance !== false;
   if (autoSaveSettings) autoSaveSettings.checked = settings.autoSaveSettings !== false;
   if (existingBilingualStrategy) existingBilingualStrategy.value = settings.existingBilingualStrategy || 'skip';
   if (historyLimit) historyLimit.value = String(settings.historyLimit || 50);
@@ -1788,6 +1931,7 @@ function getPopupSettingsFromUI() {
     theme: document.querySelector('[data-popup-theme].active')?.getAttribute('data-popup-theme') || 'light',
     selectionTranslation: document.getElementById('popup-selection-translation')?.checked !== false,
     hoverParagraphTranslation: document.getElementById('popup-hover-paragraph-translation')?.checked === true,
+    dictionaryAiEnhance: document.getElementById('popup-dictionary-ai-enhance')?.checked === true,
     autoSaveSettings: document.getElementById('popup-auto-save-settings')?.checked !== false,
     toolbarPosition: document.querySelector('[data-position].active')?.getAttribute('data-position') || 'above',
     existingBilingualStrategy: document.getElementById('popup-existing-bilingual-strategy')?.value || 'skip',

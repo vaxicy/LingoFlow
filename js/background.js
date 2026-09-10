@@ -76,6 +76,7 @@ chrome.runtime.onInstalled.addListener(() => {
           theme: 'light',
           autoSaveSettings: true,
           hoverParagraphTranslation: false,
+          dictionaryAiEnhance: true,
           existingBilingualStrategy: 'skip',
           historyLimit: 50,
           activeMode: null,
@@ -606,6 +607,7 @@ function getDefaultSettings(overrides = {}) {
     selectionTranslation: true,
     autoSaveSettings: true,
     hoverParagraphTranslation: false,
+    dictionaryAiEnhance: true,
     incognitoMode: false,
     existingBilingualStrategy: 'skip',
     historyLimit: 50,
@@ -673,50 +675,27 @@ function getEngineLangCode(engine, targetLang) {
 
 // Translation dispatcher — routes to the selected engine
 function lookupDictionary(text, targetLang, sendResponse) {
-  const word = String(text || '').trim().replace(/^[^A-Za-z]+|[^A-Za-z'-]+$/g, '');
-  if (!/^[A-Za-z][A-Za-z'-]*$/.test(word)) {
-    translateText(text, targetLang || 'zh', (response) => {
-      sendResponse({
-        success: !!(response && response.success),
-        result: {
-          mode: 'sentence',
-          translation: response && response.translation ? response.translation : ''
-        },
-        error: response && response.error
-      });
-    });
+  const raw = String(text || '').trim();
+  const word = raw.replace(/^[^A-Za-zÀ-ÿ\u3400-\u9FFF\uF900-\uFAFF]+|[^A-Za-zÀ-ÿ\u3400-\u9FFF\uF900-\uFAFF]+$/g, '');
+  if (!word) {
+    fallbackDictionaryTranslation(raw, targetLang, sendResponse);
     return;
   }
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
-  const url = `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word.toLowerCase())}`;
-
-  fetch(url, { signal: controller.signal })
-    .then(response => {
-      clearTimeout(timeoutId);
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return response.json();
-    })
-    .then(data => {
-      const result = normalizeDictionaryResult(word, data);
-      if (result && result.translation) {
-        translateText(word, targetLang || 'zh', (translationResponse) => {
-          if (translationResponse && translationResponse.success && translationResponse.translation) {
-            result.translation = translationResponse.translation;
-          }
-          localizeDictionaryMeanings(result, targetLang || 'zh')
-            .then(localized => sendResponse({ success: true, result: localized }))
-            .catch(() => sendResponse({ success: true, result }));
-        });
-        return;
-      }
-      fallbackDictionaryTranslation(word, targetLang, sendResponse);
-    })
-    .catch(error => {
-      clearTimeout(timeoutId);
-      console.warn('LingoFlow: Dictionary lookup failed:', error && error.message ? error.message : String(error));
-      fallbackDictionaryTranslation(word, targetLang, sendResponse);
+  const wordLang = detectWordLang(word);
+  tryFreeDictionary(freeLangCandidates(wordLang), word)
+    .then(result => finishDictionary(word, result, targetLang, sendResponse))
+    .catch(() => {
+      chrome.storage.local.get(['lingoflow_settings'], (res) => {
+        const s = res.lingoflow_settings || {};
+        if (s.dictionaryAiEnhance !== false && hasAnyChatKey(s)) {
+          callDictionaryAI(word, wordLang, targetLang || 'zh')
+            .then(result => finishDictionary(word, result, targetLang, sendResponse))
+            .catch(() => fallbackDictionaryTranslation(word, targetLang, sendResponse));
+        } else {
+          fallbackDictionaryTranslation(word, targetLang, sendResponse);
+        }
+      });
     });
 }
 
@@ -773,6 +752,200 @@ function fallbackDictionaryTranslation(word, targetLang, sendResponse) {
       error: response && response.error
     });
   });
+}
+
+// ---- Multi-language dictionary lookup (free + AI enhancement) ----
+
+function detectWordLang(w) {
+  if (/^[\u3400-\u9FFF\uF900-\uFAFF]+$/.test(w)) return 'zh';
+  if (/[áàäéèëíìïóòöúùüñÁÀÄÉÈËÍÌÏÓÒÖÚÙÜÑ]/.test(w)) return 'es';
+  return 'en';
+}
+
+function freeLangCandidates(wordLang) {
+  if (wordLang === 'zh') return ['zh'];
+  if (wordLang === 'es') return ['es', 'en'];
+  return ['en', 'es'];
+}
+
+function fetchFreeDictionary(lang, word) {
+  return new Promise((resolve, reject) => {
+    const url = (lang === 'en'
+      ? 'https://api.dictionaryapi.dev/api/v2/entries/en/'
+      : `https://api.freedictionary.dev/api/v2/entries/${lang}/`) + encodeURIComponent(word.toLowerCase());
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    fetch(url, { signal: controller.signal })
+      .then(response => {
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        const result = normalizeDictionaryResult(word, data);
+        if (result && result.translation) resolve(result);
+        else reject(new Error('no entry'));
+      })
+      .catch(error => { clearTimeout(timeoutId); reject(error); });
+  });
+}
+
+function tryFreeDictionary(langs, word) {
+  return new Promise((resolve, reject) => {
+    let i = 0;
+    (function attempt() {
+      if (i >= langs.length) { reject(new Error('free sources exhausted')); return; }
+      const lang = langs[i++];
+      fetchFreeDictionary(lang, word).then(resolve).catch(attempt);
+    })();
+  });
+}
+
+function finishDictionary(word, result, targetLang, sendResponse) {
+  const tl = targetLang || 'zh';
+  translateText(word, tl, (response) => {
+    if (response && response.success && response.translation) result.translation = response.translation;
+    localizeDictionaryMeanings(result, tl)
+      .then(localized => sendResponse({ success: true, result: localized }))
+      .catch(() => sendResponse({ success: true, result }));
+  });
+}
+
+function isChatEngine(e) {
+  return ['custom', 'deepseek', 'siliconflow', 'bailian', 'gemini'].indexOf(e) !== -1;
+}
+
+function hasEngineKey(e, s) {
+  if (e === 'custom') return !!(s.customApiKey || '').trim();
+  if (e === 'deepseek') return !!(s.deepseekApiKey || '').trim();
+  if (e === 'siliconflow') return !!(s.siliconflowApiKey || '').trim();
+  if (e === 'bailian') return !!(s.bailianApiKey || '').trim();
+  if (e === 'gemini') return !!(s.geminiApiKey || '').trim();
+  return false;
+}
+
+function hasAnyChatKey(s) {
+  return ['custom', 'deepseek', 'siliconflow', 'bailian', 'gemini'].some(e => hasEngineKey(e, s));
+}
+
+function callDictionaryAI(word, wordLang, targetLang) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(['lingoflow_settings'], (result) => {
+      const s = getDefaultSettings(result.lingoflow_settings || {});
+      const chatEngines = [];
+      const preferred = s.translationEngine;
+      if (preferred && isChatEngine(preferred) && hasEngineKey(preferred, s)) chatEngines.push(preferred);
+      ['custom', 'deepseek', 'siliconflow', 'bailian', 'gemini'].forEach(e => {
+        if (e !== preferred && isChatEngine(e) && hasEngineKey(e, s)) chatEngines.push(e);
+      });
+      if (!chatEngines.length) { reject(new Error('no chat engine key')); return; }
+
+      const wlName = wordLang === 'zh' ? 'Chinese' : wordLang === 'es' ? 'Spanish' : 'English';
+      const tlName = getTargetLanguageName(targetLang);
+      const systemPrompt = 'You are a bilingual dictionary assistant. Given a word and its language, return a single JSON object with its dictionary entry. Output ONLY valid JSON, no markdown, no code fences.';
+      const safeWord = String(word).replace(/"/g, '\\"');
+      const userPrompt = `Word language: ${wlName}\nWord: ${word}\nWrite definitions in ${tlName} when possible.\nReturn JSON exactly in this shape:\n{\n  "word": "${safeWord}",\n  "phonetic": "IPA or pinyin for Chinese",\n  "meanings": [ { "partOfSpeech": "noun/verb/...", "definition": "..." } ],\n  "examples": [ "example sentence" ]\n}\nProvide 2-4 meanings and 1-2 example sentences.`;
+
+      tryNextDictionaryEngine(chatEngines.slice(), safeWord, systemPrompt, userPrompt, resolve, reject);
+    });
+  });
+}
+
+function tryNextDictionaryEngine(engines, word, systemPrompt, userPrompt, resolve, reject) {
+  if (!engines.length) { reject(new Error('all AI engines failed')); return; }
+  const e = engines.shift();
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const s = getDefaultSettings(result.lingoflow_settings || {});
+    const messages = [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }];
+    let p;
+    if (e === 'gemini') {
+      p = callGeminiDictionaryChat(s.geminiApiKey.trim(), resolveModel('gemini', s.geminiModel, s.geminiModelCustom), messages);
+    } else if (e === 'deepseek') {
+      p = callOpenAIDictionaryChat('https://api.deepseek.com/chat/completions', s.deepseekApiKey.trim(), resolveModel('deepseek', s.deepseekModel, s.deepseekModelCustom), messages);
+    } else if (e === 'siliconflow') {
+      p = callOpenAIDictionaryChat('https://api.siliconflow.cn/v1/chat/completions', s.siliconflowApiKey.trim(), resolveModel('siliconflow', s.siliconflowModel, s.siliconflowModelCustom), messages);
+    } else if (e === 'bailian') {
+      const host = (s.bailianApiHost || 'https://dashscope.aliyuncs.com').replace(/\/+$/, '');
+      p = callOpenAIDictionaryChat(`${host}/compatible-mode/v1/chat/completions`, s.bailianApiKey, resolveModel('bailian', s.bailianModel, s.bailianModelCustom), messages);
+    } else {
+      const host = (s.customApiHost || 'https://api.openai.com').replace(/\/+$/, '');
+      p = callOpenAIDictionaryChat(`${host}/v1/chat/completions`, s.customApiKey.trim(), s.customModel || 'gpt-4o-mini', messages);
+    }
+    p.then(txt => {
+      const parsed = parseDictionaryJson(txt, word);
+      if (parsed) resolve(parsed);
+      else tryNextDictionaryEngine(engines, word, systemPrompt, userPrompt, resolve, reject);
+    }).catch(() => tryNextDictionaryEngine(engines, word, systemPrompt, userPrompt, resolve, reject));
+  });
+}
+
+function callOpenAIDictionaryChat(baseUrl, apiKey, model, messages) {
+  return new Promise((resolve, reject) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    fetch(baseUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 800 }),
+      signal: controller.signal
+    })
+      .then(response => { clearTimeout(timeoutId); if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
+      .then(data => {
+        const txt = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+        if (txt) resolve(txt); else throw new Error('empty');
+      })
+      .catch(error => { clearTimeout(timeoutId); reject(error); });
+  });
+}
+
+function callGeminiDictionaryChat(apiKey, model, messages) {
+  return new Promise((resolve, reject) => {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const sys = (messages.find(m => m.role === 'system') || {}).content || '';
+    const user = messages.filter(m => m.role === 'user').map(m => m.content).join('\n\n');
+    const body = {
+      systemInstruction: sys ? { parts: [{ text: sys }] } : undefined,
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 800, responseMimeType: 'application/json' }
+    };
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal })
+      .then(response => { clearTimeout(timeoutId); if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
+      .then(data => {
+        const parts = data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts;
+        const txt = parts ? parts.map(p => p.text || '').join('') : '';
+        if (txt) resolve(txt); else throw new Error('empty');
+      })
+      .catch(error => { clearTimeout(timeoutId); reject(error); });
+  });
+}
+
+function parseDictionaryJson(txt, word) {
+  if (!txt) return null;
+  let str = String(txt).trim();
+  const fence = str.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) str = fence[1].trim();
+  const s = str.indexOf('{');
+  const e = str.lastIndexOf('}');
+  if (s !== -1 && e !== -1 && e > s) str = str.slice(s, e + 1);
+  let obj;
+  try { obj = JSON.parse(str); } catch (_) { return null; }
+  const meanings = Array.isArray(obj.meanings)
+    ? obj.meanings.slice(0, 4).map(m => ({
+        partOfSpeech: (m && m.partOfSpeech) || '',
+        definition: (m && m.definition) || '',
+        synonyms: []
+      })).filter(m => m.definition)
+    : [];
+  if (!meanings.length) return null;
+  return {
+    mode: 'word',
+    translation: obj.translation || (meanings[0] && meanings[0].definition) || word,
+    phonetic: obj.phonetic || '',
+    meanings,
+    examples: Array.isArray(obj.examples) ? obj.examples.slice(0, 2).map(String) : []
+  };
 }
 
 function localizeDictionaryMeanings(result, targetLang) {

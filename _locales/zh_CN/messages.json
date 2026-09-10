@@ -151,6 +151,26 @@
     "message": "已保存！",
     "description": "保存成功通知"
   },
+  "dict_search_placeholder": {
+    "message": "搜索单词（中 / EN / ES）…",
+    "description": "弹窗词典搜索输入框占位符"
+  },
+  "dict_searching": {
+    "message": "搜索中…",
+    "description": "弹窗词典搜索中状态"
+  },
+  "dict_error": {
+    "message": "查询失败，请重试。",
+    "description": "弹窗词典查询出错"
+  },
+  "dict_not_found": {
+    "message": "未找到结果。",
+    "description": "弹窗词典无结果"
+  },
+  "saved_to_vocabulary": {
+    "message": "已存入生词本",
+    "description": "词典查询已存入生词本"
+  },
   "cleared": {
     "message": "已清空！",
     "description": "清空成功通知"
@@ -1126,5 +1146,13 @@
   "model_custom_input_prompt": {
     "message": "请输入模型名称（model id）：",
     "description": "popup 弹窗 prompt：自定义模型输入提示"
+  },
+  "dictionary_ai_enhance": {
+    "message": "AI 词典增强",
+    "description": "使用 AI 生成单词释义的开关"
+  },
+  "dictionary_ai_enhance_desc": {
+    "message": "当免费词典缺失词条时，使用你的 AI 引擎（Gemini/DeepSeek/SiliconFlow/Bailian/自定义）生成释义",
+    "description": "设置项描述"
   }
 }

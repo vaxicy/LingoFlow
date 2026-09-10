@@ -151,6 +151,26 @@
     "message": "¡Guardado!",
     "description": "Save success notification"
   },
+  "dict_search_placeholder": {
+    "message": "Busca una palabra (EN / 中文 / ES)…",
+    "description": "Marcador de posición del buscador de diccionario en el popup"
+  },
+  "dict_searching": {
+    "message": "Buscando…",
+    "description": "Estado de búsqueda del diccionario en el popup"
+  },
+  "dict_error": {
+    "message": "Error en la búsqueda. Inténtalo de nuevo.",
+    "description": "Error de búsqueda del diccionario"
+  },
+  "dict_not_found": {
+    "message": "Sin resultados.",
+    "description": "Diccionario sin resultados"
+  },
+  "saved_to_vocabulary": {
+    "message": "Guardado en vocabulario",
+    "description": "Consulta de diccionario guardada en vocabulario"
+  },
   "cleared": {
     "message": "¡Borrado!",
     "description": "Clear success notification"
@@ -1126,5 +1146,13 @@
   "model_custom_input_prompt": {
     "message": "Introduce el id del modelo:",
     "description": "popup prompt for custom model input"
+  },
+  "dictionary_ai_enhance": {
+    "message": "Mejora del diccionario con IA",
+    "description": "Ajuste para definiciones de palabras con IA"
+  },
+  "dictionary_ai_enhance_desc": {
+    "message": "Usa tu motor de IA (Gemini/DeepSeek/SiliconFlow/Bailian/Personalizado) para definir palabras cuando los diccionarios gratuitos no tengan la entrada",
+    "description": "Descripción del ajuste"
   }
 }

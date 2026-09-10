@@ -537,12 +537,16 @@ function mapTargetLang(targetLang) {
   const SelectionLookup = {
     cache: new Map(),
 
-    isSingleEnglishWord(text) {
-      return /^[A-Za-z][A-Za-z'-]*$/.test(String(text || '').trim());
+    isLookupWord(text) {
+      const t = String(text || '').trim();
+      if (!t) return false;
+      if (/^[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ'’-]*$/.test(t)) return true;
+      if (/^[\u3400-\u9FFF\uF900-\uFAFF]{1,8}$/.test(t)) return true;
+      return false;
     },
 
     getType(text) {
-      return this.isSingleEnglishWord(text) ? 'word' : 'sentence';
+      return this.isLookupWord(text) ? 'word' : 'sentence';
     },
 
     splitParagraphs(text) {
@@ -578,7 +582,7 @@ function mapTargetLang(targetLang) {
       const cacheKey = this.getCacheKey(normalized);
       if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
 
-      const result = this.isSingleEnglishWord(normalized)
+      const result = this.isLookupWord(normalized)
         ? await this.lookupWord(normalized)
         : await this.translateText(normalized);
 
@@ -590,7 +594,7 @@ function mapTargetLang(targetLang) {
       const cleanParagraphs = Array.isArray(paragraphs)
         ? paragraphs.map(part => String(part || '').trim()).filter(Boolean)
         : [];
-      if (this.isSingleEnglishWord(text) || cleanParagraphs.length <= 1) {
+      if (this.isLookupWord(text) || cleanParagraphs.length <= 1) {
         return this.resolve(text);
       }
 

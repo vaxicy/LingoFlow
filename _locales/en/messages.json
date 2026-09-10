@@ -151,6 +151,26 @@
     "message": "Saved!",
     "description": "Save success notification"
   },
+  "dict_search_placeholder": {
+    "message": "Search a word (EN / 中文 / ES)…",
+    "description": "Popup dictionary search input placeholder"
+  },
+  "dict_searching": {
+    "message": "Searching…",
+    "description": "Popup dictionary searching state"
+  },
+  "dict_error": {
+    "message": "Lookup failed. Try again.",
+    "description": "Popup dictionary lookup error"
+  },
+  "dict_not_found": {
+    "message": "No result found.",
+    "description": "Popup dictionary no result"
+  },
+  "saved_to_vocabulary": {
+    "message": "Saved to vocabulary",
+    "description": "Dictionary lookup saved to vocabulary"
+  },
   "cleared": {
     "message": "Cleared!",
     "description": "Clear success notification"
@@ -1126,5 +1146,13 @@
   "model_custom_input_prompt": {
     "message": "Please enter the model id:",
     "description": "popup prompt for custom model input"
+  },
+  "dictionary_ai_enhance": {
+    "message": "AI Dictionary Enhancement",
+    "description": "Settings toggle for AI-powered word definitions"
+  },
+  "dictionary_ai_enhance_desc": {
+    "message": "Use your AI engine (Gemini/DeepSeek/SiliconFlow/Bailian/Custom) to define words when free dictionaries lack an entry",
+    "description": "Settings toggle description"
   }
 }
