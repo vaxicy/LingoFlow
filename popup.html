@@ -69,14 +69,6 @@
 
     <!-- Secondary Actions -->
     <div class="popup-secondary">
-      <button class="secondary-btn" data-action="vocabulary">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-        </svg>
-        <span data-i18n="vocabulary">Vocabulary</span>
-      </button>
-
       <button class="secondary-btn" data-action="history">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
@@ -161,14 +153,8 @@
       </div>
     </section>
 
-    <section class="popup-panel" id="vocabulary-panel" hidden>
-      <div class="panel-header">
-        <button class="panel-icon-btn" type="button" data-panel-close aria-label="Back">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M19 12H5"/>
-            <path d="M12 19l-7-7 7-7"/>
-          </svg>
-        </button>
+    <section class="popup-panel vocab-inline" id="vocabulary-panel">
+      <div class="panel-header vocab-header">
         <h2 data-i18n="vocabulary">Vocabulary</h2>
         <button class="panel-icon-btn" type="button" id="vocabulary-export-btn" aria-label="Export CSV">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

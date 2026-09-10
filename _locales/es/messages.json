@@ -7,6 +7,14 @@
     "message": "LingoFlow",
     "description": "Extension short name"
   },
+  "tab_home": {
+    "message": "Inicio",
+    "description": "Pestaña inferior del popup: página de inicio"
+  },
+  "tab_words": {
+    "message": "Palabras",
+    "description": "Pestaña inferior del popup: diccionario + vocabulario"
+  },
   "description": {
     "message": "Lector de webs extranjeras con traducción de selección y de página completa. Compatible con varios motores de traducción y temas de interfaz personalizables.",
     "description": "Extension description (Spanish)"

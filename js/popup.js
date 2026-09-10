@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initModeSwitches();
   initPanels();
   initDictionarySearch();
+  buildPageNav();
   initBackup();
   loadPopupLanguage();
 
@@ -325,6 +326,71 @@ function saveDictToVocabulary(text, translation, btn) {
   );
 }
 
+function buildPageNav() {
+  const container = document.querySelector('.popup-container');
+  const header = container && container.querySelector('.popup-header');
+  const modes = container && container.querySelector('.popup-modes');
+  const secondary = container && container.querySelector('.popup-secondary');
+  const status = container && container.querySelector('.popup-status');
+  const dict = container && container.querySelector('.popup-dict');
+  const vocabPanel = document.getElementById('vocabulary-panel');
+  if (!container || !header || !modes || !secondary || !status) return;
+
+  const pages = document.createElement('div');
+  pages.className = 'popup-pages';
+  const home = document.createElement('div');
+  home.className = 'popup-page';
+  home.id = 'page-home';
+  const words = document.createElement('div');
+  words.className = 'popup-page';
+  words.id = 'page-words';
+
+  home.appendChild(modes);
+  home.appendChild(secondary);
+  home.appendChild(status);
+  pages.appendChild(home);
+
+  if (dict) words.appendChild(dict);
+  if (vocabPanel) {
+    vocabPanel.hidden = false;
+    const closeBtn = vocabPanel.querySelector('[data-panel-close]');
+    if (closeBtn) closeBtn.remove();
+    words.appendChild(vocabPanel);
+  }
+  pages.appendChild(words);
+
+  header.insertAdjacentElement('afterend', pages);
+
+  const tabbar = document.createElement('nav');
+  tabbar.className = 'popup-tabbar';
+  tabbar.innerHTML =
+    '<button class="tab-btn active" type="button" data-tab="home">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>' +
+      '<span data-i18n="tab_home">Home</span></button>' +
+    '<button class="tab-btn" type="button" data-tab="words">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>' +
+      '<span data-i18n="tab_words">Words</span></button>';
+  container.appendChild(tabbar);
+
+  tabbar.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const toWords = btn.getAttribute('data-tab') === 'words';
+      home.style.display = toWords ? 'none' : '';
+      words.classList.toggle('active', toWords);
+      tabbar.querySelectorAll('.tab-btn').forEach(t => t.classList.toggle('active', t === btn));
+      if (toWords) refreshWordsPage();
+    });
+  });
+  refreshWordsPage();
+}
+
+function refreshWordsPage() {
+  chrome.runtime.sendMessage({ action: 'get_vocabulary' }, (response) => {
+    panelState.vocabulary = (response && response.vocabulary) || [];
+    renderVocabularyPanel();
+  });
+}
+
 function initPanels() {
   document.querySelectorAll('[data-panel-close]').forEach(button => {
     button.addEventListener('click', closePanels);
@@ -482,6 +548,7 @@ function updateIncognitoBanner(isIncognito) {
 function openPanel(panelId) {
   resetUnsavedSettingsPreview(panelId);
   document.querySelectorAll('.popup-panel').forEach(panel => {
+    if (panel.classList.contains('vocab-inline')) return;
     panel.hidden = panel.id !== panelId;
   });
 }
@@ -489,6 +556,7 @@ function openPanel(panelId) {
 function closePanels() {
   resetUnsavedSettingsPreview(null);
   document.querySelectorAll('.popup-panel').forEach(panel => {
+    if (panel.classList.contains('vocab-inline')) return;
     panel.hidden = true;
   });
 }

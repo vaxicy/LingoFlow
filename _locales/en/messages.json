@@ -7,6 +7,14 @@
     "message": "LingoFlow",
     "description": "Extension short name"
   },
+  "tab_home": {
+    "message": "Home",
+    "description": "Popup bottom tab: home page"
+  },
+  "tab_words": {
+    "message": "Words",
+    "description": "Popup bottom tab: dictionary + vocabulary page"
+  },
   "description": {
     "message": "Foreign Web Reader with selection & full-page translation. Supports multiple translation engines with customizable UI themes.",
     "description": "Extension description (English)"

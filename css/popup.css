@@ -39,6 +39,9 @@ body {
   position: relative;
   padding: 16px;
   overflow: hidden;
+  height: 520px;
+  display: flex;
+  flex-direction: column;
 }
 
 .popup-header {
@@ -331,7 +334,7 @@ body[data-theme="light"] .settings-section-title {
 
 .popup-secondary {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 6px;
   margin-bottom: 10px;
   padding: 6px;
@@ -427,6 +430,80 @@ body[data-theme="light"] .settings-section-title {
 .status-text {
   font-weight: 700;
 }
+
+/* === Page nav (home / words) === */
+.popup-pages {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+.popup-page { min-width: 0; }
+#page-home {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  overflow-y: auto;
+}
+#page-words {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+#page-words.active { display: flex; }
+.popup-tabbar {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(184, 173, 255, 0.14);
+}
+.tab-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px;
+  border: 1px solid rgba(184, 173, 255, 0.16);
+  border-radius: 12px;
+  background: rgba(31, 36, 67, 0.5);
+  color: var(--lf-muted);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color .18s ease, background .18s ease, color .18s ease;
+}
+.tab-btn svg { width: 18px; height: 18px; }
+.tab-btn.active {
+  color: #fff;
+  border-color: var(--lf-border-strong);
+  background: linear-gradient(135deg, rgba(98, 168, 255, 0.18), rgba(124, 108, 255, 0.18));
+}
+/* Inline vocabulary panel inside words page */
+#page-words .popup-panel.vocab-inline {
+  position: static;
+  inset: auto;
+  height: auto;
+  max-height: none;
+  padding: 0;
+  background: none;
+  border-radius: 0;
+  z-index: auto;
+  gap: 12px;
+}
+#page-words .popup-panel.vocab-inline .panel-header {
+  grid-template-columns: 1fr auto;
+}
+#page-words .popup-panel.vocab-inline .panel-search { margin: 0; }
 
 .popup-panel {
   position: absolute;

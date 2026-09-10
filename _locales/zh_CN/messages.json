@@ -7,6 +7,14 @@
     "message": "LingoFlow",
     "description": "扩展短名称"
   },
+  "tab_home": {
+    "message": "首页",
+    "description": "Popup 底部标签：首页"
+  },
+  "tab_words": {
+    "message": "单词",
+    "description": "Popup 底部标签：词典 + 生词本"
+  },
   "description": {
     "message": "外文网站阅读助手。支持划词翻译、全文翻译和双语模式，多引擎可选，自定义界面风格。",
     "description": "扩展描述（中文）"
