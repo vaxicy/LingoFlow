@@ -3,7 +3,7 @@
 **一款轻量的 Chrome 扩展，助你轻松阅读外文网站。**
 A lightweight Chrome Extension for reading foreign-language websites with ease.
 
-[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-v1.0.2-blue)](https://chromewebstore.google.com/detail/lingoflow-%F0%9F%8C%90-foreign-web/fkloicgbhpomiadliefangbfegkccmlh) [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-v1.3.0-blue)](https://chromewebstore.google.com/detail/lingoflow-%F0%9F%8C%90-foreign-web/fkloicgbhpomiadliefangbfegkccmlh) [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
 
 ---
 
@@ -18,6 +18,20 @@ A lightweight Chrome Extension for reading foreign-language websites with ease.
 | **Bilingual Mode** | Show translations below each paragraph — read side by side with the original | 在每段原文下方显示翻译 — 对照阅读 |
 | **Hover Paragraph Translation** | Hover over any paragraph to preview a bilingual translation without clicking | 鼠标悬停段落即可预览双语翻译，无需点击 |
 | **Restore Original** | Instantly revert the page back to its original state | 一键恢复页面原始状态 |
+
+### Dictionary Lookup / 词典查询
+
+| Source | Type | Offline | Notes | 说明 |
+|--------|------|---------|-------|------|
+| **ECDICT (built-in)** | Offline data, 59,137 words | **Yes** ✅ | Instant (milliseconds) — phonetic, part of speech, Chinese definitions, exam tags, inflection lookup (`beginners → beginner`) | 内置离线词库，毫秒级 — 音标、词性、中文释义、考试标签、词形还原 |
+| AI (SiliconFlow / Gemini / DeepSeek / Bailian / Custom) | API key | No | Richest entries; used **only** when the offline dictionary misses | 释义最详细；仅在离线词库未收录时使用 |
+| Free Dictionary API (dictionaryapi.dev) | Free | No | English definitions, synonyms and examples | 英文释义、同义词与例句 |
+| Microsoft Azure Dictionary | API key | No | Part of speech + multiple senses | 词性与多义项 |
+| Selected translation engine | — | No | Plain-translation fallback | 纯翻译兜底 |
+
+> **Default behaviour / 默认行为**：single words are looked up in the **offline dictionary first** — results appear in milliseconds with **no network and no API key**; AI is queried only for words missing from the offline data. Sentences and phrases always go straight to your selected translation engine. Change the priority in **Settings → Dictionary Source** (`Offline First` / `AI First`).
+>
+> 单个单词**优先查询离线词典**，毫秒级出结果且**无需联网与 API Key**；只有离线词库未收录的词才会尝试 AI。句子与短语始终直接交由所选翻译引擎处理。可在 **设置 → 词典数据源**（`离线优先` / `AI 优先`）切换。
 
 ### Data Management / 数据管理
 
@@ -51,6 +65,16 @@ A lightweight Chrome Extension for reading foreign-language websites with ease.
 The built-in free translation channel in LingoFlow is powered by the open-source project **translate.js** by **xnx3** — official site: [translate.zvo.cn](https://translate.zvo.cn/), source code: [github.com/xnx3/translate](https://github.com/xnx3/translate). It runs entirely as a content script injected into the page — no API key, no configuration, and no server round-trip to LingoFlow itself. The library rotates across multiple backends (Google, MyMemory, and your own custom AI API) to maximize availability. All credit for the underlying translation logic goes to the original author **xnx3** and the translate.js project.
 
 LingoFlow 内置的免费翻译通道基于开源项目 **translate.js**（作者 **xnx3**）实现 —— 官方网址：[translate.zvo.cn](https://translate.zvo.cn/)，源代码：[github.com/xnx3/translate](https://github.com/xnx3/translate)。它完全以内容脚本的形式注入页面运行——**无需 API Key、无需配置**，也不会向 LingoFlow 自身回传任何数据。该库会在多个后端（Google、MyMemory 以及用户自定义的 AI API）之间自动轮换以保证可用性。翻译底层逻辑的全部归属与致谢均归于原作者 **xnx3** 及 translate.js 项目。
+
+### About ECDICT / 关于 ECDICT 离线词库
+
+The built-in offline dictionary is derived from **ECDICT — Free English to Chinese Dictionary Database** by **skywind3000** — [github.com/skywind3000/ECDICT](https://github.com/skywind3000/ECDICT), licensed under the **MIT License**. The original CSV (76 万词条) is filtered to the fields LingoFlow needs and repacked into per-initial-letter JSON shards — about **6 MB**, **59,137 headwords** and **45,187 inflection entries** — so lookups stay instant and memory usage stays low. The build script lives at [`tools/build_ecdict.py`](tools/build_ecdict.py) and a copy of the MIT notice is kept at [`dict/LICENSE-ecdict.txt`](dict/LICENSE-ecdict.txt). All credit for the dictionary data goes to the original author **skywind3000** and the ECDICT project.
+
+内置离线词库基于 **ECDICT —— 免费英汉词典数据库**（作者 **skywind3000**）构建 —— [github.com/skywind3000/ECDICT](https://github.com/skywind3000/ECDICT)，采用 **MIT 协议**。原始 CSV（76 万词条）按 LingoFlow 需要裁剪字段后，重新打包为按首字母划分的 JSON 分片 —— 约 **6 MB**、**59,137 词条**、**45,187 条词形反查** —— 从而保证查询瞬时完成且内存占用极低。构建脚本见 [`tools/build_ecdict.py`](tools/build_ecdict.py)，MIT 声明副本保存在 [`dict/LICENSE-ecdict.txt`](dict/LICENSE-ecdict.txt)。词典数据的全部归属与致谢归于原作者 **skywind3000** 及 ECDICT 项目。
+
+An optional online source is the **Free Dictionary API** — [dictionaryapi.dev](https://dictionaryapi.dev), by [meetDeveloper](https://github.com/meetDeveloper/freeDictionaryAPI) — used to fetch English definitions, synonyms and example sentences when the offline dictionary has no entry.
+
+在线补充来源为 **Free Dictionary API** —— [dictionaryapi.dev](https://dictionaryapi.dev)，作者 [meetDeveloper](https://github.com/meetDeveloper/freeDictionaryAPI)，在离线词库无结果时用于获取英文释义、同义词与例句。
 
 ### Interface & Customization / 界面与个性化
 
@@ -110,6 +134,7 @@ Download from the [Chrome Web Store](https://chromewebstore.google.com/detail/li
 - **All data stays local** — stored in `chrome.storage.local` on your device / **所有数据留本地** — 存储在你设备的 `chrome.storage.local` 中
 - **API keys stay local** — never sent to any server other than the translation service you configure / **API Key 留本地** — 仅发送到你配置的翻译服务，不会发给其他任何服务器
 - **Translated text** is sent directly to your chosen translation engine — LingoFlow never proxies or stores it / **翻译文本**直接发送到你选择的翻译引擎 — LingoFlow 不做代理也不存储
+- **Offline dictionary lookups never leave your device** — single-word lookups are resolved from the bundled ECDICT data (no request, no key); only words missing from it fall back to online sources / **离线查词不出本机** — 单词查询由内置 ECDICT 数据解析（无网络请求、无 Key），仅未收录的词才回退在线来源
 
 See the full [Privacy Policy](https://vaxicy.github.io/LingoFlow/pages/privacy.html).
 查看完整的 [隐私政策](https://vaxicy.github.io/LingoFlow/pages/privacy.html)。
@@ -137,12 +162,20 @@ LingoFlow/
 │   ├── support.html           # Donation / support page / 捐赠 / 支持页
 │   ├── setup-guide.html       # API setup guide / API 配置指南
 │   └── setup-guide.js         # Setup guide interactivity / 配置指南交互
+├── dict/                      # Offline dictionary shards (ECDICT, MIT) / 离线词典分片（ECDICT，MIT）
+│   ├── a.json … z.json        # Per-initial-letter shards / 按首字母分片
+│   ├── manifest.json          # Build metadata / 构建元信息
+│   └── LICENSE-ecdict.txt     # Third-party MIT notice / 第三方 MIT 声明
+├── tools/                     # Data build scripts / 数据构建脚本
+│   └── build_ecdict.py        # ECDICT CSV → JSON shards / ECDICT CSV 转 JSON 分片
 ├── icons/                     # Extension icons (16/48/128 px) / 扩展图标
 ├── assets/                    # Static resources (donation QR codes) / 静态资源（捐赠二维码）
-├── _locales/                  # i18n (en, zh_CN) / 国际化（英文、简体中文）
+├── _locales/                  # i18n (en, zh_CN, es) / 国际化（英文、简体中文、西班牙文）
 │   ├── en/
 │   │   └── messages.json
-│   └── zh_CN/
+│   ├── zh_CN/
+│   │   └── messages.json
+│   └── es/
 │       └── messages.json
 ├── store-assets/              # Chrome Web Store listing assets / 商店素材
 └── scripts/                   # Development / automation scripts / 开发 / 自动化脚本
@@ -154,6 +187,7 @@ LingoFlow/
 
 - **Manifest V3** — Chrome Extension platform / Chrome 扩展平台
 - **Vanilla JavaScript** — no framework, no dependencies / 原生 JavaScript，无框架无依赖
+- **Bundled offline dictionary (ECDICT, MIT)** — lazy-loaded per-letter JSON shards, < 2 MB resident memory / 内置离线词库（ECDICT，MIT）—— 按首字母懒加载 JSON 分片，常驻内存 < 2 MB
 - **Chrome Storage API** — local data persistence / 本地数据持久化
 - **`chrome.i18n`** — internationalization via `_locales` (English + Chinese) / 通过 `_locales` 实现国际化（英文 + 中文）
 - **CSS custom properties** — light / dark theming / CSS 自定义属性实现浅色/深色主题
@@ -182,10 +216,29 @@ git clone https://github.com/vaxicy/LingoFlow.git
 # 创建干净的 zip 包用于上传 Chrome Web Store
 # (excludes .git, .codebuddy, scripts/, store-assets/, dev docs)
 # （排除 .git、.codebuddy、scripts/、store-assets/、开发文档）
-cd LingoFlow && zip -r ../LingoFlow-v1.0.2.zip . \
+cd LingoFlow && zip -r ../LingoFlow-v1.3.0.zip . \
   -x ".git/*" ".codebuddy/*" "scripts/*" "store-assets/*" \
   -x "create-icons.html" "README.md" "INSTALL.md" "I18N_COMPLETE.md"
 ```
+
+---
+
+## Third-Party Credits / 第三方致谢
+
+LingoFlow builds on the work of these open-source projects and services. Thank you!
+LingoFlow 基于以下开源项目与服务构建，特此致谢！
+
+| Project / 项目 | Author / 作者 | License / 协议 | Used for / 用途 |
+|----------------|---------------|----------------|-----------------|
+| [ECDICT](https://github.com/skywind3000/ECDICT) | skywind3000 | MIT (data) | Offline English→Chinese dictionary (bundled, filtered & repacked) / 内置离线英汉词库（裁剪重打包） |
+| [translate.js](https://github.com/xnx3/translate) | xnx3 | (see project) | Built-in free translation channel / 内置免费翻译通道 |
+| [Free Dictionary API](https://github.com/meetDeveloper/freeDictionaryAPI) | meetDeveloper | GPL-3.0 (service) | Optional online English definitions & examples / 可选的在线英文释义与例句 |
+
+Full notices are kept alongside the data: [`dict/LICENSE-ecdict.txt`](dict/LICENSE-ecdict.txt).
+完整的协议声明与数据一同保存：[`dict/LICENSE-ecdict.txt`](dict/LICENSE-ecdict.txt)。
+
+> LingoFlow itself is released under **CC BY-NC 4.0** (see below); the third-party components above retain their own licenses.
+> LingoFlow 本身采用 **CC BY-NC 4.0** 发布（见下），上述第三方组件保留各自原有协议。
 
 ---
 
