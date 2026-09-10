@@ -1949,8 +1949,7 @@ function applyPopupSettings(settings) {
   if (selectionTranslation) selectionTranslation.checked = settings.selectionTranslation !== false;
   const hoverParagraphTranslation = document.getElementById('popup-hover-paragraph-translation');
   if (hoverParagraphTranslation) hoverParagraphTranslation.checked = settings.hoverParagraphTranslation === true;
-  const dictionaryAiEnhance = document.getElementById('popup-dictionary-ai-enhance');
-  if (dictionaryAiEnhance) dictionaryAiEnhance.checked = settings.dictionaryAiEnhance !== false;
+
   if (autoSaveSettings) autoSaveSettings.checked = settings.autoSaveSettings !== false;
   if (existingBilingualStrategy) existingBilingualStrategy.value = settings.existingBilingualStrategy || 'skip';
   if (historyLimit) historyLimit.value = String(settings.historyLimit || 50);
@@ -2011,7 +2010,7 @@ function getPopupSettingsFromUI() {
     theme: document.querySelector('[data-popup-theme].active')?.getAttribute('data-popup-theme') || 'light',
     selectionTranslation: document.getElementById('popup-selection-translation')?.checked !== false,
     hoverParagraphTranslation: document.getElementById('popup-hover-paragraph-translation')?.checked === true,
-    dictionaryAiEnhance: document.getElementById('popup-dictionary-ai-enhance')?.checked === true,
+
     autoSaveSettings: document.getElementById('popup-auto-save-settings')?.checked !== false,
     toolbarPosition: document.querySelector('[data-position].active')?.getAttribute('data-position') || 'above',
     existingBilingualStrategy: document.getElementById('popup-existing-bilingual-strategy')?.value || 'skip',
