@@ -165,7 +165,8 @@ def main():
         total += size
         manifest["shards"].append({"k": letter, "words": len(words), "infl": len(shard_infl), "bytes": size})
 
-    with open(os.path.join(OUT, "manifest.json"), "w", encoding="utf-8") as f:
+    # 注意：不能叫 manifest.json——Chrome Web Store 禁止包内出现第二个清单文件
+    with open(os.path.join(OUT, "build.json"), "w", encoding="utf-8") as f:
         json.dump(manifest, f, ensure_ascii=False, indent=2)
 
     print("done. words:", count, "shards:", len(manifest["shards"]), "total:", round(total / 1048576.0, 2), "MB")
