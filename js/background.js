@@ -676,6 +676,30 @@ function getEngineLangCode(engine, targetLang) {
 // Translation dispatcher — routes to the selected engine
 function lookupDictionary(text, targetLang, sendResponse) {
   const raw = String(text || '').trim();
+  if (!raw) {
+    fallbackDictionaryTranslation(raw, targetLang, sendResponse);
+    return;
+  }
+
+  // 句子/短语：跳过词典，直接整句纯翻译
+  if (/\s/.test(raw) || raw.length > 32) {
+    translateText(raw, targetLang || 'zh', (response) => {
+      sendResponse({
+        success: !!(response && response.success),
+        result: {
+          mode: 'sentence',
+          word: raw,
+          translation: (response && response.translation) || '',
+          phonetic: '',
+          meanings: [],
+          examples: []
+        },
+        error: response && response.error
+      });
+    });
+    return;
+  }
+
   const word = raw.replace(/^[^A-Za-zÀ-ÿ\u3400-\u9FFF\uF900-\uFAFF]+|[^A-Za-zÀ-ÿ\u3400-\u9FFF\uF900-\uFAFF]+$/g, '');
   if (!word) {
     fallbackDictionaryTranslation(raw, targetLang, sendResponse);
@@ -683,7 +707,9 @@ function lookupDictionary(text, targetLang, sendResponse) {
   }
 
   const wordLang = detectWordLang(word);
-  tryFreeDictionary(freeLangCandidates(wordLang), word)
+  const langs = freeLangCandidates(wordLang);
+  const forms = wordFormCandidates(word);
+  tryFreeDictionaryForms(langs, forms)
     .then(result => finishDictionary(word, result, targetLang, sendResponse))
     .catch(() => {
       chrome.storage.local.get(['lingoflow_settings'], (res) => {
@@ -697,6 +723,28 @@ function lookupDictionary(text, targetLang, sendResponse) {
         }
       });
     });
+}
+
+// 生成词形变体（复数/时态），提升词典命中率：beginners → beginner
+function wordFormCandidates(word) {
+  const w = String(word || '').toLowerCase();
+  const forms = [w];
+  if (w.endsWith('ies') && w.length > 4) forms.push(w.slice(0, -3) + 'y');
+  if (w.endsWith('es') && w.length > 3) forms.push(w.slice(0, -2));
+  if (w.endsWith('s') && !w.endsWith('ss') && w.length > 2) forms.push(w.slice(0, -1));
+  if (w.endsWith('ing') && w.length > 5) { forms.push(w.slice(0, -3)); forms.push(w.slice(0, -3) + 'e'); }
+  if (w.endsWith('ed') && w.length > 4) { forms.push(w.slice(0, -2)); forms.push(w.slice(0, -1)); }
+  return [...new Set(forms)];
+}
+
+function tryFreeDictionaryForms(langs, forms) {
+  return new Promise((resolve, reject) => {
+    let i = 0;
+    (function attempt() {
+      if (i >= forms.length) { reject(new Error('free sources exhausted')); return; }
+      tryFreeDictionary(langs, forms[i++]).then(resolve).catch(attempt);
+    })();
+  });
 }
 
 function normalizeDictionaryResult(word, data) {

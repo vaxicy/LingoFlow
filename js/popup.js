@@ -251,7 +251,8 @@ function runDictSearch(text, resultEl) {
 
 function renderDictCard(r, originalText, resultEl) {
   const word = r.word || originalText;
-  const phonetic = r.phonetic ? '/' + escapeHtml(r.phonetic) + '/' : '';
+  const isSentence = r.mode === 'sentence' || /\s/.test(String(originalText || '').trim());
+  const phonetic = (!isSentence && r.phonetic) ? '/' + escapeHtml(r.phonetic) + '/' : '';
   const meanings = Array.isArray(r.meanings) ? r.meanings : [];
   const examples = Array.isArray(r.examples) ? r.examples : [];
 
@@ -305,15 +306,16 @@ function renderDictCard(r, originalText, resultEl) {
       saveDictToVocabulary(
         saveBtn.getAttribute('data-text'),
         saveBtn.getAttribute('data-translation'),
-        saveBtn
+        saveBtn,
+        isSentence ? 'sentence' : 'word'
       );
     });
   }
 }
 
-function saveDictToVocabulary(text, translation, btn) {
+function saveDictToVocabulary(text, translation, btn, type) {
   chrome.runtime.sendMessage(
-    { action: 'save_to_vocabulary', data: { text: text, translation: translation || '', type: 'word' } },
+    { action: 'save_to_vocabulary', data: { text: text, translation: translation || '', type: type || 'word' } },
     () => {
       if (btn) {
         btn.classList.add('is-saved');
