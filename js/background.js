@@ -722,12 +722,26 @@ function lookupDictionary(text, targetLang, sendResponse) {
     dictionaryCache.delete(cacheKey);
   }
 
-  // 目标语言非中文：离线词库不适用，直接走翻译引擎（单一译文）
+  // 目标语言非中文：离线词库不适用，默认走翻译引擎（单一译文）。
+  // 例外：目标语言与单词源语言相同（如英文网页→目标英文）时，翻译只会原样返回单词，
+  // 此时改用免费词典给出英文词性 + 释义 + 例句。
   if (!isZhTarget(targetLang)) {
-    fallbackDictionaryTranslation(word, targetLang, sendResponse, (final) => dictionaryCache.set(
+    const srcLang = detectWordLang(word);
+    const sameLang = String(targetLang || '').toLowerCase().indexOf(srcLang) === 0;
+    const markFallbackCache = (final) => dictionaryCache.set(
       cacheKey,
       Object.assign({}, final, { __fallback: true, __ts: Date.now() })
-    ));
+    );
+    if (sameLang && srcLang === 'en') {
+      withTimeout(fetchFreeDictionarySupplement(word, 'en'), 3500)
+        .then(result => {
+          dictCacheSet(cacheKey, result);
+          sendResponse({ success: true, result });
+        })
+        .catch(() => fallbackDictionaryTranslation(word, targetLang, sendResponse, markFallbackCache));
+      return;
+    }
+    fallbackDictionaryTranslation(word, targetLang, sendResponse, markFallbackCache);
     return;
   }
 
