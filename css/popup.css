@@ -39,7 +39,8 @@ body {
   position: relative;
   padding: 16px;
   overflow: hidden;
-  height: 520px;
+  height: auto;
+  max-height: 600px;
   display: flex;
   flex-direction: column;
 }
@@ -441,20 +442,19 @@ body[data-theme="light"] .settings-section-title {
 .popup-page { min-width: 0; }
 #page-home {
   flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   gap: 10px;
   overflow-y: auto;
 }
 #page-words {
-  position: absolute;
-  inset: 0;
+  flex: 1 1 auto;
+  min-height: 0;
   display: none;
   flex-direction: column;
   gap: 14px;
   overflow-y: auto;
-  padding-right: 2px;
 }
 #page-words.active { display: flex; }
 .popup-tabbar {
