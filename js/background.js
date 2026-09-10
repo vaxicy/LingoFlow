@@ -709,20 +709,64 @@ function lookupDictionary(text, targetLang, sendResponse) {
   const wordLang = detectWordLang(word);
   const langs = freeLangCandidates(wordLang);
   const forms = wordFormCandidates(word);
-  tryFreeDictionaryForms(langs, forms)
-    .then(result => finishDictionary(word, result, targetLang, sendResponse))
+
+  // 缓存命中：同词同目标语言直接秒回
+  const cacheKey = word.toLowerCase() + '|' + (targetLang || 'zh');
+  const cached = dictionaryCache.get(cacheKey);
+  if (cached) {
+    sendResponse({ success: true, result: cached });
+    return;
+  }
+
+  // 并行竞速所有 词形 × 语言，3s 截止；未命中再走 AI（限 6s）/纯翻译
+  raceFreeDictionary(langs, forms, 3000)
+    .then(result => finishDictionary(word, result, targetLang, sendResponse, cacheKey))
     .catch(() => {
       chrome.storage.local.get(['lingoflow_settings'], (res) => {
         const s = res.lingoflow_settings || {};
         if (s.dictionaryAiEnhance !== false && hasAnyChatKey(s)) {
-          callDictionaryAI(word, wordLang, targetLang || 'zh')
-            .then(result => finishDictionary(word, result, targetLang, sendResponse))
-            .catch(() => fallbackDictionaryTranslation(word, targetLang, sendResponse));
+          const aiFinal = callDictionaryAI(word, wordLang, targetLang || 'zh')
+            .then(result => finishDictionaryPromise(word, result, targetLang));
+          withTimeout(aiFinal, 6000)
+            .then(final => {
+              dictionaryCache.set(cacheKey, final);
+              sendResponse({ success: true, result: final });
+            })
+            .catch(() => {
+              // AI 超时：先给纯翻译，AI 结果落地后写缓存供下次秒回
+              fallbackDictionaryTranslation(word, targetLang, sendResponse, (final) => dictionaryCache.set(cacheKey, final));
+              aiFinal.then(final => dictionaryCache.set(cacheKey, final)).catch(() => {});
+            });
         } else {
-          fallbackDictionaryTranslation(word, targetLang, sendResponse);
+          fallbackDictionaryTranslation(word, targetLang, sendResponse, (final) => dictionaryCache.set(cacheKey, final));
         }
       });
     });
+}
+
+// 词典结果内存缓存（Service Worker 生命周期内）
+const dictionaryCache = new Map();
+
+function withTimeout(promise, ms) {
+  const timerP = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms));
+  timerP.catch(() => {});
+  return Promise.race([promise, timerP]);
+}
+
+function finishDictionaryPromise(word, result, targetLang) {
+  return new Promise((resolve) => {
+    finishDictionary(word, result, targetLang, (payload) => resolve(payload && payload.result ? payload.result : result));
+  });
+}
+
+// 并行竞速：任一 (语言 × 词形) 命中即返回，整体限时
+function raceFreeDictionary(langs, forms, timeoutMs) {
+  const tasks = [];
+  langs.forEach(lang => forms.forEach(form => tasks.push(fetchFreeDictionary(lang, form))));
+  if (!tasks.length) return Promise.reject(new Error('no tasks'));
+  const timerP = new Promise((_, reject) => setTimeout(() => reject(new Error('free dict timeout')), timeoutMs));
+  timerP.catch(() => {});
+  return Promise.race([Promise.any(tasks), timerP]);
 }
 
 // 生成词形变体（复数/时态），提升词典命中率：beginners → beginner
@@ -735,16 +779,6 @@ function wordFormCandidates(word) {
   if (w.endsWith('ing') && w.length > 5) { forms.push(w.slice(0, -3)); forms.push(w.slice(0, -3) + 'e'); }
   if (w.endsWith('ed') && w.length > 4) { forms.push(w.slice(0, -2)); forms.push(w.slice(0, -1)); }
   return [...new Set(forms)];
-}
-
-function tryFreeDictionaryForms(langs, forms) {
-  return new Promise((resolve, reject) => {
-    let i = 0;
-    (function attempt() {
-      if (i >= forms.length) { reject(new Error('free sources exhausted')); return; }
-      tryFreeDictionary(langs, forms[i++]).then(resolve).catch(attempt);
-    })();
-  });
 }
 
 function normalizeDictionaryResult(word, data) {
@@ -785,18 +819,20 @@ function normalizeDictionaryResult(word, data) {
   };
 }
 
-function fallbackDictionaryTranslation(word, targetLang, sendResponse) {
+function fallbackDictionaryTranslation(word, targetLang, sendResponse, onResult) {
   translateText(word, targetLang || 'zh', (response) => {
     const translation = response && response.translation ? response.translation : word;
+    const result = {
+      mode: 'word',
+      translation,
+      phonetic: '',
+      meanings: translation ? [{ partOfSpeech: '', definition: translation, synonyms: [] }] : [],
+      examples: []
+    };
+    if (typeof onResult === 'function') onResult(result);
     sendResponse({
       success: !!(response && response.success),
-      result: {
-        mode: 'word',
-        translation,
-        phonetic: '',
-        meanings: translation ? [{ partOfSpeech: '', definition: translation, synonyms: [] }] : [],
-        examples: []
-      },
+      result,
       error: response && response.error
     });
   });
@@ -822,7 +858,7 @@ function fetchFreeDictionary(lang, word) {
       ? 'https://api.dictionaryapi.dev/api/v2/entries/en/'
       : `https://api.freedictionary.dev/api/v2/entries/${lang}/`) + encodeURIComponent(word.toLowerCase());
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
     fetch(url, { signal: controller.signal })
       .then(response => {
         clearTimeout(timeoutId);
@@ -849,13 +885,26 @@ function tryFreeDictionary(langs, word) {
   });
 }
 
-function finishDictionary(word, result, targetLang, sendResponse) {
+function finishDictionary(word, result, targetLang, sendResponse, cacheKey) {
   const tl = targetLang || 'zh';
-  translateText(word, tl, (response) => {
-    if (response && response.success && response.translation) result.translation = response.translation;
-    localizeDictionaryMeanings(result, tl)
-      .then(localized => sendResponse({ success: true, result: localized }))
-      .catch(() => sendResponse({ success: true, result }));
+  // 整词翻译与释义本地化并行执行，缩短总耗时
+  const translationP = new Promise((resolve) => {
+    translateText(word, tl, (response) => {
+      resolve(response && response.success && response.translation ? response.translation : '');
+    });
+  });
+  const localizeP = localizeDictionaryMeanings({
+    ...result,
+    meanings: (result.meanings || []).map(item => ({ ...item }))
+  }, tl).catch(() => ({ ...result }));
+
+  Promise.all([translationP, localizeP]).then(([translation, localized]) => {
+    if (translation) localized.translation = translation;
+    if (Array.isArray(localized.meanings) && localized.meanings.length) {
+      localized.meanings = localized.meanings.filter(item => item.definition && item.definition !== localized.translation);
+    }
+    if (cacheKey) dictionaryCache.set(cacheKey, localized);
+    sendResponse({ success: true, result: localized });
   });
 }
 
@@ -1031,28 +1080,11 @@ function translateTextsForDictionary(texts, targetLang) {
 
     chrome.storage.local.get(['lingoflow_settings'], (result) => {
       const engine = (result.lingoflow_settings && result.lingoflow_settings.translationEngine) || 'google';
-      const translations = new Array(list.length);
-      let index = 0;
-
-      function next() {
-        if (index >= list.length) {
-          resolve(translations);
-          return;
-        }
-
-        const current = index++;
-        translateOneForBatch(list[current], targetLang, engine)
-          .then(translation => {
-            translations[current] = translation;
-            next();
-          })
-          .catch(() => {
-            translations[current] = list[current];
-            next();
-          });
-      }
-
-      next();
+      // 并行翻译全部释义，避免串行等待
+      const tasks = list.map(text =>
+        translateOneForBatch(text, targetLang, engine).catch(() => text)
+      );
+      Promise.all(tasks).then(resolve);
     });
   });
 }
