@@ -160,7 +160,7 @@
     "description": "Save success notification"
   },
   "dict_search_placeholder": {
-    "message": "Consulta una palabra (EN / 中文 / ES)…",
+    "message": "Consulta una palabra u oración…",
     "description": "Marcador de posición del buscador de diccionario en el popup"
   },
   "dict_searching": {

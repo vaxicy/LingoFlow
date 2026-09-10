@@ -160,7 +160,7 @@
     "description": "保存成功通知"
   },
   "dict_search_placeholder": {
-    "message": "查询单词（中 / EN / ES）…",
+    "message": "查询单词或句子…",
     "description": "弹窗词典搜索输入框占位符"
   },
   "dict_searching": {
