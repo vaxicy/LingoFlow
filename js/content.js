@@ -583,14 +583,15 @@ function mapTargetLang(targetLang) {
       if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
 
       if (this.isLookupWord(normalized)) {
-        // 单词：先出「快」的一条（通常是引擎译文），详细释义稍后由 UI 原地升级
+        // 单词：优先等离线词典结果（600ms 宽限）；未命中才回退引擎译文，词典结果稍后升级
         const dictP = this.lookupWord(normalized);
         const transP = this.translateText(normalized);
+        const graceP = new Promise((resolve) => setTimeout(resolve, 600));
         let quick;
         try {
-          quick = await Promise.race([transP, dictP]);
+          quick = await Promise.race([dictP, graceP.then(() => transP)]);
         } catch (_) {
-          quick = await dictP;
+          quick = await transP.catch(() => dictP);
         }
         if (quick && !quick.dictionary && !quick.error) quick.__upgrade = dictP;
         this.cache.set(cacheKey, quick);

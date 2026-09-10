@@ -232,24 +232,42 @@ function runDictSearch(text, resultEl) {
 
   const targetLang = getDictTargetLang();
   const isSentence = /\s/.test(String(text || '').trim());
+
+  // 句子：直接走当前翻译引擎
+  if (isSentence) {
+    chrome.runtime.sendMessage({ action: 'translate', text: text, targetLang: targetLang }, (res) => {
+      if (chrome.runtime.lastError) return;
+      if (res && res.success && res.translation) {
+        renderQuickCard(text, res.translation, resultEl, true);
+      } else {
+        resultEl.innerHTML = '<div class="dict-empty">' +
+          escapeHtml(getMessage('dict_error') || 'Lookup failed') + '</div>';
+      }
+    });
+    return;
+  }
+
+  // 单词：优先离线词典（毫秒级）；仅当离线慢/未命中时才显示简版译文，之后才尝试 AI
+  let settled = false;
   let rendered = false;
 
-  // 阶段一：先用当前翻译引擎出简洁译文，秒出结果
-  chrome.runtime.sendMessage({ action: 'translate', text: text, targetLang: targetLang }, (res) => {
-    if (chrome.runtime.lastError) return;
-    if (res && res.success && res.translation && !rendered) {
-      rendered = true;
-      renderQuickCard(text, res.translation, resultEl, isSentence);
-    }
-  });
+  // 300ms 内离线结果未到，才显示简版译文（避免闪烁）
+  const quickTimer = setTimeout(() => {
+    if (settled || rendered) return;
+    rendered = true;
+    chrome.runtime.sendMessage({ action: 'translate', text: text, targetLang: targetLang }, (res) => {
+      if (settled) return;
+      if (res && res.success && res.translation) {
+        renderQuickCard(text, res.translation, resultEl, false);
+      }
+    });
+  }, 300);
 
-  // 阶段二：句子保持纯翻译；单词再取 AI 详细释义覆盖简版
-  if (isSentence) return;
-  let settled = false;
   chrome.runtime.sendMessage(
     { action: 'lookup_dictionary', text: text, targetLang: targetLang },
     (response) => {
       settled = true;
+      clearTimeout(quickTimer);
       if (chrome.runtime.lastError) {
         if (!rendered) {
           resultEl.innerHTML = '<div class="dict-empty">' +
