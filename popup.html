@@ -154,16 +154,18 @@
     </section>
 
     <section class="popup-panel vocab-inline" id="vocabulary-panel">
-      <div class="panel-header vocab-header">
-        <h2 data-i18n="vocabulary">Vocabulary</h2>
-        <button class="panel-icon-btn" type="button" id="vocabulary-export-btn" aria-label="Export CSV">
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <path d="M7 10l5 5 5-5"/>
-            <path d="M12 15V3"/>
-          </svg>
-        </button>
-      </div>
+      <button class="vocab-entry-btn" id="vocab-toggle" type="button" aria-expanded="false" aria-controls="vocab-body">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+          <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+        </svg>
+        <span data-i18n="vocabulary">Vocabulary</span>
+        <span class="vocab-count" id="vocab-count">0</span>
+        <svg class="vocab-entry-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+      <div class="vocab-body" id="vocab-body" hidden>
       <label class="panel-search">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="11" cy="11" r="8"/>
@@ -184,6 +186,7 @@
         </svg>
         <strong data-i18n="no_saved_items">Nothing saved yet</strong>
         <span data-i18n="save_hint">Select text on a page and save it to add items</span>
+      </div>
       </div>
     </section>
 

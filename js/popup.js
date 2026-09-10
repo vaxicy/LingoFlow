@@ -375,7 +375,7 @@ function buildPageNav() {
   tabbar.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const toWords = btn.getAttribute('data-tab') === 'words';
-      home.style.display = toWords ? 'none' : '';
+      home.style.visibility = toWords ? 'hidden' : 'visible';
       words.classList.toggle('active', toWords);
       tabbar.querySelectorAll('.tab-btn').forEach(t => t.classList.toggle('active', t === btn));
       if (toWords) refreshWordsPage();
@@ -420,6 +420,16 @@ function initPanels() {
       renderVocabularyPanel();
     });
   });
+
+  const vocabToggle = document.getElementById('vocab-toggle');
+  const vocabBody = document.getElementById('vocab-body');
+  if (vocabToggle && vocabBody) {
+    vocabToggle.addEventListener('click', () => {
+      const willOpen = vocabBody.hidden;
+      vocabBody.hidden = !willOpen;
+      vocabToggle.setAttribute('aria-expanded', String(willOpen));
+    });
+  }
 
   const clearHistory = document.getElementById('history-clear-btn');
   if (clearHistory) {
@@ -2248,6 +2258,9 @@ function renderVocabularyPanel() {
   list.textContent = '';
   empty.hidden = items.length > 0;
   list.hidden = items.length === 0;
+
+  const count = document.getElementById('vocab-count');
+  if (count) count.textContent = String(panelState.vocabulary.length);
 
   items.forEach(item => {
     list.appendChild(createPanelItem(item, {
