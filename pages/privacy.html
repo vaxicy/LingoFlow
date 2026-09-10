@@ -54,7 +54,7 @@
 <body>
   <div class="container">
     <h1>Privacy Policy <span class="badge">LingoFlow</span></h1>
-    <p class="meta">Last updated: July 2025 &nbsp;&nbsp;|&nbsp;&nbsp; Effective date: July 8, 2026</p>
+    <p class="meta">Last updated: September 11, 2026 &nbsp;&nbsp;|&nbsp;&nbsp; Effective date: July 8, 2026</p>
 
     <h2>1. Overview</h2>
     <p>LingoFlow is a browser extension that helps you read foreign-language websites. This Privacy Policy explains how (and how little) we handle your data.</p>
@@ -74,6 +74,7 @@
       <li><strong>Settings</strong> — your translation engine preference, theme, language choice, and API keys.</li>
       <li><strong>Vocabulary</strong> — words and sentences you manually save for learning.</li>
       <li><strong>History</strong> — recent translation records (only if you enable this feature).</li>
+      <li><strong>Dictionary cache</strong> — recent word lookups cached locally to make repeat queries instant (expires automatically).</li>
     </ul>
     <p>This data never leaves your device. You can delete it at any time by clearing the extension data from Chrome's extension management page.</p>
 
@@ -86,8 +87,20 @@
       <li>You are responsible for keeping your own API keys secure.</li>
     </ul>
 
-    <h2>5. Third-Party Translation Services</h2>
+    <h2>5. Third-Party Services</h2>
     <p>When you use translation features with an external engine enabled, the selected text is sent directly to the corresponding translation service provider's API endpoint for processing. The specific service depends on which engine you have configured. Please review each service provider's own privacy policy for details on how they handle translation requests.</p>
+
+    <h3>Offline Dictionary (no data transmitted)</h3>
+    <p>LingoFlow bundles an offline English–Chinese dictionary (derived from ECDICT, MIT licensed) inside the extension. Single-word lookups are resolved <strong>locally on your device</strong> — no network request is made and no data leaves your browser.</p>
+
+    <h3>Online Dictionary Fallback</h3>
+    <p>If a word is not found in the offline dictionary, LingoFlow may send <strong>only that word</strong> to one of the following online sources, depending on your settings:</p>
+    <ul>
+      <li>Your configured AI or translation engine (requires your own API key).</li>
+      <li>Microsoft Azure Dictionary service (only if you have configured a Microsoft key).</li>
+      <li>The free public dictionary service <code>api.dictionaryapi.dev</code> — no account and no API key are required or sent.</li>
+    </ul>
+    <p>Only the queried word is transmitted. LingoFlow never sends page content, browsing history, or any identifiers along with these requests.</p>
 
     <h2>6. Children's Privacy</h2>
     <p>LingoFlow does not knowingly collect personal information from children under 13 years of age.</p>
