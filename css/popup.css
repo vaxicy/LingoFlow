@@ -435,22 +435,17 @@ body[data-theme="light"] .settings-section-title {
 /* === Page nav (home / words) === */
 .popup-pages {
   position: relative;
-  flex: 1 1 auto;
-  min-height: 0;
-  display: grid;
+  flex: 0 0 auto;
 }
-.popup-page { min-width: 0; min-height: 0; }
+.popup-page { min-width: 0; }
 #page-home {
-  grid-area: 1 / 1;
-  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  overflow-y: auto;
 }
 #page-words {
-  grid-area: 1 / 1;
-  min-height: 0;
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -515,6 +510,7 @@ body[data-theme="light"] .settings-section-title {
   gap: 10px;
   min-height: 0;
 }
+.vocab-body[hidden] { display: none; }
 body[data-theme="light"] .vocab-entry-btn {
   background: rgba(255, 255, 255, 0.85);
   border-color: rgba(124, 108, 255, 0.22);
