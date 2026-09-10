@@ -916,7 +916,9 @@ function mapTargetLang(targetLang) {
       const translation = resultData.translation || '';
       const dictionary = resultData.dictionary || null;
       const isWord = resultData.mode === 'word';
-      const meanings = dictionary && Array.isArray(dictionary.meanings) ? dictionary.meanings : [];
+      const meanings = dictionary && Array.isArray(dictionary.meanings)
+        ? dictionary.meanings.filter(item => item && item.definition && item.definition !== translation)
+        : [];
       const examples = dictionary && Array.isArray(dictionary.examples) ? dictionary.examples : [];
       const renderParagraphs = (items, key, fallbackText) => {
         const values = Array.isArray(items) && items.length
