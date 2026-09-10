@@ -3,7 +3,7 @@
 **一款轻量的 Chrome 扩展，助你轻松阅读外文网站。**
 A lightweight Chrome Extension for reading foreign-language websites with ease.
 
-[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-v1.3.0-blue)](https://chromewebstore.google.com/detail/lingoflow-%F0%9F%8C%90-foreign-web/fkloicgbhpomiadliefangbfegkccmlh) [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-v1.2.5-blue)](https://chromewebstore.google.com/detail/lingoflow-%F0%9F%8C%90-foreign-web/fkloicgbhpomiadliefangbfegkccmlh) [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
 
 ---
 
@@ -216,7 +216,7 @@ git clone https://github.com/vaxicy/LingoFlow.git
 # 创建干净的 zip 包用于上传 Chrome Web Store
 # (excludes .git, .codebuddy, scripts/, store-assets/, dev docs)
 # （排除 .git、.codebuddy、scripts/、store-assets/、开发文档）
-cd LingoFlow && zip -r ../LingoFlow-v1.3.0.zip . \
+cd LingoFlow && zip -r ../LingoFlow-v1.2.5.zip . \
   -x ".git/*" ".codebuddy/*" "scripts/*" "store-assets/*" \
   -x "create-icons.html" "README.md" "INSTALL.md" "I18N_COMPLETE.md"
 ```
