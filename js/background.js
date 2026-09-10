@@ -710,12 +710,16 @@ function lookupDictionary(text, targetLang, sendResponse) {
   const langs = freeLangCandidates(wordLang);
   const forms = wordFormCandidates(word);
 
-  // 缓存命中：同词同目标语言直接秒回
+  // 缓存命中：同词同目标语言直接秒回（降级纯翻译结果仅缓存 60s，避免网络恢复后仍拿旧结果）
   const cacheKey = word.toLowerCase() + '|' + (targetLang || 'zh');
   const cached = dictionaryCache.get(cacheKey);
   if (cached) {
-    sendResponse({ success: true, result: cached });
-    return;
+    const expired = cached.__fallback && (Date.now() - (cached.__ts || 0) > 60000);
+    if (!expired) {
+      sendResponse({ success: true, result: cached });
+      return;
+    }
+    dictionaryCache.delete(cacheKey);
   }
 
   // 并行竞速所有 词形 × 语言，3s 截止；未命中再走 AI（限 6s）/纯翻译
@@ -724,7 +728,17 @@ function lookupDictionary(text, targetLang, sendResponse) {
     .catch(() => {
       chrome.storage.local.get(['lingoflow_settings'], (res) => {
         const s = res.lingoflow_settings || {};
-        if (s.dictionaryAiEnhance !== false && hasAnyChatKey(s)) {
+
+        const markFallbackCache = (final) => dictionaryCache.set(
+          cacheKey,
+          Object.assign({}, final, { __fallback: true, __ts: Date.now() })
+        );
+
+        const useAI = () => {
+          if (!(s.dictionaryAiEnhance !== false && hasAnyChatKey(s))) {
+            fallbackDictionaryTranslation(word, targetLang, sendResponse, markFallbackCache);
+            return;
+          }
           const aiFinal = callDictionaryAI(word, wordLang, targetLang || 'zh')
             .then(result => finishDictionaryPromise(word, result, targetLang));
           withTimeout(aiFinal, 6000)
@@ -734,11 +748,21 @@ function lookupDictionary(text, targetLang, sendResponse) {
             })
             .catch(() => {
               // AI 超时：先给纯翻译，AI 结果落地后写缓存供下次秒回
-              fallbackDictionaryTranslation(word, targetLang, sendResponse, (final) => dictionaryCache.set(cacheKey, final));
+              fallbackDictionaryTranslation(word, targetLang, sendResponse, markFallbackCache);
               aiFinal.then(final => dictionaryCache.set(cacheKey, final)).catch(() => {});
             });
+        };
+
+        // Microsoft 词典查询（复用翻译 Key）：返回词性 + 多义项，无需 AI
+        if ((s.microsoftApiKey || '').trim()) {
+          withTimeout(microsoftDictionaryLookup(word, targetLang), 4500)
+            .then(result => {
+              dictionaryCache.set(cacheKey, result);
+              sendResponse({ success: true, result });
+            })
+            .catch(useAI);
         } else {
-          fallbackDictionaryTranslation(word, targetLang, sendResponse, (final) => dictionaryCache.set(cacheKey, final));
+          useAI();
         }
       });
     });
@@ -834,6 +858,75 @@ function fallbackDictionaryTranslation(word, targetLang, sendResponse, onResult)
       success: !!(response && response.success),
       result,
       error: response && response.error
+    });
+  });
+}
+
+// Microsoft 词典查询（dictionary/lookup）：复用翻译 Key，返回词性 + 多义项
+function microsoftDictionaryLookup(word, targetLang) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.get(['lingoflow_settings'], (result) => {
+      const settings = result.lingoflow_settings || {};
+      const apiKey = settings.microsoftApiKey || '';
+      if (!apiKey) { reject(new Error('no microsoft key')); return; }
+
+      const wl = detectWordLang(word);
+      const from = wl === 'zh' ? 'zh-Hans' : wl;
+      const to = getEngineLangCode('microsoft', targetLang || 'zh');
+      if (from === to) { reject(new Error('same language')); return; }
+
+      const url = `https://api.cognitive.microsofttranslator.com/dictionary/lookup?api-version=3.0&from=${from}&to=${encodeURIComponent(to)}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+      fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Ocp-Apim-Subscription-Key': apiKey,
+          'Ocp-Apim-Subscription-Region': 'eastasia'
+        },
+        body: JSON.stringify([{ Text: word }]),
+        signal: controller.signal
+      })
+        .then(response => {
+          clearTimeout(timeoutId);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.json();
+        })
+        .then(data => {
+          clearTimeout(timeoutId);
+          const entry = data && data[0];
+          const translations = entry && Array.isArray(entry.translations) ? entry.translations : [];
+          if (!translations.length) { reject(new Error('empty lookup')); return; }
+
+          const posMap = {
+            ADJ: 'adj.', ADV: 'adv.', CONJ: 'conj.', DET: 'det.', EXPR: 'phrase',
+            INTJ: 'intj.', NOUN: 'n.', PART: 'part.', PREP: 'prep.',
+            PRON: 'pron.', SENT: 'sent.', VERB: 'v.'
+          };
+          const sorted = translations.slice().sort((a, b) => (b.confidence || 0) - (a.confidence || 0));
+          const translation = sorted[0].targetWord || word;
+          const meanings = [];
+          sorted.slice(0, 8).forEach(item => {
+            const def = item.targetWord || '';
+            if (!def || meanings.some(m => m.definition === def)) return;
+            meanings.push({ partOfSpeech: posMap[item.posTag] || '', definition: def, synonyms: [] });
+          });
+          if (!meanings.length) { reject(new Error('no meanings')); return; }
+
+          resolve({
+            mode: 'word',
+            translation,
+            phonetic: '',
+            meanings: meanings.slice(0, 4),
+            examples: []
+          });
+        })
+        .catch(error => {
+          clearTimeout(timeoutId);
+          reject(error);
+        });
     });
   });
 }
