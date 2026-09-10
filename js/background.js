@@ -764,6 +764,7 @@ function lookupDictionary(text, targetLang, sendResponse) {
 
 // 词典结果缓存：内存 Map + 持久化到 chrome.storage.local（7 天过期，最多 300 条）
 const DICT_CACHE_KEY = 'lingoflow_dict_cache';
+const DICT_CACHE_VERSION = 2; // 结构变更时 +1，旧缓存整体作废（清掉无词性的旧词条）
 const DICT_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 const DICT_CACHE_MAX = 300;
 const dictionaryCache = new Map();
@@ -773,10 +774,10 @@ function loadDictionaryCache() {
   try {
     chrome.storage.local.get([DICT_CACHE_KEY], (res) => {
       const saved = res && res[DICT_CACHE_KEY];
-      if (!saved || typeof saved !== 'object') return;
+      if (!saved || saved.v !== DICT_CACHE_VERSION || typeof saved.items !== 'object') return;
       const now = Date.now();
-      Object.keys(saved).forEach(key => {
-        const item = saved[key];
+      Object.keys(saved.items).forEach(key => {
+        const item = saved.items[key];
         if (item && item.result && now - (item.ts || 0) < DICT_CACHE_TTL) {
           dictionaryCache.set(key, item.result);
         }
@@ -791,12 +792,12 @@ function persistDictionaryCache() {
   dictCacheWriteTimer = setTimeout(() => {
     dictCacheWriteTimer = null;
     try {
-      const out = {};
+      const out = { v: DICT_CACHE_VERSION, items: {} };
       const now = Date.now();
       Array.from(dictionaryCache.keys()).slice(-DICT_CACHE_MAX).forEach(key => {
         const result = dictionaryCache.get(key);
         if (!result || result.__fallback) return; // 降级结果不持久化
-        out[key] = { ts: now, result };
+        out.items[key] = { ts: now, result };
       });
       chrome.storage.local.set({ [DICT_CACHE_KEY]: out });
     } catch (_) {}
@@ -995,7 +996,7 @@ function callDictionaryAI(word, wordLang, targetLang) {
       const tlName = getTargetLanguageName(targetLang);
       const systemPrompt = 'You are a bilingual dictionary assistant. Given a word and its language, return a single JSON object with its dictionary entry. Output ONLY valid JSON, no markdown, no code fences.';
       const safeWord = String(word).replace(/"/g, '\\"');
-      const userPrompt = `Word language: ${wlName}\nWord: ${word}\nWrite definitions in ${tlName} when possible.\nReturn JSON exactly in this shape:\n{\n  "word": "${safeWord}",\n  "phonetic": "IPA or pinyin for Chinese",\n  "meanings": [ { "partOfSpeech": "noun/verb/...", "definition": "..." } ],\n  "examples": [ "example sentence" ]\n}\nProvide 2-4 meanings and 1-2 example sentences.`;
+      const userPrompt = `Word language: ${wlName}\nWord: ${word}\nWrite definitions in ${tlName} when possible.\nReturn JSON exactly in this shape:\n{\n  "word": "${safeWord}",\n  "phonetic": "IPA or pinyin for Chinese",\n  "meanings": [ { "partOfSpeech": "noun", "definition": "..." } ],\n  "examples": [ "example sentence" ]\n}\nRules:\n- "partOfSpeech" is REQUIRED for every meaning. Use English labels: noun / verb / adjective / adverb / preposition / phrase. Never omit it and never use an empty string.\n- Provide 2-4 meanings and 1-2 example sentences.`;
 
       tryNextDictionaryEngine(chatEngines.slice(), safeWord, systemPrompt, userPrompt, resolve, reject);
     });
