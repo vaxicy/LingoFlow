@@ -230,23 +230,64 @@ function runDictSearch(text, resultEl) {
   resultEl.innerHTML = '<div class="dict-loading">' +
     (getMessage('dict_searching') || 'Searching…') + '</div>';
 
+  const targetLang = getDictTargetLang();
+  const isSentence = /\s/.test(String(text || '').trim());
+  let rendered = false;
+
+  // 阶段一：先用当前翻译引擎出简洁译文，秒出结果
+  chrome.runtime.sendMessage({ action: 'translate', text: text, targetLang: targetLang }, (res) => {
+    if (chrome.runtime.lastError) return;
+    if (res && res.success && res.translation && !rendered) {
+      rendered = true;
+      renderQuickCard(text, res.translation, resultEl, isSentence);
+    }
+  });
+
+  // 阶段二：句子保持纯翻译；单词再取 AI 详细释义覆盖简版
+  if (isSentence) return;
+  let settled = false;
   chrome.runtime.sendMessage(
-    { action: 'lookup_dictionary', text: text, targetLang: getDictTargetLang() },
+    { action: 'lookup_dictionary', text: text, targetLang: targetLang },
     (response) => {
+      settled = true;
       if (chrome.runtime.lastError) {
-        resultEl.innerHTML = '<div class="dict-empty">' +
-          escapeHtml(getMessage('dict_error') || 'Lookup failed') + '</div>';
+        if (!rendered) {
+          resultEl.innerHTML = '<div class="dict-empty">' +
+            escapeHtml(getMessage('dict_error') || 'Lookup failed') + '</div>';
+        }
         return;
       }
       const r = response && response.success && response.result ? response.result : null;
       if (!r) {
-        resultEl.innerHTML = '<div class="dict-empty">' +
-          escapeHtml(getMessage('dict_not_found') || 'No result found') + '</div>';
+        if (!rendered) {
+          resultEl.innerHTML = '<div class="dict-empty">' +
+            escapeHtml(getMessage('dict_not_found') || 'No result found') + '</div>';
+        }
         return;
       }
       renderDictCard(r, text, resultEl);
     }
   );
+
+  // 兜底：12s 未返回就保留简版译文并提示
+  setTimeout(() => {
+    if (settled || !rendered) return;
+    const hint = resultEl.querySelector('.dict-generating-hint');
+    if (hint) hint.textContent = getMessage('dict_timeout') || '详细释义超时，已显示简版译文';
+  }, 12000);
+}
+
+function renderQuickCard(text, translation, resultEl, isSentence) {
+  let html = '<div class="dict-card"><div class="dict-card-head"><div>' +
+    '<div class="dict-card-word">' + escapeHtml(text) + '</div></div></div>' +
+    '<div class="dict-meaning"><div class="dict-meaning-row">' +
+    '<div class="dict-card-def">' + escapeHtml(translation) + '</div></div></div>';
+  if (!isSentence) {
+    html += '<div class="dict-loading dict-generating-hint">' +
+      escapeHtml(getMessage('dict_generating') || '正在生成详细释义…') + '</div>';
+  }
+  html += '</div>';
+  resultEl.innerHTML = html;
 }
 
 function renderDictCard(r, originalText, resultEl) {

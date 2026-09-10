@@ -163,6 +163,14 @@
     "message": "Look up a word or sentence…",
     "description": "Popup dictionary search input placeholder"
   },
+  "dict_generating": {
+    "message": "Generating detailed entry…",
+    "description": "Popup dictionary: waiting for AI definitions"
+  },
+  "dict_timeout": {
+    "message": "Definitions timed out, showing plain translation",
+    "description": "Popup dictionary: definitions timeout hint"
+  },
   "dict_searching": {
     "message": "Searching…",
     "description": "Popup dictionary searching state"

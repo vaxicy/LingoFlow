@@ -725,38 +725,88 @@ function lookupDictionary(text, targetLang, sendResponse) {
   withTimeout(aiFinal, 9000)
     .then(result => {
       if (!result.translation) result.translation = word;
-      dictionaryCache.set(cacheKey, result);
+      dictCacheSet(cacheKey, result);
       sendResponse({ success: true, result });
     })
     .catch(() => {
-      chrome.storage.local.get(['lingoflow_settings'], (res) => {
-        const s = res.lingoflow_settings || {};
-        const markFallbackCache = (final) => dictionaryCache.set(
-          cacheKey,
-          Object.assign({}, final, { __fallback: true, __ts: Date.now() })
-        );
-        // Microsoft 词典查询（复用翻译 Key）：词性 + 多义项
-        if ((s.microsoftApiKey || '').trim()) {
-          withTimeout(microsoftDictionaryLookup(word, targetLang), 4500)
-            .then(result => {
-              dictionaryCache.set(cacheKey, result);
-              sendResponse({ success: true, result });
-            })
-            .catch(() => fallbackDictionaryTranslation(word, targetLang, sendResponse, markFallbackCache));
-        } else {
-          fallbackDictionaryTranslation(word, targetLang, sendResponse, markFallbackCache);
-        }
-      });
+      // AI 失败：免费词典（英文原义）→ Microsoft 词典（词性+多义项）→ 纯翻译
+      withTimeout(fetchFreeDictionarySupplement(word, wordLang), 3500)
+        .then(result => {
+          dictCacheSet(cacheKey, result);
+          sendResponse({ success: true, result });
+        })
+        .catch(() => {
+          chrome.storage.local.get(['lingoflow_settings'], (res) => {
+            const s = res.lingoflow_settings || {};
+            const markFallbackCache = (final) => dictionaryCache.set(
+              cacheKey,
+              Object.assign({}, final, { __fallback: true, __ts: Date.now() })
+            );
+            if ((s.microsoftApiKey || '').trim()) {
+              withTimeout(microsoftDictionaryLookup(word, targetLang), 4500)
+                .then(result => {
+                  dictCacheSet(cacheKey, result);
+                  sendResponse({ success: true, result });
+                })
+                .catch(() => fallbackDictionaryTranslation(word, targetLang, sendResponse, markFallbackCache));
+            } else {
+              fallbackDictionaryTranslation(word, targetLang, sendResponse, markFallbackCache);
+            }
+          });
+        });
     });
   // AI 即使超时，结果落地后仍写入缓存供下次秒回
   aiFinal.then(result => {
     if (!result.translation) result.translation = word;
-    dictionaryCache.set(cacheKey, result);
+    dictCacheSet(cacheKey, result);
   }).catch(() => {});
 }
 
-// 词典结果内存缓存（Service Worker 生命周期内）
+// 词典结果缓存：内存 Map + 持久化到 chrome.storage.local（7 天过期，最多 300 条）
+const DICT_CACHE_KEY = 'lingoflow_dict_cache';
+const DICT_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
+const DICT_CACHE_MAX = 300;
 const dictionaryCache = new Map();
+let dictCacheWriteTimer = null;
+
+function loadDictionaryCache() {
+  try {
+    chrome.storage.local.get([DICT_CACHE_KEY], (res) => {
+      const saved = res && res[DICT_CACHE_KEY];
+      if (!saved || typeof saved !== 'object') return;
+      const now = Date.now();
+      Object.keys(saved).forEach(key => {
+        const item = saved[key];
+        if (item && item.result && now - (item.ts || 0) < DICT_CACHE_TTL) {
+          dictionaryCache.set(key, item.result);
+        }
+      });
+    });
+  } catch (_) {}
+}
+loadDictionaryCache();
+
+function persistDictionaryCache() {
+  if (dictCacheWriteTimer) return;
+  dictCacheWriteTimer = setTimeout(() => {
+    dictCacheWriteTimer = null;
+    try {
+      const out = {};
+      const now = Date.now();
+      Array.from(dictionaryCache.keys()).slice(-DICT_CACHE_MAX).forEach(key => {
+        const result = dictionaryCache.get(key);
+        if (!result || result.__fallback) return; // 降级结果不持久化
+        out[key] = { ts: now, result };
+      });
+      chrome.storage.local.set({ [DICT_CACHE_KEY]: out });
+    } catch (_) {}
+  }, 1500);
+}
+
+function dictCacheSet(key, result) {
+  dictionaryCache.set(key, result);
+  persistDictionaryCache();
+}
 
 function withTimeout(promise, ms) {
   const timerP = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms));
@@ -780,6 +830,58 @@ function fallbackDictionaryTranslation(word, targetLang, sendResponse, onResult)
       result,
       error: response && response.error
     });
+  });
+}
+
+// 免费词典（dictionaryapi.dev）：仅作为 AI 失败后的补充源，返回英文原义 + 例句
+function fetchFreeDictionarySupplement(word, wordLang) {
+  return new Promise((resolve, reject) => {
+    if (wordLang !== 'en') { reject(new Error('unsupported lang')); return; }
+    const url = 'https://api.dictionaryapi.dev/api/v2/entries/en/' + encodeURIComponent(word.toLowerCase());
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    fetch(url, { signal: controller.signal })
+      .then(response => {
+        clearTimeout(timeoutId);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then(data => {
+        clearTimeout(timeoutId);
+        const entry = Array.isArray(data) && data.length ? data[0] : null;
+        if (!entry) { reject(new Error('no entry')); return; }
+
+        const phonetic = entry.phonetic ||
+          ((entry.phonetics || []).find(item => item && item.text) || {}).text || '';
+        const meanings = [];
+        (entry.meanings || []).forEach(meaning => {
+          const pos = meaning.partOfSpeech || '';
+          (meaning.definitions || []).slice(0, 2).forEach(def => {
+            if (def && def.definition && meanings.length < 4) {
+              meanings.push({ partOfSpeech: pos, definition: def.definition, synonyms: [] });
+            }
+          });
+        });
+        const examples = [];
+        (entry.meanings || []).forEach(meaning => {
+          (meaning.definitions || []).forEach(def => {
+            if (def && def.example && examples.length < 2) examples.push(def.example);
+          });
+        });
+        if (!meanings.length) { reject(new Error('no meanings')); return; }
+
+        resolve({
+          mode: 'word',
+          translation: meanings[0].definition,
+          phonetic,
+          meanings,
+          examples
+        });
+      })
+      .catch(error => {
+        clearTimeout(timeoutId);
+        reject(error);
+      });
   });
 }
 
@@ -910,12 +1012,14 @@ function tryNextDictionaryEngine(engines, word, systemPrompt, userPrompt, resolv
     if (e === 'gemini') {
       p = callGeminiDictionaryChat(s.geminiApiKey.trim(), resolveModel('gemini', s.geminiModel, s.geminiModelCustom), messages);
     } else if (e === 'deepseek') {
-      p = callOpenAIDictionaryChat('https://api.deepseek.com/chat/completions', s.deepseekApiKey.trim(), resolveModel('deepseek', s.deepseekModel, s.deepseekModelCustom), messages);
+      // 词典场景固定用指令模型（翻译模型如 deepseek-v4-flash 不适合生成 JSON 词条）
+      p = callOpenAIDictionaryChat('https://api.deepseek.com/chat/completions', s.deepseekApiKey.trim(), 'deepseek-chat', messages);
     } else if (e === 'siliconflow') {
-      p = callOpenAIDictionaryChat('https://api.siliconflow.cn/v1/chat/completions', s.siliconflowApiKey.trim(), resolveModel('siliconflow', s.siliconflowModel, s.siliconflowModelCustom), messages);
+      // 硅基流动：显式关闭思考链（Qwen3 默认开启会吃满 max_tokens），并用非思考指令模型
+      p = callOpenAIDictionaryChat('https://api.siliconflow.cn/v1/chat/completions', s.siliconflowApiKey.trim(), 'Qwen/Qwen2.5-7B-Instruct', messages);
     } else if (e === 'bailian') {
       const host = (s.bailianApiHost || 'https://dashscope.aliyuncs.com').replace(/\/+$/, '');
-      p = callOpenAIDictionaryChat(`${host}/compatible-mode/v1/chat/completions`, s.bailianApiKey, resolveModel('bailian', s.bailianModel, s.bailianModelCustom), messages);
+      p = callOpenAIDictionaryChat(`${host}/compatible-mode/v1/chat/completions`, s.bailianApiKey, 'qwen-plus', messages);
     } else {
       const host = (s.customApiHost || 'https://api.openai.com').replace(/\/+$/, '');
       p = callOpenAIDictionaryChat(`${host}/v1/chat/completions`, s.customApiKey.trim(), s.customModel || 'gpt-4o-mini', messages);
@@ -931,11 +1035,18 @@ function tryNextDictionaryEngine(engines, word, systemPrompt, userPrompt, resolv
 function callOpenAIDictionaryChat(baseUrl, apiKey, model, messages) {
   return new Promise((resolve, reject) => {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     fetch(baseUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({ model, messages, temperature: 0.2, max_tokens: 800 }),
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: 0.2,
+        max_tokens: 1200,
+        response_format: { type: 'json_object' },
+        enable_thinking: false
+      }),
       signal: controller.signal
     })
       .then(response => { clearTimeout(timeoutId); if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
@@ -955,10 +1066,10 @@ function callGeminiDictionaryChat(apiKey, model, messages) {
     const body = {
       systemInstruction: sys ? { parts: [{ text: sys }] } : undefined,
       contents: [{ role: 'user', parts: [{ text: user }] }],
-      generationConfig: { temperature: 0.2, maxOutputTokens: 800, responseMimeType: 'application/json' }
+      generationConfig: { temperature: 0.2, maxOutputTokens: 1200, responseMimeType: 'application/json' }
     };
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 20000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal })
       .then(response => { clearTimeout(timeoutId); if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
       .then(data => {

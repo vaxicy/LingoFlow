@@ -163,6 +163,14 @@
     "message": "Consulta una palabra u oración…",
     "description": "Marcador de posición del buscador de diccionario en el popup"
   },
+  "dict_generating": {
+    "message": "Generando definiciones…",
+    "description": "Popup diccionario: esperando definiciones de la IA"
+  },
+  "dict_timeout": {
+    "message": "Definiciones agotadas, se muestra la traducción simple",
+    "description": "Popup diccionario: aviso de tiempo de espera agotado"
+  },
   "dict_searching": {
     "message": "Buscando…",
     "description": "Estado de búsqueda del diccionario en el popup"

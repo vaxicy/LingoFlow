@@ -582,10 +582,25 @@ function mapTargetLang(targetLang) {
       const cacheKey = this.getCacheKey(normalized);
       if (this.cache.has(cacheKey)) return this.cache.get(cacheKey);
 
-      const result = this.isLookupWord(normalized)
-        ? await this.lookupWord(normalized)
-        : await this.translateText(normalized);
+      if (this.isLookupWord(normalized)) {
+        // 单词：先出「快」的一条（通常是引擎译文），详细释义稍后由 UI 原地升级
+        const dictP = this.lookupWord(normalized);
+        const transP = this.translateText(normalized);
+        let quick;
+        try {
+          quick = await Promise.race([transP, dictP]);
+        } catch (_) {
+          quick = await dictP;
+        }
+        if (quick && !quick.dictionary && !quick.error) quick.__upgrade = dictP;
+        this.cache.set(cacheKey, quick);
+        dictP.then(rich => {
+          if (rich && rich.dictionary) this.cache.set(cacheKey, rich);
+        }).catch(() => {});
+        return quick;
+      }
 
+      const result = await this.translateText(normalized);
       this.cache.set(cacheKey, result);
       return result;
     },
@@ -977,6 +992,22 @@ function mapTargetLang(targetLang) {
         preferred: state.toolbarPosition,
         offset: 10
       });
+
+      // 详细释义稍后到达时，原地升级气泡（先出译文，再补音标/词性/释义/例句）
+      if (resultData.__upgrade) {
+        const upgradeP = resultData.__upgrade;
+        resultData.__upgrade = null;
+        upgradeP.then(rich => {
+          if (!rich || !rich.dictionary) return;
+          if (!document.body.contains(result)) return;
+          this.showTranslationResult(selectionContext, {
+            text: rich.text || originalText,
+            translation: rich.translation || translation,
+            mode: 'word',
+            dictionary: rich.dictionary
+          });
+        }).catch(() => {});
+      }
 
       const handleResultAction = (e) => {
         const actionButton = e.target && e.target.closest

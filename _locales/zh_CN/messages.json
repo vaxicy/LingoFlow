@@ -163,6 +163,14 @@
     "message": "查询单词或句子…",
     "description": "弹窗词典搜索输入框占位符"
   },
+  "dict_generating": {
+    "message": "正在生成详细释义…",
+    "description": "弹窗词典：等待 AI 生成详细释义的提示"
+  },
+  "dict_timeout": {
+    "message": "详细释义超时，已显示简版译文",
+    "description": "弹窗词典：详细释义超时提示"
+  },
   "dict_searching": {
     "message": "搜索中…",
     "description": "弹窗词典搜索中状态"
