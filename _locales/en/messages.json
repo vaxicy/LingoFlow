@@ -160,7 +160,7 @@
     "description": "Save success notification"
   },
   "dict_search_placeholder": {
-    "message": "Search a word (EN / 中文 / ES)…",
+    "message": "Look up a word (EN / 中文 / ES)…",
     "description": "Popup dictionary search input placeholder"
   },
   "dict_searching": {

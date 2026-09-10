@@ -446,9 +446,7 @@ body[data-theme="light"] .settings-section-title {
 #page-words {
   position: absolute;
   inset: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: block;
   overflow-y: auto;
   visibility: hidden;
 }
@@ -457,73 +455,6 @@ body[data-theme="light"] .settings-section-title {
 #page-home::-webkit-scrollbar,
 #page-words::-webkit-scrollbar,
 .popup-panel::-webkit-scrollbar { display: none; }
-/* Vocabulary collapsible entry */
-.vocab-entry-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 12px;
-  border: 1px solid rgba(184, 173, 255, 0.16);
-  border-radius: 12px;
-  background: rgba(31, 36, 67, 0.4);
-  color: var(--lf-text);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 750;
-  cursor: pointer;
-  transition: border-color .18s ease, background .18s ease;
-}
-.vocab-entry-btn:hover {
-  border-color: rgba(124, 108, 255, 0.4);
-  background: rgba(42, 47, 84, 0.6);
-}
-.vocab-entry-btn > svg:first-child {
-  flex: 0 0 auto;
-  color: var(--lf-lavender);
-}
-.vocab-entry-btn .vocab-entry-arrow {
-  flex: 0 0 auto;
-  margin-left: auto;
-  color: var(--lf-muted);
-  transition: transform .2s ease;
-}
-.vocab-entry-btn[aria-expanded="true"] .vocab-entry-arrow {
-  transform: rotate(180deg);
-}
-.vocab-count {
-  flex: 0 0 auto;
-  margin-left: auto;
-  min-width: 20px;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: rgba(124, 108, 255, 0.2);
-  color: #dcd6ff;
-  font-size: 11px;
-  font-weight: 750;
-  text-align: center;
-}
-.vocab-entry-btn[aria-expanded="true"] .vocab-count { margin-left: 0; }
-.vocab-body {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  min-height: 0;
-}
-.vocab-body[hidden] { display: none; }
-body[data-theme="light"] .vocab-entry-btn {
-  background: rgba(255, 255, 255, 0.85);
-  border-color: rgba(124, 108, 255, 0.22);
-  color: #3a3e5c;
-}
-body[data-theme="light"] .vocab-entry-btn:hover {
-  background: #ffffff;
-  border-color: rgba(124, 108, 255, 0.45);
-}
-body[data-theme="light"] .vocab-count {
-  background: rgba(124, 108, 255, 0.14);
-  color: #6d5ef0;
-}
 .popup-tabbar {
   flex: 0 0 auto;
   display: flex;
@@ -3060,7 +2991,7 @@ body[data-theme="light"] .lf-inline-modal-btn-cancel {
 
 /* ===== Dictionary search (popup) ===== */
 .popup-dict {
-  margin-bottom: 0;
+  margin-bottom: 10px;
   padding: 8px;
   border: 1px solid rgba(184, 173, 255, 0.14);
   border-radius: 14px;
