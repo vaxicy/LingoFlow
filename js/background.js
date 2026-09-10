@@ -786,7 +786,7 @@ function lookupDictionary(text, targetLang, sendResponse) {
 
 // 词典结果缓存：内存 Map + 持久化到 chrome.storage.local（7 天过期，最多 300 条）
 const DICT_CACHE_KEY = 'lingoflow_dict_cache';
-const DICT_CACHE_VERSION = 2; // 结构变更时 +1，旧缓存整体作废（清掉无词性的旧词条）
+const DICT_CACHE_VERSION = 3; // 结构变更时 +1，旧缓存整体作废（清掉释义含字面 \n 的旧词条）
 const DICT_CACHE_TTL = 7 * 24 * 60 * 60 * 1000;
 const DICT_CACHE_MAX = 300;
 const dictionaryCache = new Map();
@@ -941,8 +941,12 @@ function ecdictBuildResult(query, entry, baseWord) {
   const frq = entry[6] || 0;
 
   const meanings = [];
-  String(translation).split(/\n+/).forEach(line => {
-    const text = String(line || '').trim();
+  // ECDICT 的 translation 使用字面量 "\n"（反斜杠+n）作为分隔符，同时也可能存在真实换行
+  String(translation).split(/\\n|\n+/).forEach(line => {
+    let text = String(line || '').trim();
+    if (!text) return;
+    // 去掉 ECDICT 释义里残留的转义符
+    text = text.replace(/\\n/g, ' ').replace(/\s+/g, ' ').trim();
     if (!text) return;
     const matched = text.match(/^([a-zA-Z]+\.)\s*(.*)$/);
     if (matched) meanings.push({ partOfSpeech: matched[1], definition: matched[2] || matched[1] });
