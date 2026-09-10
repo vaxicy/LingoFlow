@@ -364,10 +364,10 @@ function buildPageNav() {
   const tabbar = document.createElement('nav');
   tabbar.className = 'popup-tabbar';
   tabbar.innerHTML =
-    '<button class="tab-btn active" type="button" data-tab="home">' +
+    '<button class="tab-btn active" type="button" data-tab="home" title="' + escapeHtml(getMessage('tab_home') || 'Home') + '">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>' +
       '<span data-i18n="tab_home">Home</span></button>' +
-    '<button class="tab-btn" type="button" data-tab="words">' +
+    '<button class="tab-btn" type="button" data-tab="words" title="' + escapeHtml(getMessage('tab_words') || 'Words') + '">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>' +
       '<span data-i18n="tab_words">Words</span></button>';
   container.appendChild(tabbar);
