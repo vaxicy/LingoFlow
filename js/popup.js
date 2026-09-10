@@ -198,11 +198,12 @@ function escapeHtml(str) {
 }
 
 function getDictTargetLang() {
-  const sel = document.getElementById('popup-translate-to');
-  if (sel && sel.value) return sel.value;
+  // 优先使用已保存的设置；DOM 下拉框仅在弹窗打开时同步，可能滞后
   if (panelState.savedSettings && panelState.savedSettings.targetLanguage) {
     return panelState.savedSettings.targetLanguage;
   }
+  const sel = document.getElementById('popup-translate-to');
+  if (sel && sel.value) return sel.value;
   return 'zh';
 }
 
@@ -664,6 +665,10 @@ function loadPopupLanguage() {
       applyPopupTheme(settings.theme || 'light');
       setLanguage(settings.uiLanguage || 'auto');
       syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+      // 弹窗打开时同步「翻译为」下拉框，否则搜索词典会拿到 HTML 默认值 zh
+      const translateTo = document.getElementById('popup-translate-to');
+      if (translateTo) translateTo.value = settings.targetLanguage || 'zh';
+      panelState.savedSettings = cloneSettings(settings);
     }
   });
 }
