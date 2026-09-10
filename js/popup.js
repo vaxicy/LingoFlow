@@ -358,9 +358,8 @@ function renderDictCard(r, originalText, resultEl) {
     });
     html += '</div>';
   }
-  const metaBits = [r.note, r.tags].filter(Boolean);
-  if (metaBits.length) {
-    html += '<div class="dict-card-syn">' + escapeHtml(metaBits.join(' · ')) + '</div>';
+  if (r.note) {
+    html += '<div class="dict-card-syn">' + escapeHtml(r.note) + '</div>';
   }
   html += '</div>';
 
