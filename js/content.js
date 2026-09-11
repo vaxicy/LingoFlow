@@ -59,6 +59,7 @@ function mapTargetLang(targetLang) {
     mutationObserver: null,
     mutationTimer: null,
     observerStopTimer: null,
+    repairPassTimers: [],       // bounded delayed repair passes (no continuous observer)
     translationRoot: null,      // detected main content area (for incremental translation)
     originalContent: new Map(), // Store original content for restoration
     translatedNodes: new Set(), // Track translated nodes
@@ -3949,74 +3950,30 @@ function mapTargetLang(targetLang) {
       });
     },
 
+    // 兜底补漏：只做有限次数的延迟补扫，不使用持续 MutationObserver。
+    // 持续观察在 LinkedIn 等 SPA 上会与站点重渲染形成
+    // “站点擦掉译文 → 扩展立刻重新注入” 的无限拉锯，导致页面一直闪烁。
     startDynamicTranslationObserver(mode) {
       this.stopDynamicTranslationObserver();
       state.activeTranslationMode = mode;
-      state.dynamicRepairCount = 0;
 
-      state.mutationObserver = new MutationObserver((mutations) => {
-        if (!state.activeTranslationMode || state.isTranslating) return;
-        const hasLingoflowRemoval = mutations.some(mutation => {
-          return Array.from(mutation.removedNodes).some(node => {
-            if (node.nodeType !== Node.ELEMENT_NODE) return false;
-            if (node.hasAttribute && node.hasAttribute('data-lingoflow')) return true;
-            return !!(node.querySelector && node.querySelector('[data-lingoflow]'));
-          });
-        });
-
-        const hasNewText = mutations.some(mutation => {
-          return Array.from(mutation.addedNodes).some(node => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-              if (node.hasAttribute && node.hasAttribute('data-lingoflow')) return false;
-              if (node.querySelector && node.querySelector('[data-lingoflow]')) return false;
-            }
-            if (node.nodeType === Node.TEXT_NODE) return this.shouldTranslateText(node.textContent);
-            if (node.nodeType === Node.ELEMENT_NODE) return this.shouldTranslateText(node.textContent || '');
-            return false;
-          });
-        });
-
-        if (!hasNewText && !hasLingoflowRemoval) return;
-
-        // 活动续命：页面持续有动态变化时保持观察器存活（重置空闲计时），
-        // LinkedIn 等站点的重渲染往往发生在首屏翻译完成之后，10s 就停会导致译文被擦后无人修复
-        clearTimeout(state.observerStopTimer);
-        state.observerStopTimer = window.setTimeout(
-          () => this.stopDynamicTranslationObserver(),
-          this.isConservativePage() ? 120000 : 180000
-        );
-
-        clearTimeout(state.mutationTimer);
-        state.mutationTimer = window.setTimeout(() => {
+      const delays = [7000, 13000, 22000];
+      delays.forEach(delay => {
+        const timer = window.setTimeout(() => {
           if (!state.activeTranslationMode || state.isTranslating) return;
-
-          // 防循环：站点反复重渲染并擦掉注入译文时，wipe→repair 会拉锯闪烁；
-          // 修复次数过多时冷却 60s（期间停止重注入），之后自动恢复观察
-          if (hasLingoflowRemoval) {
-            state.dynamicRepairCount = (state.dynamicRepairCount || 0) + 1;
-            if (state.dynamicRepairCount > 20) {
-              this.stopDynamicTranslationObserver();
-              setTimeout(() => {
-                state.dynamicRepairCount = 0;
-                this.startDynamicTranslationObserver(mode);
-              }, 60000);
-              return;
-            }
-          }
-
-          // Use stored translationRoot (null = use default)
-          this.repairTranslationIntegrity();
-          this.runIncrementalTranslation(mode, null, false);
-        }, hasLingoflowRemoval ? 1200 : 800);
+          try {
+            this.repairTranslationIntegrity();
+            this.runIncrementalTranslation(mode, null, false);
+          } catch (_) {}
+        }, delay);
+        state.repairPassTimers.push(timer);
       });
-
-      state.mutationObserver.observe(document.body, { childList: true, subtree: true });
-      // 初始空闲寿命（每次观测到活动都会重置）
-      const observerLifetime = this.isConservativePage() ? 120000 : 180000;
-      state.observerStopTimer = window.setTimeout(() => this.stopDynamicTranslationObserver(), observerLifetime);
     },
 
     stopDynamicTranslationObserver() {
+      (state.repairPassTimers || []).forEach(timer => clearTimeout(timer));
+      state.repairPassTimers = [];
+
       if (state.mutationObserver) {
         state.mutationObserver.disconnect();
         state.mutationObserver = null;
