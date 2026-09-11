@@ -3952,6 +3952,7 @@ function mapTargetLang(targetLang) {
     startDynamicTranslationObserver(mode) {
       this.stopDynamicTranslationObserver();
       state.activeTranslationMode = mode;
+      state.dynamicRepairCount = 0;
 
       state.mutationObserver = new MutationObserver((mutations) => {
         if (!state.activeTranslationMode || state.isTranslating) return;
@@ -3977,17 +3978,41 @@ function mapTargetLang(targetLang) {
 
         if (!hasNewText && !hasLingoflowRemoval) return;
 
+        // 活动续命：页面持续有动态变化时保持观察器存活（重置空闲计时），
+        // LinkedIn 等站点的重渲染往往发生在首屏翻译完成之后，10s 就停会导致译文被擦后无人修复
+        clearTimeout(state.observerStopTimer);
+        state.observerStopTimer = window.setTimeout(
+          () => this.stopDynamicTranslationObserver(),
+          this.isConservativePage() ? 120000 : 180000
+        );
+
         clearTimeout(state.mutationTimer);
         state.mutationTimer = window.setTimeout(() => {
           if (!state.activeTranslationMode || state.isTranslating) return;
+
+          // 防循环：站点反复重渲染并擦掉注入译文时，wipe→repair 会拉锯闪烁；
+          // 修复次数过多时冷却 60s（期间停止重注入），之后自动恢复观察
+          if (hasLingoflowRemoval) {
+            state.dynamicRepairCount = (state.dynamicRepairCount || 0) + 1;
+            if (state.dynamicRepairCount > 20) {
+              this.stopDynamicTranslationObserver();
+              setTimeout(() => {
+                state.dynamicRepairCount = 0;
+                this.startDynamicTranslationObserver(mode);
+              }, 60000);
+              return;
+            }
+          }
+
           // Use stored translationRoot (null = use default)
           this.repairTranslationIntegrity();
           this.runIncrementalTranslation(mode, null, false);
-        }, hasLingoflowRemoval ? 900 : 500);
+        }, hasLingoflowRemoval ? 1200 : 800);
       });
 
       state.mutationObserver.observe(document.body, { childList: true, subtree: true });
-      const observerLifetime = this.isConservativePage() ? 90000 : 10000;
+      // 初始空闲寿命（每次观测到活动都会重置）
+      const observerLifetime = this.isConservativePage() ? 120000 : 180000;
       state.observerStopTimer = window.setTimeout(() => this.stopDynamicTranslationObserver(), observerLifetime);
     },
 
