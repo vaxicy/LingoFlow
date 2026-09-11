@@ -2533,7 +2533,7 @@ function mapTargetLang(targetLang) {
       // LinkedIn: 职位描述的折叠/展开容器是正文内容，绝不能按 UI chrome 跳过
       //（折叠态用 max-height + overflow:hidden 裁剪，注入的译文会被藏住，看起来像漏翻）
       if (container.closest && container.closest(
-        '[data-testid="inline-show-more-text"], [data-testid="expanded-text-below"], .jobs-description__content'
+        '[data-testid="inline-show-more-text"], [data-testid="expanded-text-below"], [data-testid="expandable-text-box"], .jobs-description__content'
       )) return false;
 
       const tag = container.tagName;
@@ -2964,7 +2964,7 @@ function mapTargetLang(targetLang) {
       // 注入的译文超出折叠高度会被裁剪隐藏，看起来像漏翻 → 注入时自动展开
       try {
         const clamped = container.closest(
-          '.show-more-less-html, [data-testid="inline-show-more-text"], [data-testid="expanded-text-below"], .jobs-description__content'
+          '.show-more-less-html, [data-testid="inline-show-more-text"], [data-testid="expanded-text-below"], [data-testid="expandable-text-box"], .jobs-description__content'
         );
         if (clamped) {
           clamped.classList.remove('show-more-less-html--collapsed', 'show-more-less-html--more');
