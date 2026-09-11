@@ -2973,6 +2973,12 @@ function mapTargetLang(targetLang) {
         el.removeAttribute('data-lingoflow-rendered');
       });
 
+      // 采集前先自愈：被折叠/限高裁掉的译文块会被移除并重新进入队列
+      // （初始整页翻译流程不会经过 runIncrementalTranslation，这里必须也跑一次）
+      try {
+        this.repairTranslationIntegrity();
+      } catch (_) {}
+
       const units = new Map();
       const walker = document.createTreeWalker(
         root,
@@ -3147,7 +3153,40 @@ function mapTargetLang(targetLang) {
           clamped.style.maxHeight = 'none';
           clamped.style.overflow = 'visible';
         }
+        // LinkedIn 的折叠限高常由 CSS 变量算在别的祖先上（--xxxx: 160px → max-height: var(--xxxx)），
+        // selector 覆盖不到 → 译文块注入了却被裁掉。这里沿祖先链把"真正在裁剪"的层解开。
+        this.unclampClippingAncestors(node, 8);
       } catch (e) {}
+    },
+
+    // 沿祖先链解除会裁剪内容的样式（max-height 限高 / overflow:hidden），返回处理过的层数。
+    // 只动"确实在裁剪"的层，不碰 auto/scroll 的滚动容器，避免破坏站点滚动布局。
+    unclampClippingAncestors(startEl, maxDepth = 8) {
+      let element = startEl;
+      let depth = 0;
+      let changed = 0;
+      while (element && element !== document.body && element !== document.documentElement && depth < maxDepth) {
+        try {
+          const style = window.getComputedStyle(element);
+          const clips = /(hidden|clip)/.test(`${style.overflow} ${style.overflowY} ${style.overflowX}`);
+          const limited = !!style.maxHeight && style.maxHeight !== 'none' && style.maxHeight !== '0px';
+          const collapsed = element.classList &&
+                            (element.classList.contains('show-more-less-html--collapsed') ||
+                             element.classList.contains('show-more-less-html--more'));
+          if (limited || clips || collapsed) {
+            if (collapsed) element.classList.remove('show-more-less-html--collapsed', 'show-more-less-html--more');
+            if (limited) element.style.maxHeight = 'none';
+            if (clips) {
+              element.style.overflow = 'visible';
+              element.style.overflowY = 'visible';
+            }
+            changed++;
+          }
+        } catch (_) {}
+        element = element.parentElement;
+        depth++;
+      }
+      return changed;
     },
 
     getSourceIdSelector(id) {
@@ -3167,6 +3206,36 @@ function mapTargetLang(targetLang) {
 
     repairTranslationIntegrity() {
       let repaired = 0;
+
+      // 译文块"存在但不可见"（被站点折叠/限高裁掉）→ 先尝试解开裁剪，
+      // 仍然不可见就移除该块并清掉容器标记，让它重新进入翻译队列。
+      // （否则 existing=true 会让采集器认为"这段已翻译"，于是永远显示原文 = 顽固漏翻）
+      document.querySelectorAll('[data-lingoflow="true"]').forEach(block => {
+        if (!block.isConnected) return;
+        if (!block.classList || !block.classList.contains('lingoflow-block') &&
+            !block.classList.contains('lingoflow-inline-translation') &&
+            !block.classList.contains('lingoflow-translation-only') &&
+            !block.classList.contains('lingoflow-sentence-trans')) {
+          return;
+        }
+        if (this.isVisibleElement(block)) return;
+
+        const host = block.parentElement;
+        if (!host || !this.isVisibleElement(host)) return;   // 宿主本身也在隐藏副本里 → 不动
+
+        if (this.unclampClippingAncestors(block, 8) > 0 && this.isVisibleElement(block)) return;
+
+        const id = block.getAttribute('data-lingoflow-source-id');
+        if (id) {
+          document.querySelectorAll(this.getSourceIdSelector(id)).forEach(el => {
+            if (el === block) return;
+            el.removeAttribute('data-lingoflow-processed');
+            el.removeAttribute('data-lingoflow-rendered');
+          });
+        }
+        block.remove();
+        repaired++;
+      });
 
       document.querySelectorAll('[data-lingoflow-processed="true"][data-lingoflow-rendered="true"]').forEach(container => {
         if (!container.isConnected || this.hasLinkedTranslation(container)) return;
@@ -4375,13 +4444,24 @@ function mapTargetLang(targetLang) {
             candidates.push(JSON.stringify({ text: own.slice(0, 32), container: null, reason: 'no-container' }));
             continue;
           }
+          const block = container.querySelector ? container.querySelector('[data-lingoflow="true"]') : null;
+          let blockInfo = null;
+          if (block) {
+            const rect = block.getBoundingClientRect();
+            blockInfo = {
+              w: Math.round(rect.width),
+              h: Math.round(rect.height),
+              txt: (block.textContent || '').slice(0, 20)
+            };
+          }
           candidates.push(JSON.stringify({
             text: own.slice(0, 32),
             container: container.tagName,
             cls: String(container.className || '').slice(0, 22),
             cLen: this.normalizeText(container.textContent || '').length,
             processed: container.dataset.lingoflowProcessed === 'true',
-            hasBlock: !!(container.querySelector && container.querySelector('[data-lingoflow="true"]')),
+            hasBlock: !!block,
+            blockInfo,
             visible: this.isVisibleElement(container),
             skipContainer: this.shouldSkipContainer(container),
             existing: this.hasExistingTranslation(container)
