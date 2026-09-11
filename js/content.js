@@ -63,6 +63,8 @@ function mapTargetLang(targetLang) {
     _spaHooksInstalled: false,
     _spaRepairTimer: null,
     _lastSpaRepair: 0,
+    _wipeGuard: null,
+    _wipeRepairTimer: null,
     translationRoot: null,      // detected main content area (for incremental translation)
     originalContent: new Map(), // Store original content for restoration
     translatedNodes: new Set(), // Track translated nodes
@@ -3803,27 +3805,121 @@ function mapTargetLang(targetLang) {
           sentenceGroups.delete(groupId);
           return;
         }
-        this.markProcessed(container);
 
-        const translations = group.map(g => g.translation).filter(Boolean);
-        if (!translations.length) {
-          container.removeAttribute('data-lingoflow-processed');
-          sentenceGroups.delete(groupId);
+        const fullText = group[0].unit._fullText || '';
+        const okTranslations = group.map(g => g.translation).filter(Boolean);   // 失败的句子为空串
+        const failedCount = group.length - okTranslations.length;
+        const targetLang = group[0].unit.targetLang;
+        sentenceGroups.delete(groupId);
+
+        // 全部句子失败 → 整段拆块重译（成功就渲染完整译文，失败就什么都不渲染，
+        // 绝不把 "[LingoFlow translation failed]" 这类占位文案写进页面）
+        if (!okTranslations.length) {
+          failCount += group.length;
+          chunkRetryQueue.push(() => tryChunkTranslate(container, fullText, renderMode, targetLang));
+          runChunkRetryQueue();
           return;
         }
 
-        const fullText = group[0].unit._fullText || '';
-        console.log('LingoFlow: renderSentenceGroup', translations.length,
-          'sentences, container=', container.tagName, 'mode=', renderMode);
+        const renderPartial = () => {
+          if (!container.isConnected) return;
+          this.markProcessed(container);
+          const rendered = this.renderSentenceBilingualUnit(container, fullText, okTranslations, renderMode);
+          if (rendered) {
+            successCount += okTranslations.length;
+            console.log('LingoFlow: renderSentenceGroup', okTranslations.length, 'sentences (partial), mode=', renderMode);
+          } else {
+            container.removeAttribute('data-lingoflow-processed');
+            failCount += okTranslations.length;
+          }
+        };
 
-        const rendered = this.renderSentenceBilingualUnit(container, fullText, translations, renderMode);
-        if (rendered) {
-          successCount += translations.length;
-        } else {
-          container.removeAttribute('data-lingoflow-processed');
-          failCount += translations.length;
+        // 部分句子失败 → 先整段拆块重译（长段落常因超长被引擎拒绝），
+        // 成功则渲染完整译文；仍失败才退回「只渲染成功句子」的部分译文
+        if (failedCount > 0 && fullText.length >= 160) {
+          chunkRetryQueue.push(async () => {
+            const ok = await tryChunkTranslate(container, fullText, renderMode, targetLang);
+            if (!ok) renderPartial();
+          });
+          runChunkRetryQueue();
+          return;
         }
-        sentenceGroups.delete(groupId);
+
+        renderPartial();
+      };
+
+      // 长段落失败重试：引擎/网关对超长文本常直接失败（长段落整段不翻译就是这个原因），
+      // 拆成 ≤400 字符的句子块后逐块重译一次，成功就渲染，仍然失败才放弃。
+      const splitForRetry = (text) => {
+        const sentences = String(text || '')
+          .split(/(?<=[.!?。！？])\s+/)
+          .map(s => s.trim())
+          .filter(Boolean);
+        const pieces = [];
+        let current = '';
+        sentences.forEach(sentence => {
+          if (current && current.length + sentence.length + 1 > 400) {
+            pieces.push(current);
+            current = sentence;
+          } else {
+            current = current ? current + ' ' + sentence : sentence;
+          }
+        });
+        if (current) pieces.push(current);
+        return pieces;
+      };
+
+      const chunkRetryQueue = [];
+      let chunkRetryRunning = false;
+
+      const runChunkRetryQueue = async () => {
+        if (chunkRetryRunning) return;
+        chunkRetryRunning = true;
+        while (chunkRetryQueue.length && !stoppedByInvalidContext) {
+          const job = chunkRetryQueue.shift();
+          try { await job(); } catch (_) {}
+        }
+        chunkRetryRunning = false;
+      };
+
+      // 整段（拆块）重译：逐块翻译，全部成功才渲染，任一块失败即放弃
+      const tryChunkTranslate = async (container, text, mode, targetLang) => {
+        if (!container || !container.isConnected) return false;
+        if (container.dataset.lingoflowProcessed === 'true') return false;
+        const pieces = splitForRetry(text);
+        if (pieces.length < 2) return false;
+
+        const parts = [];
+        for (const piece of pieces) {
+          const result = await TranslationEngine.translateMany(
+            [piece],
+            targetLang || mapTargetLang(state.targetLanguage)
+          );
+          const translated = Array.isArray(result) ? result[0] : '';
+          if (!translated || isFallbackText(translated) || isContextInvalidatedText(translated)) return false;
+          parts.push(translated);
+        }
+        const joined = parts.join(' ').trim();
+        if (!joined || !container.isConnected) return false;
+        if (container.dataset.lingoflowProcessed === 'true') return false;
+
+        const rendered = mode === 'translation'
+          ? this.renderTranslationOnlyUnit(container, joined)
+          : this.renderTranslationUnit(container, joined);
+        if (rendered) {
+          successCount++;
+          console.log('LingoFlow: chunk retry rendered paragraph, len=', String(text).length);
+        }
+        return rendered;
+      };
+
+      const scheduleChunkRetry = (unit, mode) => {
+        if (!unit || unit._isSentence || unit._chunkRetried) return;
+        const text = String(unit.text || '');
+        if (text.length < 160) return;
+        unit._chunkRetried = true;
+        chunkRetryQueue.push(() => tryChunkTranslate(unit.container, text, mode, unit.targetLang));
+        runChunkRetryQueue();
       };
 
       const renderUnit = (unit, translation) => {
@@ -3835,7 +3931,11 @@ function mapTargetLang(targetLang) {
           if (!sentenceGroups.has(gid)) {
             sentenceGroups.set(gid, []);
           }
-          sentenceGroups.get(gid).push({ unit, translation });
+          // 失败的句子记为 ''（绝不把 "[LingoFlow translation failed]" 当译文渲染）
+          const usable = (translation && !isFallbackText(translation) && !isContextInvalidatedText(translation))
+            ? translation
+            : '';
+          sentenceGroups.get(gid).push({ unit, translation: usable });
 
           // 检查是否该组全部翻译完毕
           const total = unit._sentenceTotal || 1;
@@ -3869,6 +3969,8 @@ function mapTargetLang(targetLang) {
         if (isFallbackText(translation)) {
           console.warn('LingoFlow: Fallback text for unit:', translation.substring(0, 80));
           container.removeAttribute('data-lingoflow-processed');
+          // 长段落整体失败常见于引擎对超长文本的限制 → 拆块重试一次
+          scheduleChunkRetry(unit, renderMode);
           failCount++;
           return;
         }
@@ -4018,6 +4120,7 @@ function mapTargetLang(targetLang) {
       // 只做两次补扫：更晚出现的内容由 setupSpaReRenderHooks（点击/路由）覆盖，
       // 减少重复扫描带来的视觉干扰。
       const delays = [6000, 15000];
+      this.startWipeGuard(mode);
       delays.forEach(delay => {
         const timer = window.setTimeout(() => {
           if (!state.activeTranslationMode || state.isTranslating) return;
@@ -4031,6 +4134,7 @@ function mapTargetLang(targetLang) {
     },
 
     stopDynamicTranslationObserver() {
+      this.stopWipeGuard();
       (state.repairPassTimers || []).forEach(timer => clearTimeout(timer));
       state.repairPassTimers = [];
 
@@ -4044,6 +4148,127 @@ function mapTargetLang(targetLang) {
       state.mutationTimer = null;
       state.observerStopTimer = null;
       state.activeTranslationMode = null;
+    },
+
+    // 「擦除守卫」：只监听我们注入的译文节点被站点重渲染擦掉（removedNodes），
+    // 完全忽略新增节点，并且有严格上限——被擦后最多修 3 次、间隔 ≥3s，
+    // 若站点在短时间内连续擦除 2 次（说明它在跟我们拉锯）立刻永久放弃，
+    // 保证「译文被擦能恢复」但绝不会变成持续闪烁。
+    startWipeGuard(mode) {
+      this.stopWipeGuard();
+      if (typeof MutationObserver !== 'function') return;
+
+      const HARD_CAP = 4;          // 整页最多修复次数
+      const MIN_INTERVAL = 3000;   // 两次修复最小间隔
+      const HOSTILE_WINDOW = 20000;// 该时间窗内连续擦除 ≥3 次 → 判定站点在拉锯
+      let repairs = 0;
+      let lastRepairAt = 0;
+      let firstWipeAt = 0;
+      let wipes = 0;
+
+      state._wipeGuard = new MutationObserver((mutations) => {
+        let wiped = false;
+        for (const mutation of mutations) {
+          if (!mutation.removedNodes || !mutation.removedNodes.length) continue;
+          for (const node of mutation.removedNodes) {
+            if (node.nodeType !== Node.ELEMENT_NODE) continue;
+            if ((node.hasAttribute && node.hasAttribute('data-lingoflow')) ||
+                (node.querySelector && node.querySelector('[data-lingoflow="true"]'))) {
+              wiped = true;
+              break;
+            }
+          }
+          if (wiped) break;
+        }
+        if (!wiped) return;
+
+        const now = Date.now();
+        wipes++;
+        if (!firstWipeAt || now - firstWipeAt > HOSTILE_WINDOW) {
+          firstWipeAt = now;
+          wipes = 1;
+        }
+        // 站点在短时间窗内反复擦除 → 停止守卫，避免「擦除→重注入」拉锯闪烁
+        if (wipes >= 3) {
+          console.warn('LingoFlow: site keeps wiping translations, wipe guard disabled');
+          this.stopWipeGuard();
+          return;
+        }
+        if (repairs >= HARD_CAP) { this.stopWipeGuard(); return; }
+        if (now - lastRepairAt < MIN_INTERVAL) return;
+
+        lastRepairAt = now;
+        clearTimeout(state._wipeRepairTimer);
+        state._wipeRepairTimer = window.setTimeout(() => {
+          if (!state.activeTranslationMode || state.isTranslating) return;
+          repairs++;
+          console.log('LingoFlow: repairing wiped translations (' + repairs + '/' + HARD_CAP + ')');
+          try {
+            this.repairTranslationIntegrity();
+            this.runIncrementalTranslation(mode, null, false);
+          } catch (err) {
+            console.warn('LingoFlow: wipe repair failed:', getErrorMessage(err));
+          }
+          if (repairs >= HARD_CAP) this.stopWipeGuard();
+        }, 1500);
+      });
+
+      try {
+        state._wipeGuard.observe(document.body, { childList: true, subtree: true });
+      } catch (_) {
+        state._wipeGuard = null;
+      }
+    },
+
+    stopWipeGuard() {
+      if (state._wipeGuard) {
+        try { state._wipeGuard.disconnect(); } catch (_) {}
+        state._wipeGuard = null;
+      }
+      clearTimeout(state._wipeRepairTimer);
+      state._wipeRepairTimer = null;
+    },
+
+    // 诊断：LinkedIn 职位描述段落为什么没被翻译（控制台里 __lingoflowDebug() 调用）
+    debugDescribeLinkedIn() {
+      const lines = [];
+      const descSel = '.jobs-description__content, .jobs-box__html-content, .show-more-less-html__markup, ' +
+                      '[data-testid="expandable-text-box"], [data-testid="expanded-text-below"], [data-testid="inline-show-more-text"]';
+      const roots = Array.from(document.querySelectorAll(descSel));
+      lines.push('mode=' + state.activeTranslationMode +
+                 ' target=' + state.targetLanguage +
+                 ' engine=' + (window.LingoFlowEngine || 'n/a') +
+                 ' descRoots=' + roots.length);
+      const paragraphs = Array.from(document.querySelectorAll(
+        '.jobs-description__content p, .jobs-box__html-content p, .show-more-less-html__markup p, ' +
+        '[data-testid="expandable-text-box"] p, [data-testid="expanded-text-below"] p'
+      ));
+      lines.push('paragraphs=' + paragraphs.length);
+      paragraphs.slice(0, 15).forEach((p, i) => {
+        const text = this.normalizeText(p.textContent);
+        let skipText = null;
+        try {
+          skipText = this.shouldSkipTextNode({ nodeType: 3, parentElement: p, textContent: text });
+        } catch (e) { skipText = 'err:' + getErrorMessage(e); }
+        let skipContainer = null;
+        try { skipContainer = this.shouldSkipContainer(p); } catch (e) { skipContainer = 'err'; }
+        lines.push(JSON.stringify({
+          i,
+          len: text.length,
+          head: text.slice(0, 40),
+          processed: p.dataset.lingoflowProcessed === 'true',
+          rendered: p.getAttribute('data-lingoflow-rendered') === 'true',
+          hasBlock: !!p.querySelector('[data-lingoflow="true"]'),
+          sourceId: p.getAttribute('data-lingoflow-source-id') || null,
+          skipTextNode: skipText,
+          skipContainer,
+          existing: this.hasExistingTranslation(p),
+          translatable: this.shouldTranslateText(text),
+          visible: !!(p.getClientRects().length),
+          containerMatch: p.parentElement ? p.parentElement.className.slice(0, 40) : null
+        }));
+      });
+      return lines.join('\n');
     },
 
     // SPA 补翻：LinkedIn 这类站点点击职位卡片后是「客户端路由 + 局部重渲染」，
@@ -4435,6 +4660,10 @@ function mapTargetLang(targetLang) {
       } catch (err) {
         console.warn('LingoFlow: SPA hooks init error:', getErrorMessage(err));
       }
+      // 诊断入口：页面上翻译异常时在控制台执行 __lingoflowDebug()
+      try {
+        window.__lingoflowDebug = () => PageTranslator.debugDescribeLinkedIn();
+      } catch (_) {}
       // 目标语言或翻译引擎变化时：清空已注入译文，并用新语言/新引擎自动重译。
       // 否则旧译文块会一直留在页面上（而且 hasExistingTranslation 会因注入节点存在而跳过重译）。
       function onTranslationSettingsChanged() {
