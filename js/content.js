@@ -2865,6 +2865,13 @@ function mapTargetLang(targetLang) {
           }
         }
 
+        // LinkedIn: 展开副本(expanded-text-below)存在时，折叠副本(inline-show-more-text)
+        // 是同一份文本的重复渲染，跳过以免重复翻译
+        if (container.closest && container.closest('[data-testid="inline-show-more-text"]') &&
+            document.querySelector('[data-testid="expanded-text-below"]')) {
+          continue;
+        }
+
         const text = this.normalizeText(node.textContent);
         if (!this.shouldTranslateText(text)) continue;
 
@@ -2886,9 +2893,29 @@ function mapTargetLang(targetLang) {
         }))
         .filter(unit => this.shouldTranslateText(unit.text));
 
+      // 去重：LinkedIn 的折叠/展开双副本会产生两份相同文本，
+      // 只保留一个（优先保留 expanded-text-below 内的可见副本）
+      const seenTexts = new Map();
+      const dedupedUnits = [];
+      for (const unit of rawUnits) {
+        const key = unit.text.toLowerCase();
+        const prev = seenTexts.get(key);
+        if (prev && unit.text.length > 60) {
+          const preferCurrent = !!unit.container.closest('[data-testid="expanded-text-below"]') &&
+                               !prev.container.closest('[data-testid="expanded-text-below"]');
+          if (preferCurrent) {
+            dedupedUnits[dedupedUnits.indexOf(prev)] = unit;
+            seenTexts.set(key, unit);
+          }
+          continue;
+        }
+        if (!prev) seenTexts.set(key, unit);
+        dedupedUnits.push(unit);
+      }
+
       // 句级拆分：对长文本（>120字符且包含2+个句子）按句子边界拆分
       const sentenceUnits = [];
-      for (const unit of rawUnits) {
+      for (const unit of dedupedUnits) {
         const sentences = this.splitIntoSentences(unit.text);
         if (sentences.length > 1 && unit.text.length > 120) {
           // 标记为句级单元，保留原始容器引用和分组ID
@@ -2936,7 +2963,9 @@ function mapTargetLang(targetLang) {
       // LinkedIn: 职位描述被 show-more-less 折叠（max-height + overflow:hidden），
       // 注入的译文超出折叠高度会被裁剪隐藏，看起来像漏翻 → 注入时自动展开
       try {
-        const clamped = container.closest('.show-more-less-html');
+        const clamped = container.closest(
+          '.show-more-less-html, [data-testid="inline-show-more-text"], [data-testid="expanded-text-below"], .jobs-description__content'
+        );
         if (clamped) {
           clamped.classList.remove('show-more-less-html--collapsed', 'show-more-less-html--more');
           clamped.style.maxHeight = 'none';
