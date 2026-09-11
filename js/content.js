@@ -2900,16 +2900,29 @@ function mapTargetLang(targetLang) {
           if (!ownText || !this.shouldTranslateText(ownText)) continue;
 
           const container = this.findDescriptionUnitContainer(textNode);
-          if (!container) continue;
-          if (units.has(container)) continue;
-          if (container.dataset.lingoflowProcessed === 'true') continue;
-          if (container.querySelector && container.querySelector('.lingoflow-block[data-lingoflow="true"]')) continue;
+          const containerUsable = container &&
+            !units.has(container) &&
+            container.dataset.lingoflowProcessed !== 'true' &&
+            !(container.querySelector && container.querySelector('.lingoflow-block[data-lingoflow="true"]'));
 
-          const full = this.normalizeText(container.textContent);
-          if (!full || !this.shouldTranslateText(full)) continue;
-          if (full.length > 6000) continue;   // 兜底容器过大时放弃，避免整段巨型单元
+          if (containerUsable) {
+            const full = this.normalizeText(container.textContent);
+            if (full && this.shouldTranslateText(full) && full.length <= 6000) {
+              units.set(container, { container, textParts: [full] });
+              continue;
+            }
+          }
 
-          units.set(container, { container, textParts: [full] });
+          // 容器不可用（已被同区域其它译文块/内容占用，整包 reparent 会把别的内容一起搬走）
+          // → 退化为「文本节点级」单元，渲染时只把译文块插到该段落之后。
+          if (ownText.length < 80) continue;                 // 太短的不逐条塞
+          const hash = this.hashText(ownText);
+          if (this.hasInlineTextBlock(hash)) continue;        // 已渲染过
+          units.set(textNode, {
+            container: container || textNode.parentElement,
+            textNode,
+            textParts: [ownText]
+          });
         }
       });
     },
@@ -3061,6 +3074,7 @@ function mapTargetLang(targetLang) {
       const rawUnits = Array.from(units.values())
         .map(unit => ({
           container: unit.container,
+          textNode: unit.textNode || null,   // 文本节点级单元（容器被占用时的兜底）
           text: this.normalizeText(unit.textParts.join(' ')),
           targetLang: mapTargetLang(state.targetLanguage)  // 按设置的目标语言（中/英/西）
         }))
@@ -3098,6 +3112,12 @@ function mapTargetLang(targetLang) {
       // 句级拆分：对长文本（>120字符且包含2+个句子）按句子边界拆分
       const sentenceUnits = [];
       for (const unit of dedupedUnits) {
+        // 文本节点级单元不参与句级拆分：它们共享同一个宿主容器，
+        // 拆分后按容器分组渲染会整包 reparent，把宿主里其它内容一起搬走
+        if (unit.textNode) {
+          sentenceUnits.push(unit);
+          continue;
+        }
         const sentences = this.splitIntoSentences(unit.text);
         if (sentences.length > 1 && unit.text.length > 120) {
           // 标记为句级单元，保留原始容器引用和分组ID
@@ -3639,6 +3659,70 @@ function mapTargetLang(targetLang) {
       return target;
     },
 
+    // 文本内容哈希（用于文本节点级译文块的去重标记）
+    hashText(text) {
+      const value = String(text || '');
+      let hash = 0;
+      for (let i = 0; i < value.length; i++) {
+        hash = (hash * 31 + value.charCodeAt(i)) | 0;
+      }
+      return (hash >>> 0).toString(36) + '-' + value.length.toString(36);
+    },
+
+    hasInlineTextBlock(hash) {
+      if (!hash) return false;
+      try {
+        return !!document.querySelector(`[data-lingoflow-inline-hash="${hash}"]`);
+      } catch (_) {
+        return false;
+      }
+    },
+
+    // 文本节点级翻译：宿主容器已被其它译文块/内容占用（不能整包 reparent）时，
+    // 直接把译文块插到该文本所在块级祖先之后。
+    renderInlineTextTranslation(textNode, translation) {
+      if (!textNode || !textNode.isConnected || !textNode.parentNode) return false;
+      const source = this.normalizeText(textNode.nodeValue);
+      const hash = this.hashText(source);
+      if (this.hasInlineTextBlock(hash)) return true;   // 已渲染过
+
+      const parent = textNode.parentElement;
+      if (!parent) return false;
+
+      const blockTags = ['DIV', 'P', 'SECTION', 'ARTICLE', 'LI', 'BLOCKQUOTE', 'TD',
+                         'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL'];
+      let anchor = parent;
+      let depth = 0;
+      while (anchor && anchor !== document.body && depth < 8) {
+        if (blockTags.indexOf(anchor.tagName) >= 0) break;
+        anchor = anchor.parentElement;
+        depth++;
+      }
+      if (!anchor || anchor === document.body) anchor = parent;
+      if (!anchor || !anchor.parentNode) return false;
+
+      const block = document.createElement('div');
+      block.className = 'lingoflow-inline-translation';
+      block.setAttribute('data-lingoflow', 'true');
+      block.setAttribute('data-lingoflow-inline-hash', hash);
+      block.textContent = translation;
+      block.style.writingMode = 'horizontal-tb';
+      block.style.whiteSpace = 'normal';
+      block.style.wordBreak = 'break-word';
+      block.style.overflowWrap = 'anywhere';
+      block.style.maxWidth = '100%';
+      block.style.marginTop = '0.25em';
+      block.style.marginBottom = '0.35em';
+
+      try {
+        anchor.insertAdjacentElement('afterend', block);
+      } catch (_) {
+        return false;
+      }
+      this.unclampClippingAncestors(block, 8);
+      return true;
+    },
+
     renderConservativeBilingualUnit(container, translation) {
       if (!container || !container.parentNode) return false;
       const target = this.findConservativeInsertionTarget(container);
@@ -3949,10 +4033,14 @@ function mapTargetLang(targetLang) {
       if (units.length > 1) {
         const containers = units.map(u => u.container);
         units = units.filter((u, i) => {
+          // 文本节点级单元用宿主祖先做 container，会"包含"其它单元（反之亦然），
+          // 不能被嵌套过滤误杀
+          if (u.textNode) return true;
           for (let j = 0; j < containers.length; j++) {
+            if (j === i || units[j].textNode) continue;
             // 注意：contains() 对节点自身也返回 true，句级单元共享同一容器，
             // 必须先排除同容器（否则长段落全被误杀，表现为"部分替换"）
-            if (j !== i && containers[j] !== containers[i] && containers[i].contains(containers[j])) return false;
+            if (containers[j] !== containers[i] && containers[i].contains(containers[j])) return false;
           }
           return true;
         });
@@ -4087,7 +4175,7 @@ function mapTargetLang(targetLang) {
       };
 
       const scheduleChunkRetry = (unit, mode) => {
-        if (!unit || unit._isSentence || unit._chunkRetried) return;
+        if (!unit || unit._isSentence || unit.textNode || unit._chunkRetried) return;
         const text = String(unit.text || '');
         if (text.length < 160) return;
         unit._chunkRetried = true;
@@ -4097,6 +4185,18 @@ function mapTargetLang(targetLang) {
 
       const renderUnit = (unit, translation) => {
         const container = unit.container;
+
+        // 文本节点级单元：宿主容器被其它内容/译文占用 → 直接把译文块插到文本所在块之后
+        if (unit.textNode) {
+          if (!unit.textNode.isConnected) { failCount++; return; }
+          if (!translation || isFallbackText(translation) || isContextInvalidatedText(translation)) {
+            failCount++;
+            return;
+          }
+          if (this.renderInlineTextTranslation(unit.textNode, translation)) successCount++;
+          else failCount++;
+          return;
+        }
 
         // 句级单元：收集到分组中，等齐后统一渲染
         if (unit._isSentence && unit._groupId) {
@@ -4164,6 +4264,7 @@ function mapTargetLang(targetLang) {
         while (chunkCursor < chunks.length && !stoppedByInvalidContext) {
           const chunk = chunks[chunkCursor++];
           const activeChunk = chunk.filter(unit => {
+            if (unit.textNode) return unit.textNode.isConnected;
             return unit.container.isConnected && unit.container.dataset.lingoflowProcessed !== 'true';
           });
 
