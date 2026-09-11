@@ -4129,16 +4129,30 @@ function mapTargetLang(targetLang) {
       };
 
       // 长段落失败重试：引擎/网关对超长文本常直接失败（长段落整段不翻译就是这个原因），
-      // 拆成 ≤400 字符的句子块后逐块重译一次，成功就渲染，仍然失败才放弃。
-      const splitForRetry = (text) => {
-        const sentences = String(text || '')
-          .split(/(?<=[.!?。！？])\s+/)
-          .map(s => s.trim())
-          .filter(Boolean);
+      // 拆成句子块后逐块重译，成功就渲染，仍然失败才放弃。
+      const splitForRetry = (text, maxLen = 400) => {
+        const raw = String(text || '');
+        let sentences = raw.split(/(?<=[.!?。！？])\s+/).map(s => s.trim()).filter(Boolean);
+        // 整段只有一个长句（没有句号分隔）→ 按空格硬切
+        if (sentences.length <= 1 && raw.length > maxLen) {
+          const words = raw.split(/\s+/);
+          const hardSplit = [];
+          let line = '';
+          words.forEach(word => {
+            if (line && line.length + word.length + 1 > maxLen) {
+              hardSplit.push(line);
+              line = word;
+            } else {
+              line = line ? line + ' ' + word : word;
+            }
+          });
+          if (line) hardSplit.push(line);
+          sentences = hardSplit;
+        }
         const pieces = [];
         let current = '';
         sentences.forEach(sentence => {
-          if (current && current.length + sentence.length + 1 > 400) {
+          if (current && current.length + sentence.length + 1 > maxLen) {
             pieces.push(current);
             current = sentence;
           } else {
@@ -4147,6 +4161,39 @@ function mapTargetLang(targetLang) {
         });
         if (current) pieces.push(current);
         return pieces;
+      };
+
+      // 分块翻译：逐块翻译并拼接，块失败自动降级到句子级；任一句子仍失败则返回 null
+      const translateInPieces = async (text, targetLang) => {
+        const lang = targetLang || mapTargetLang(state.targetLanguage);
+        const translateOne = async (piece) => {
+          const result = await TranslationEngine.translateMany([piece], lang);
+          const translated = Array.isArray(result) ? result[0] : '';
+          if (!translated || isFallbackText(translated) || isContextInvalidatedText(translated)) return null;
+          return translated;
+        };
+
+        const pieces = splitForRetry(text, 300);
+        if (pieces.length < 2) return null;
+
+        const parts = [];
+        for (const piece of pieces) {
+          let translated = await translateOne(piece);
+          if (!translated) {
+            // 该块仍然失败 → 拆到句子级再试
+            const sentences = splitForRetry(piece, 120);
+            if (sentences.length < 2) return null;
+            for (const sentence of sentences) {
+              const one = await translateOne(sentence);
+              if (!one) return null;
+              parts.push(one);
+            }
+            continue;
+          }
+          parts.push(translated);
+        }
+        const joined = parts.join(' ').trim();
+        return joined || null;
       };
 
       const chunkRetryQueue = [];
@@ -4166,20 +4213,7 @@ function mapTargetLang(targetLang) {
       const tryChunkTranslate = async (container, text, mode, targetLang) => {
         if (!container || !container.isConnected) return false;
         if (container.dataset.lingoflowProcessed === 'true') return false;
-        const pieces = splitForRetry(text);
-        if (pieces.length < 2) return false;
-
-        const parts = [];
-        for (const piece of pieces) {
-          const result = await TranslationEngine.translateMany(
-            [piece],
-            targetLang || mapTargetLang(state.targetLanguage)
-          );
-          const translated = Array.isArray(result) ? result[0] : '';
-          if (!translated || isFallbackText(translated) || isContextInvalidatedText(translated)) return false;
-          parts.push(translated);
-        }
-        const joined = parts.join(' ').trim();
+        const joined = await translateInPieces(text, targetLang);
         if (!joined || !container.isConnected) return false;
         if (container.dataset.lingoflowProcessed === 'true') return false;
 
@@ -4193,12 +4227,31 @@ function mapTargetLang(targetLang) {
         return rendered;
       };
 
+      // 文本节点级单元的分块重译（宿主容器被占用，只能旁挂译文块）
+      const tryChunkTranslateInline = async (textNode, text, targetLang) => {
+        if (!textNode || !textNode.isConnected) return false;
+        const hash = this.hashText(this.normalizeText(textNode.nodeValue));
+        if (this.hasInlineTextBlock(hash)) return true;
+        const joined = await translateInPieces(text, targetLang);
+        if (!joined || !textNode.isConnected) return false;
+        const rendered = this.renderInlineTextTranslation(textNode, joined);
+        if (rendered) {
+          successCount++;
+          console.log('LingoFlow: chunk retry rendered inline paragraph, len=', String(text).length);
+        }
+        return rendered;
+      };
+
       const scheduleChunkRetry = (unit, mode) => {
-        if (!unit || unit._isSentence || unit.textNode || unit._chunkRetried) return;
+        if (!unit || unit._isSentence || unit._chunkRetried) return;
         const text = String(unit.text || '');
         if (text.length < 160) return;
         unit._chunkRetried = true;
-        chunkRetryQueue.push(() => tryChunkTranslate(unit.container, text, mode, unit.targetLang));
+        if (unit.textNode) {
+          chunkRetryQueue.push(() => tryChunkTranslateInline(unit.textNode, text, unit.targetLang));
+        } else {
+          chunkRetryQueue.push(() => tryChunkTranslate(unit.container, text, mode, unit.targetLang));
+        }
         runChunkRetryQueue();
       };
 
@@ -4209,11 +4262,16 @@ function mapTargetLang(targetLang) {
         if (unit.textNode) {
           if (!unit.textNode.isConnected) { failCount++; return; }
           if (!translation || isFallbackText(translation) || isContextInvalidatedText(translation)) {
+            console.warn('LingoFlow: inline unit translation failed, will retry in pieces');
+            scheduleChunkRetry(unit, renderMode);   // 超长文本被引擎拒绝 → 拆块重试
             failCount++;
             return;
           }
           if (this.renderInlineTextTranslation(unit.textNode, translation)) successCount++;
-          else failCount++;
+          else {
+            scheduleChunkRetry(unit, renderMode);
+            failCount++;
+          }
           return;
         }
 
