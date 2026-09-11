@@ -2852,7 +2852,17 @@ function mapTargetLang(targetLang) {
         // Skip UI chrome elements (nav, sidebar, header, toolbar, etc.)
         if (this.shouldSkipContainer(container)) continue;
         if (this.hasExistingTranslation(container)) {
-          continue;
+          // 祖先容器被判定为"已有译文"（如页面自带中英双语段落混排）时，
+          // 纯外文段落不应被连坐跳过——降级为以文本节点自身父元素为容器单独翻译。
+          // （LinkedIn/AfterShip 等职位描述：英文段落 + 官方中文段落混排，此前会整块漏翻）
+          const own = node.parentElement;
+          if (own && own !== container &&
+              !(own.closest && own.closest('.lingoflow-ui')) &&
+              !this.hasExistingTranslation(own)) {
+            container = own;
+          } else {
+            continue;
+          }
         }
 
         const text = this.normalizeText(node.textContent);
