@@ -60,6 +60,9 @@ function mapTargetLang(targetLang) {
     mutationTimer: null,
     observerStopTimer: null,
     repairPassTimers: [],       // bounded delayed repair passes (no continuous observer)
+    _spaHooksInstalled: false,
+    _spaRepairTimer: null,
+    _lastSpaRepair: 0,
     translationRoot: null,      // detected main content area (for incremental translation)
     originalContent: new Map(), // Store original content for restoration
     translatedNodes: new Set(), // Track translated nodes
@@ -2817,6 +2820,55 @@ function mapTargetLang(targetLang) {
       return false;
     },
 
+    // LinkedIn 职位描述区域的兜底段落收集（通用遍历漏掉时的保险）。
+    collectJobDescriptionUnits(root, units) {
+      const scope = (root && root.querySelectorAll) ? root : document;
+      const descSelectors = [
+        '.jobs-description__content',
+        '.jobs-box__html-content',
+        '.show-more-less-html__markup',
+        '[data-testid="expandable-text-box"]',
+        '[data-testid="expanded-text-below"]',
+        '[data-testid="inline-show-more-text"]'
+      ].join(',');
+
+      let descRoots;
+      try {
+        descRoots = Array.from(scope.querySelectorAll(descSelectors));
+      } catch (_) {
+        return;
+      }
+      if (!descRoots.length) return;
+
+      descRoots.forEach(descRoot => {
+        if (descRoot.closest && descRoot.closest('.lingoflow-ui')) return;
+        // 注意：这里不做展开（un-clamp）。展开只在真正注入译文时做（linkTranslationNode），
+        // 否则每轮补扫都会和站点的折叠逻辑拉锯，造成布局跳动/闪烁。
+
+        const blocks = Array.from(descRoot.querySelectorAll('p, li, h3, h4, blockquote'));
+        blocks.forEach(el => {
+          if (units.has(el)) return;                                // 通用遍历已收集
+          if (el.dataset.lingoflowProcessed === 'true') return;     // 已翻译过
+          if (el.closest('[data-lingoflow="true"]')) return;        // 是我们注入的译文块
+          if (el.closest('.lingoflow-ui')) return;
+          if (el.querySelector('.lingoflow-block[data-lingoflow="true"]')) return;
+
+          const text = this.normalizeText(el.textContent);
+          if (!text || text.length < 2) return;
+          if (!this.shouldTranslateText(text)) return;
+
+          // 只取"最内层"段落，避免 p 里嵌套 li/p 时同一段被收集两次
+          const inner = Array.from(el.querySelectorAll('p, li, blockquote')).some(child => {
+            const ct = this.normalizeText(child.textContent);
+            return ct && ct.length >= 2 && this.shouldTranslateText(ct);
+          });
+          if (inner) return;
+
+          units.set(el, { container: el, textParts: [text] });
+        });
+      });
+    },
+
     collectTranslationUnits(root = document.body) {
       // 清扫失效标记：LinkedIn 等站点重渲染会清掉注入的译文节点，
       // 但容器上的 processed/rendered/source-id 标记还在 → 不清扫会永久跳过这些段落
@@ -2877,11 +2929,13 @@ function mapTargetLang(targetLang) {
           }
         }
 
-        // LinkedIn: 展开副本(expanded-text-below)存在时，折叠副本(inline-show-more-text)
-        // 是同一份文本的重复渲染，跳过以免重复翻译
-        if (container.closest && container.closest('[data-testid="inline-show-more-text"]') &&
-            document.querySelector('[data-testid="expanded-text-below"]')) {
-          continue;
+        // LinkedIn: 只有当展开副本(expanded-text-below)里确实有可翻译文本时，
+        // 才把折叠副本(inline-show-more-text)当作同一份文本的重复渲染跳过；
+        // 否则（展开副本是空壳 / 还没渲染）跳过会造成整段漏翻。
+        if (container.closest && container.closest('[data-testid="inline-show-more-text"]')) {
+          const expandedEl = document.querySelector('[data-testid="expanded-text-below"]');
+          const expandedText = expandedEl ? this.normalizeText(expandedEl.textContent || '') : '';
+          if (expandedText && this.shouldTranslateText(expandedText)) continue;
         }
 
         const text = this.normalizeText(node.textContent);
@@ -2896,6 +2950,10 @@ function mapTargetLang(targetLang) {
         units.get(container).textParts.push(text);
       }
 
+      // LinkedIn / 招聘站点：职位描述区域兜底收集。
+      // 该区域的段落常因「祖先容器被判已有译文」「UI chrome 误判」「折叠双副本」等原因
+      // 在通用遍历里整段漏掉，这里按段落（p/li/h3/h4/blockquote）直接补收集。
+      this.collectJobDescriptionUnits(root, units);
 
       const rawUnits = Array.from(units.values())
         .map(unit => ({
@@ -3957,7 +4015,9 @@ function mapTargetLang(targetLang) {
       this.stopDynamicTranslationObserver();
       state.activeTranslationMode = mode;
 
-      const delays = [7000, 13000, 22000];
+      // 只做两次补扫：更晚出现的内容由 setupSpaReRenderHooks（点击/路由）覆盖，
+      // 减少重复扫描带来的视觉干扰。
+      const delays = [6000, 15000];
       delays.forEach(delay => {
         const timer = window.setTimeout(() => {
           if (!state.activeTranslationMode || state.isTranslating) return;
@@ -3984,6 +4044,54 @@ function mapTargetLang(targetLang) {
       state.mutationTimer = null;
       state.observerStopTimer = null;
       state.activeTranslationMode = null;
+    },
+
+    // SPA 补翻：LinkedIn 这类站点点击职位卡片后是「客户端路由 + 局部重渲染」，
+    // 新渲染出来的正文（职位描述等）不会自动翻译，而延迟补扫（7/13/22s）早已结束。
+    // 这里用「路由变化 + 点击」触发一次性增量翻译来替代持续 MutationObserver：
+    // 既补上漏翻，又不会与站点重渲染形成「擦除→重注入」拉锯（即闪烁）。
+    setupSpaReRenderHooks() {
+      if (state._spaHooksInstalled) return;
+      state._spaHooksInstalled = true;
+
+      const requestRepair = (reason) => {
+        if (!state.activeTranslationMode || state.isTranslating) return;
+        const now = Date.now();
+        if (now - state._lastSpaRepair < 1200) return;   // 点击风暴冷却
+        state._lastSpaRepair = now;
+
+        clearTimeout(state._spaRepairTimer);
+        state._spaRepairTimer = window.setTimeout(() => {
+          if (!state.activeTranslationMode || state.isTranslating) return;
+          const mode = state.activeTranslationMode;
+          try {
+            this.repairTranslationIntegrity();
+            this.runIncrementalTranslation(mode, null, false);
+          } catch (err) {
+            console.warn('LingoFlow: SPA repair failed (' + reason + '):', getErrorMessage(err));
+          }
+        }, 900);
+      };
+
+      // 1) History API 路由变化（LinkedIn 职位列表切换用 pushState/replaceState）
+      ['pushState', 'replaceState'].forEach(type => {
+        const original = history[type];
+        if (typeof original !== 'function') return;
+        history[type] = function (...args) {
+          const result = original.apply(this, args);
+          try { window.dispatchEvent(new Event('lingoflow:locationchange')); } catch (_) {}
+          return result;
+        };
+      });
+      window.addEventListener('popstate', () => requestRepair('popstate'));
+      window.addEventListener('hashchange', () => requestRepair('hashchange'));
+      window.addEventListener('lingoflow:locationchange', () => requestRepair('pushState'));
+
+      // 2) 点击（切换职位卡片 / 展开「查看更多」/ 切 Tab）后补翻
+      document.addEventListener('click', (e) => {
+        if (e.target && e.target.closest && e.target.closest('.lingoflow-ui')) return;
+        requestRepair('click');
+      }, true);
     },
 
     async translatePage() {
@@ -4321,6 +4429,12 @@ function mapTargetLang(targetLang) {
         // result box open so a slight scroll while reading doesn't clear it.
         UI.removeFloatingToolbar();
       }, { passive: true });
+      // SPA（LinkedIn 等）点击职位卡片 / 路由切换后的一次性补翻钩子
+      try {
+        PageTranslator.setupSpaReRenderHooks();
+      } catch (err) {
+        console.warn('LingoFlow: SPA hooks init error:', getErrorMessage(err));
+      }
       // 目标语言或翻译引擎变化时：清空已注入译文，并用新语言/新引擎自动重译。
       // 否则旧译文块会一直留在页面上（而且 hasExistingTranslation 会因注入节点存在而跳过重译）。
       function onTranslationSettingsChanged() {
