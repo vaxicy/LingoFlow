@@ -2822,15 +2822,29 @@ function mapTargetLang(targetLang) {
       return false;
     },
 
-    // 元素是否真的显示在页面上（用于区分折叠/展开双副本里"可见的那一份"）
+    // 元素是否真的显示在页面上（用于区分折叠/展开双副本里"可见的那一份"）。
+    // 注意：LinkedIn 大量使用 display:contents（data-display-contents="true"），
+    // 这类元素自身没有盒子、getClientRects() 为空，必须再看后代是否有可见盒子，
+    // 否则会把"可见副本"误判成隐藏副本。
     isVisibleElement(el) {
-      if (!el || !el.getClientRects) return false;
+      if (!el || !el.isConnected) return false;
       try {
-        if (!el.isConnected) return false;
-        const rects = el.getClientRects();
-        if (!rects || !rects.length) return false;
-        for (const rect of rects) {
-          if (rect.width > 0 && rect.height > 0) return true;
+        if (el.getClientRects && el.getClientRects().length) {
+          for (const rect of el.getClientRects()) {
+            if (rect.width > 0 && rect.height > 0) return true;
+          }
+        }
+        if (el.getBoundingClientRect) {
+          const own = el.getBoundingClientRect();
+          if (own && own.width > 0 && own.height > 0) return true;
+        }
+        if (el.querySelectorAll) {
+          const kids = el.querySelectorAll('*');
+          const limit = Math.min(kids.length, 30);
+          for (let i = 0; i < limit; i++) {
+            const rect = kids[i].getBoundingClientRect();
+            if (rect && rect.width > 0 && rect.height > 0) return true;
+          }
         }
       } catch (_) {}
       return false;
@@ -2893,47 +2907,54 @@ function mapTargetLang(targetLang) {
 
           const full = this.normalizeText(container.textContent);
           if (!full || !this.shouldTranslateText(full)) continue;
+          if (full.length > 6000) continue;   // 兜底容器过大时放弃，避免整段巨型单元
 
           units.set(container, { container, textParts: [full] });
         }
       });
     },
 
-    // 从文本节点向上找"只装这一段"的容器：
-    // 块级标签（且内部没有更小的段落块）优先；否则退回"几乎只包含这段文字"的包裹层。
+    // 从文本节点向上找"只装这一段"的容器。
+    // LinkedIn 的包裹层可能很深（嵌套 div + data-display-contents）且大量使用 span，
+    // 所以这里逐层评分，最终一定有兜底返回值（绝不返回 null 让整段漏翻）：
+    //   1) 最内层"只装这段文字且不含已注入译文块"的非内联容器
+    //   2) 最内层"不含已注入译文块"的非内联祖先（内容可能偏大，聊胜于无）
+    //   3) 最内层内联包裹层（span 等）
+    //   4) 文本节点自身的父元素
     findDescriptionUnitContainer(textNode) {
-      const blockTags = new Set(['P', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
-                                 'BLOCKQUOTE', 'TD', 'TH', 'DD', 'DT', 'FIGCAPTION']);
       const inlineTags = new Set(['SPAN', 'A', 'B', 'I', 'EM', 'STRONG', 'SMALL', 'LABEL',
                                   'TIME', 'U', 'S', 'MARK', 'SUP', 'SUB', 'ABBR', 'CITE', 'Q']);
-      const innerBlockSelector = 'p, li, h1, h2, h3, h4, h5, h6, blockquote, td';
       const ownLength = this.normalizeText(textNode.nodeValue).length;
+      const hasInjectedBlock = (el) =>
+        !!(el.querySelector && el.querySelector('[data-lingoflow="true"]'));
 
       let element = textNode.parentElement;
       let inlineFallback = null;
+      let looseFallback = null;
       let depth = 0;
 
-      while (element && element !== document.body && depth < 8) {
-        if (this.skipTags.has(element.tagName)) return null;
+      while (element && element !== document.body && depth < 20) {
+        if (this.skipTags.has(element.tagName)) return inlineFallback || textNode.parentElement;
         if (element.closest && element.closest('.lingoflow-ui')) return null;
 
         const tag = element.tagName;
-        if (blockTags.has(tag)) {
-          if (!element.querySelector(innerBlockSelector)) return element;
-        } else {
-          const text = this.normalizeText(element.textContent);
-          const onlyThisParagraph = text.length <= ownLength * 1.5 + 40;
-          if (onlyThisParagraph) {
-            if (!inlineTags.has(tag)) return element;
-            if (!inlineFallback) inlineFallback = element;
-          }
+        const isInline = inlineTags.has(tag);
+        const text = this.normalizeText(element.textContent);
+        const onlyThisParagraph = text.length <= ownLength * 1.5 + 60;
+        const clean = !hasInjectedBlock(element);
+
+        if (!isInline) {
+          if (onlyThisParagraph && clean) return element;
+          if (!looseFallback && clean) looseFallback = element;
+        } else if (onlyThisParagraph && !inlineFallback) {
+          inlineFallback = element;
         }
 
         element = element.parentElement;
         depth++;
       }
 
-      return inlineFallback;
+      return inlineFallback || looseFallback || textNode.parentElement || null;
     },
 
     collectTranslationUnits(root = document.body) {
