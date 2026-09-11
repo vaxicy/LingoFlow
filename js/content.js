@@ -2817,6 +2817,17 @@ function mapTargetLang(targetLang) {
     },
 
     collectTranslationUnits(root = document.body) {
+      // 清扫失效标记：LinkedIn 等站点重渲染会清掉注入的译文节点，
+      // 但容器上的 processed/rendered/source-id 标记还在 → 不清扫会永久跳过这些段落
+      document.querySelectorAll('[data-lingoflow-processed="true"][data-lingoflow-source-id]').forEach(el => {
+        const id = el.getAttribute('data-lingoflow-source-id');
+        const linked = document.querySelector(this.getSourceIdSelector(id));
+        if (!linked || linked === el) {
+          el.removeAttribute('data-lingoflow-processed');
+          el.removeAttribute('data-lingoflow-rendered');
+        }
+      });
+
       const units = new Map();
       const walker = document.createTreeWalker(
         root,
@@ -2983,7 +2994,10 @@ function mapTargetLang(targetLang) {
       if (!container || !container.dataset) return false;
       const id = container.dataset.lingoflowSourceId;
       if (!id) return false;
-      return !!document.querySelector(this.getSourceIdSelector(id));
+      const linked = document.querySelector(this.getSourceIdSelector(id));
+      // 容器自身也携带 source-id（getOrCreateTranslationId 设置），
+      // 必须排除自身——否则 LinkedIn 重渲染清掉译文块后会误判"译文还在"
+      return !!linked && linked !== container;
     },
 
     repairTranslationIntegrity() {
@@ -3000,7 +3014,10 @@ function mapTargetLang(targetLang) {
       document.querySelectorAll('[data-lingoflow-source-id][data-lingoflow="true"]').forEach(node => {
         const id = node.getAttribute('data-lingoflow-source-id');
         if (!id) return;
-        const owner = document.querySelector(`${this.getSourceIdSelector(id)}[data-lingoflow-rendered="true"]`);
+        // 排除节点自身，找真正的容器（owner）
+        const owner = Array.from(
+          document.querySelectorAll(`${this.getSourceIdSelector(id)}[data-lingoflow-rendered="true"]`)
+        ).find(el => el !== node);
         if (owner) return;
         node.remove();
         repaired++;
