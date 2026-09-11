@@ -2915,7 +2915,7 @@ function mapTargetLang(targetLang) {
 
           // 容器不可用（已被同区域其它译文块/内容占用，整包 reparent 会把别的内容一起搬走）
           // → 退化为「文本节点级」单元，渲染时只把译文块插到该段落之后。
-          if (ownText.length < 80) continue;                 // 太短的不逐条塞
+          if (ownText.length < 24) continue;                 // 太短的不逐条塞
           const hash = this.hashText(ownText);
           if (this.hasInlineTextBlock(hash)) continue;        // 已渲染过
           units.set(textNode, {
@@ -3097,6 +3097,15 @@ function mapTargetLang(targetLang) {
           } else if (curVisible) {
             preferCurrent = !!unit.container.closest('[data-testid="expanded-text-below"]') &&
                             !prev.container.closest('[data-testid="expanded-text-below"]');
+          }
+          // 容器已被其它译文块占用时，容器级渲染一定失败 → 优先保留"文本节点级"方案
+          if (!preferCurrent && unit.textNode && !prev.textNode) {
+            const prevContainer = prev.container;
+            const occupied = prevContainer && (
+              prevContainer.dataset.lingoflowProcessed === 'true' ||
+              (prevContainer.querySelector && prevContainer.querySelector('.lingoflow-block[data-lingoflow="true"]'))
+            );
+            if (occupied) preferCurrent = true;
           }
           if (preferCurrent) {
             const at = dedupedUnits.indexOf(prev);
@@ -4231,10 +4240,11 @@ function mapTargetLang(targetLang) {
         // 普通单元：原有逻辑
         if (!container.isConnected || container.dataset.lingoflowProcessed === 'true') return;
 
-        // 容器内已含译文块（先前批次/动态增量渲染）→ 跳过外层，
-        // 避免包裹/隐藏外层时把内层译文块一起吞掉（译文模式空白页的跨批次形态）
+        // 容器内已含译文块（先前批次/动态增量渲染，或同区域子元素已翻译）→ 跳过外层，
+        // 避免包裹/隐藏外层时把内层译文块一起吞掉（译文模式空白页的跨批次形态）。
+        // 注意：**不能**把容器标记为 processed——那会让"容器里只有别人的译文块、
+        // 自己这段还没翻译"的段落被永久判定为已处理（LinkedIn 描述段落漏翻的成因之一）。
         if (container.querySelector('.lingoflow-block[data-lingoflow="true"]')) {
-          this.markProcessed(container);
           return;
         }
 
