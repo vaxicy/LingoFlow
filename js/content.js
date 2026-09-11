@@ -2822,7 +2822,23 @@ function mapTargetLang(targetLang) {
       return false;
     },
 
-    // LinkedIn 职位描述区域的兜底段落收集（通用遍历漏掉时的保险）。
+    // 元素是否真的显示在页面上（用于区分折叠/展开双副本里"可见的那一份"）
+    isVisibleElement(el) {
+      if (!el || !el.getClientRects) return false;
+      try {
+        if (!el.isConnected) return false;
+        const rects = el.getClientRects();
+        if (!rects || !rects.length) return false;
+        for (const rect of rects) {
+          if (rect.width > 0 && rect.height > 0) return true;
+        }
+      } catch (_) {}
+      return false;
+    },
+
+    // 职位描述区域兜底收集：按「文本节点 → 最近的段落级容器」配对，
+    // 不依赖 <p> 标签（LinkedIn 不同布局用 div/span/带 data-display-contents 的包裹层），
+    // 同时绕开通用遍历里会导致整段被跳过的各种判定。
     collectJobDescriptionUnits(root, units) {
       const scope = (root && root.querySelectorAll) ? root : document;
       const descSelectors = [
@@ -2844,43 +2860,96 @@ function mapTargetLang(targetLang) {
 
       descRoots.forEach(descRoot => {
         if (descRoot.closest && descRoot.closest('.lingoflow-ui')) return;
-        // 注意：这里不做展开（un-clamp）。展开只在真正注入译文时做（linkTranslationNode），
-        // 否则每轮补扫都会和站点的折叠逻辑拉锯，造成布局跳动/闪烁。
+        // 不做展开（un-clamp）：展开只在真正注入译文时做，避免每轮补扫与站点折叠逻辑拉锯。
 
-        const blocks = Array.from(descRoot.querySelectorAll('p, li, h3, h4, blockquote'));
-        blocks.forEach(el => {
-          if (units.has(el)) return;                                // 通用遍历已收集
-          if (el.dataset.lingoflowProcessed === 'true') return;     // 已翻译过
-          if (el.closest('[data-lingoflow="true"]')) return;        // 是我们注入的译文块
-          if (el.closest('.lingoflow-ui')) return;
-          if (el.querySelector('.lingoflow-block[data-lingoflow="true"]')) return;
-
-          const text = this.normalizeText(el.textContent);
-          if (!text || text.length < 2) return;
-          if (!this.shouldTranslateText(text)) return;
-
-          // 只取"最内层"段落，避免 p 里嵌套 li/p 时同一段被收集两次
-          const inner = Array.from(el.querySelectorAll('p, li, blockquote')).some(child => {
-            const ct = this.normalizeText(child.textContent);
-            return ct && ct.length >= 2 && this.shouldTranslateText(ct);
+        let walker;
+        try {
+          walker = document.createTreeWalker(descRoot, NodeFilter.SHOW_TEXT, {
+            acceptNode: (node) => {
+              if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+              const parent = node.parentElement;
+              if (!parent) return NodeFilter.FILTER_REJECT;
+              if (this.skipTags.has(parent.tagName)) return NodeFilter.FILTER_REJECT;
+              if (parent.closest && parent.closest('[data-lingoflow="true"], .lingoflow-ui')) {
+                return NodeFilter.FILTER_REJECT;
+              }
+              return NodeFilter.FILTER_ACCEPT;
+            }
           });
-          if (inner) return;
+        } catch (_) {
+          return;
+        }
 
-          units.set(el, { container: el, textParts: [text] });
-        });
+        let textNode;
+        while ((textNode = walker.nextNode())) {
+          const ownText = this.normalizeText(textNode.nodeValue);
+          if (!ownText || !this.shouldTranslateText(ownText)) continue;
+
+          const container = this.findDescriptionUnitContainer(textNode);
+          if (!container) continue;
+          if (units.has(container)) continue;
+          if (container.dataset.lingoflowProcessed === 'true') continue;
+          if (container.querySelector && container.querySelector('.lingoflow-block[data-lingoflow="true"]')) continue;
+
+          const full = this.normalizeText(container.textContent);
+          if (!full || !this.shouldTranslateText(full)) continue;
+
+          units.set(container, { container, textParts: [full] });
+        }
       });
+    },
+
+    // 从文本节点向上找"只装这一段"的容器：
+    // 块级标签（且内部没有更小的段落块）优先；否则退回"几乎只包含这段文字"的包裹层。
+    findDescriptionUnitContainer(textNode) {
+      const blockTags = new Set(['P', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+                                 'BLOCKQUOTE', 'TD', 'TH', 'DD', 'DT', 'FIGCAPTION']);
+      const inlineTags = new Set(['SPAN', 'A', 'B', 'I', 'EM', 'STRONG', 'SMALL', 'LABEL',
+                                  'TIME', 'U', 'S', 'MARK', 'SUP', 'SUB', 'ABBR', 'CITE', 'Q']);
+      const innerBlockSelector = 'p, li, h1, h2, h3, h4, h5, h6, blockquote, td';
+      const ownLength = this.normalizeText(textNode.nodeValue).length;
+
+      let element = textNode.parentElement;
+      let inlineFallback = null;
+      let depth = 0;
+
+      while (element && element !== document.body && depth < 8) {
+        if (this.skipTags.has(element.tagName)) return null;
+        if (element.closest && element.closest('.lingoflow-ui')) return null;
+
+        const tag = element.tagName;
+        if (blockTags.has(tag)) {
+          if (!element.querySelector(innerBlockSelector)) return element;
+        } else {
+          const text = this.normalizeText(element.textContent);
+          const onlyThisParagraph = text.length <= ownLength * 1.5 + 40;
+          if (onlyThisParagraph) {
+            if (!inlineTags.has(tag)) return element;
+            if (!inlineFallback) inlineFallback = element;
+          }
+        }
+
+        element = element.parentElement;
+        depth++;
+      }
+
+      return inlineFallback;
     },
 
     collectTranslationUnits(root = document.body) {
       // 清扫失效标记：LinkedIn 等站点重渲染会清掉注入的译文节点，
       // 但容器上的 processed/rendered/source-id 标记还在 → 不清扫会永久跳过这些段落
-      document.querySelectorAll('[data-lingoflow-processed="true"][data-lingoflow-source-id]').forEach(el => {
+      // （这就是"某一段永远不翻译"的隐藏原因：标记残留 + 译文被擦）。
+      document.querySelectorAll('[data-lingoflow-processed="true"]').forEach(el => {
+        // 容器内还有注入节点 → 正常已翻译，保留标记
+        if (el.querySelector && el.querySelector('[data-lingoflow="true"]')) return;
         const id = el.getAttribute('data-lingoflow-source-id');
-        const linked = document.querySelector(this.getSourceIdSelector(id));
-        if (!linked || linked === el) {
-          el.removeAttribute('data-lingoflow-processed');
-          el.removeAttribute('data-lingoflow-rendered');
+        if (id) {
+          const linked = document.querySelector(this.getSourceIdSelector(id));
+          if (linked && linked !== el) return;   // 译文节点挂在别处（仍存在）→ 保留
         }
+        el.removeAttribute('data-lingoflow-processed');
+        el.removeAttribute('data-lingoflow-rendered');
       });
 
       const units = new Map();
@@ -2931,13 +3000,18 @@ function mapTargetLang(targetLang) {
           }
         }
 
-        // LinkedIn: 只有当展开副本(expanded-text-below)里确实有可翻译文本时，
-        // 才把折叠副本(inline-show-more-text)当作同一份文本的重复渲染跳过；
-        // 否则（展开副本是空壳 / 还没渲染）跳过会造成整段漏翻。
+        // LinkedIn: 折叠副本(inline-show-more-text) 与展开副本(expanded-text-below) 是同一份
+        // 文本的双份渲染。只有当「另一份可翻译且可见」时才跳过当前这份，否则跳过的正好是
+        // 页面上可见的那一份 → 译文被注入到隐藏副本里，看起来就是"这一段永远不翻译"。
         if (container.closest && container.closest('[data-testid="inline-show-more-text"]')) {
           const expandedEl = document.querySelector('[data-testid="expanded-text-below"]');
           const expandedText = expandedEl ? this.normalizeText(expandedEl.textContent || '') : '';
-          if (expandedText && this.shouldTranslateText(expandedText)) continue;
+          const collapsedEl = container.closest('[data-testid="inline-show-more-text"]');
+          const collapsedVisible = this.isVisibleElement(collapsedEl);
+          const expandedVisible = expandedEl ? this.isVisibleElement(expandedEl) : false;
+          const safeToSkip = expandedText && this.shouldTranslateText(expandedText) &&
+                             (expandedVisible || !collapsedVisible);
+          if (safeToSkip) continue;
         }
 
         const text = this.normalizeText(node.textContent);
@@ -2965,23 +3039,32 @@ function mapTargetLang(targetLang) {
         }))
         .filter(unit => this.shouldTranslateText(unit.text));
 
-      // 去重：LinkedIn 的折叠/展开双副本会产生两份相同文本，
-      // 只保留一个（优先保留 expanded-text-below 内的可见副本）
+      // 去重：LinkedIn 的折叠/展开双副本会产生两份相同文本，只保留一份。
+      // 优先保留「页面上可见」的那一份（此前固定偏好 expanded-text-below，
+      // 结果译文被注入到隐藏副本里 → 可见副本永远不翻译）。
       const seenTexts = new Map();
       const dedupedUnits = [];
       for (const unit of rawUnits) {
         const key = unit.text.toLowerCase();
         const prev = seenTexts.get(key);
-        if (prev && unit.text.length > 60) {
-          const preferCurrent = !!unit.container.closest('[data-testid="expanded-text-below"]') &&
-                               !prev.container.closest('[data-testid="expanded-text-below"]');
+        if (prev) {
+          const curVisible = this.isVisibleElement(unit.container);
+          const prevVisible = this.isVisibleElement(prev.container);
+          let preferCurrent = false;
+          if (curVisible !== prevVisible) {
+            preferCurrent = curVisible;
+          } else if (curVisible) {
+            preferCurrent = !!unit.container.closest('[data-testid="expanded-text-below"]') &&
+                            !prev.container.closest('[data-testid="expanded-text-below"]');
+          }
           if (preferCurrent) {
-            dedupedUnits[dedupedUnits.indexOf(prev)] = unit;
+            const at = dedupedUnits.indexOf(prev);
+            if (at >= 0) dedupedUnits[at] = unit;
             seenTexts.set(key, unit);
           }
           continue;
         }
-        if (!prev) seenTexts.set(key, unit);
+        seenTexts.set(key, unit);
         dedupedUnits.push(unit);
       }
 
@@ -4237,37 +4320,55 @@ function mapTargetLang(targetLang) {
       const roots = Array.from(document.querySelectorAll(descSel));
       lines.push('mode=' + state.activeTranslationMode +
                  ' target=' + state.targetLanguage +
-                 ' engine=' + (window.LingoFlowEngine || 'n/a') +
                  ' descRoots=' + roots.length);
-      const paragraphs = Array.from(document.querySelectorAll(
-        '.jobs-description__content p, .jobs-box__html-content p, .show-more-less-html__markup p, ' +
-        '[data-testid="expandable-text-box"] p, [data-testid="expanded-text-below"] p'
-      ));
-      lines.push('paragraphs=' + paragraphs.length);
-      paragraphs.slice(0, 15).forEach((p, i) => {
-        const text = this.normalizeText(p.textContent);
-        let skipText = null;
-        try {
-          skipText = this.shouldSkipTextNode({ nodeType: 3, parentElement: p, textContent: text });
-        } catch (e) { skipText = 'err:' + getErrorMessage(e); }
-        let skipContainer = null;
-        try { skipContainer = this.shouldSkipContainer(p); } catch (e) { skipContainer = 'err'; }
-        lines.push(JSON.stringify({
-          i,
-          len: text.length,
-          head: text.slice(0, 40),
-          processed: p.dataset.lingoflowProcessed === 'true',
-          rendered: p.getAttribute('data-lingoflow-rendered') === 'true',
-          hasBlock: !!p.querySelector('[data-lingoflow="true"]'),
-          sourceId: p.getAttribute('data-lingoflow-source-id') || null,
-          skipTextNode: skipText,
-          skipContainer,
-          existing: this.hasExistingTranslation(p),
-          translatable: this.shouldTranslateText(text),
-          visible: !!(p.getClientRects().length),
-          containerMatch: p.parentElement ? p.parentElement.className.slice(0, 40) : null
-        }));
+
+      roots.slice(0, 6).forEach((root, i) => {
+        lines.push('root' + i + ' <' + root.tagName.toLowerCase() + '>' +
+                   ' testid=' + (root.getAttribute('data-testid') || '-') +
+                   ' cls=' + String(root.className || '').slice(0, 24) +
+                   ' len=' + this.normalizeText(root.textContent || '').length +
+                   ' visible=' + this.isVisibleElement(root) +
+                   ' processed=' + (root.dataset.lingoflowProcessed === 'true') +
+                   ' hasBlock=' + !!root.querySelector('[data-lingoflow="true"]'));
       });
+
+      // 描述区域里"未翻译的长文本"及它会被用的容器、被跳过原因
+      const seen = new Set();
+      const candidates = [];
+      roots.forEach(root => {
+        let walker;
+        try {
+          walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+        } catch (_) { return; }
+        let node;
+        while ((node = walker.nextNode()) && candidates.length < 10) {
+          const own = this.normalizeText(node.nodeValue || '');
+          if (own.length < 40 || !this.shouldTranslateText(own)) continue;
+          let container = null;
+          try { container = this.findDescriptionUnitContainer(node); } catch (_) {}
+          const key = (container ? (container.tagName + '#' + own.slice(0, 24)) : 'null#' + own.slice(0, 24));
+          if (seen.has(key)) continue;
+          seen.add(key);
+
+          if (!container) {
+            candidates.push(JSON.stringify({ text: own.slice(0, 32), container: null, reason: 'no-container' }));
+            continue;
+          }
+          candidates.push(JSON.stringify({
+            text: own.slice(0, 32),
+            container: container.tagName,
+            cls: String(container.className || '').slice(0, 22),
+            cLen: this.normalizeText(container.textContent || '').length,
+            processed: container.dataset.lingoflowProcessed === 'true',
+            hasBlock: !!(container.querySelector && container.querySelector('[data-lingoflow="true"]')),
+            visible: this.isVisibleElement(container),
+            skipContainer: this.shouldSkipContainer(container),
+            existing: this.hasExistingTranslation(container)
+          }));
+        }
+      });
+      lines.push('candidates=' + candidates.length);
+      lines.push(...candidates);
       return lines.join('\n');
     },
 
