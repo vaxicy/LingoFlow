@@ -3171,7 +3171,7 @@ function mapTargetLang(targetLang) {
         if (clamped) {
           clamped.classList.remove('show-more-less-html--collapsed', 'show-more-less-html--more');
           clamped.style.maxHeight = 'none';
-          clamped.style.overflow = 'visible';
+          clamped.setAttribute('data-lingoflow-unclamped', 'true');
         }
         // LinkedIn 的折叠限高常由 CSS 变量算在别的祖先上（--xxxx: 160px → max-height: var(--xxxx)），
         // selector 覆盖不到 → 译文块注入了却被裁掉。这里沿祖先链把"真正在裁剪"的层解开。
@@ -3179,27 +3179,28 @@ function mapTargetLang(targetLang) {
       } catch (e) {}
     },
 
-    // 沿祖先链解除会裁剪内容的样式（max-height 限高 / overflow:hidden），返回处理过的层数。
-    // 只动"确实在裁剪"的层，不碰 auto/scroll 的滚动容器，避免破坏站点滚动布局。
-    unclampClippingAncestors(startEl, maxDepth = 8) {
+    // 沿祖先链解除"折叠限高"，返回处理过的层数。
+    // 只动 max-height 与折叠类，**绝不修改 overflow**：overflow 被改成 visible
+    // 会让站点自己的滚动容器失效（曾导致 LinkedIn 详情面板整页滚不动）。
+    // 遇到滚动容器（overflow: auto/scroll）立即停止，不再往上动。
+    unclampClippingAncestors(startEl, maxDepth = 6) {
       let element = startEl;
       let depth = 0;
       let changed = 0;
       while (element && element !== document.body && element !== document.documentElement && depth < maxDepth) {
         try {
           const style = window.getComputedStyle(element);
-          const clips = /(hidden|clip)/.test(`${style.overflow} ${style.overflowY} ${style.overflowX}`);
+          const overflowChain = `${style.overflow} ${style.overflowY} ${style.overflowX}`;
+          if (/(auto|scroll)/.test(overflowChain)) break;   // 滚动容器：绝不触碰
+
           const limited = !!style.maxHeight && style.maxHeight !== 'none' && style.maxHeight !== '0px';
           const collapsed = element.classList &&
                             (element.classList.contains('show-more-less-html--collapsed') ||
                              element.classList.contains('show-more-less-html--more'));
-          if (limited || clips || collapsed) {
+          if (limited || collapsed) {
             if (collapsed) element.classList.remove('show-more-less-html--collapsed', 'show-more-less-html--more');
             if (limited) element.style.maxHeight = 'none';
-            if (clips) {
-              element.style.overflow = 'visible';
-              element.style.overflowY = 'visible';
-            }
+            element.setAttribute('data-lingoflow-unclamped', 'true');
             changed++;
           }
         } catch (_) {}
@@ -3207,6 +3208,15 @@ function mapTargetLang(targetLang) {
         depth++;
       }
       return changed;
+    },
+
+    // 恢复页面原有布局：撤掉我们加过的限高解除（译文被还原/失效时调用）
+    restoreUnclampedAncestors() {
+      document.querySelectorAll('[data-lingoflow-unclamped="true"]').forEach(el => {
+        if (el.querySelector && el.querySelector('[data-lingoflow="true"]')) return;  // 译文还在 → 保留
+        el.style.removeProperty('max-height');
+        el.removeAttribute('data-lingoflow-unclamped');
+      });
     },
 
     getSourceIdSelector(id) {
@@ -4838,6 +4848,11 @@ function mapTargetLang(targetLang) {
       document.querySelectorAll('[data-lingoflow]').forEach(node => {
         node.remove();
       });
+
+      // 还原被解除过限高的容器（避免站点布局被我们的内联样式永久改写）
+      try {
+        this.restoreUnclampedAncestors();
+      } catch (_) {}
 
       document.querySelectorAll('[data-lingoflow-hidden]').forEach(el => {
         el.hidden = false;
