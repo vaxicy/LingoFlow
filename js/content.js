@@ -2530,6 +2530,12 @@ function mapTargetLang(targetLang) {
     shouldSkipContainer(container) {
       if (!container) return false;
 
+      // LinkedIn: 职位描述的折叠/展开容器是正文内容，绝不能按 UI chrome 跳过
+      //（折叠态用 max-height + overflow:hidden 裁剪，注入的译文会被藏住，看起来像漏翻）
+      if (container.closest && container.closest(
+        '[data-testid="inline-show-more-text"], [data-testid="expanded-text-below"], .jobs-description__content'
+      )) return false;
+
       const tag = container.tagName;
 
       // 0. NEVER skip heading elements (H1-H6) — they are always content
@@ -2917,6 +2923,16 @@ function mapTargetLang(targetLang) {
       const id = this.getOrCreateTranslationId(container);
       node.setAttribute('data-lingoflow-source-id', id);
       container.setAttribute('data-lingoflow-rendered', 'true');
+      // LinkedIn: 职位描述被 show-more-less 折叠（max-height + overflow:hidden），
+      // 注入的译文超出折叠高度会被裁剪隐藏，看起来像漏翻 → 注入时自动展开
+      try {
+        const clamped = container.closest('.show-more-less-html');
+        if (clamped) {
+          clamped.classList.remove('show-more-less-html--collapsed', 'show-more-less-html--more');
+          clamped.style.maxHeight = 'none';
+          clamped.style.overflow = 'visible';
+        }
+      } catch (e) {}
     },
 
     getSourceIdSelector(id) {
