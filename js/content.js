@@ -2986,6 +2986,18 @@ function mapTargetLang(targetLang) {
         el.removeAttribute('data-lingoflow-rendered');
       });
 
+      // 清理 tooltip 渲染残留：tooltip 只在悬停时显示译文，且 popup 会让
+      // hasExistingTranslation 误判"已翻译"→ 段落永久跳过。统一拆掉让它重新渲染。
+      document.querySelectorAll('[data-lingoflow-tooltip="true"]').forEach(host => {
+        if (!host.closest || !host.closest(
+          '[data-testid="expandable-text-box"], [data-testid="inline-show-more-text"], ' +
+          '[data-testid="expanded-text-below"], .jobs-description__content, .show-more-less-html__markup'
+        )) return;
+        host.querySelectorAll('.lingoflow-tooltip-popup').forEach(popup => popup.remove());
+        host.removeAttribute('data-lingoflow-tooltip');
+        host.classList.remove('lingoflow-tooltip-host', 'lingoflow-tooltip-active');
+      });
+
       // 采集前先自愈：被折叠/限高裁掉的译文块会被移除并重新进入队列
       // （初始整页翻译流程不会经过 runIncrementalTranslation，这里必须也跑一次）
       try {
@@ -3617,8 +3629,16 @@ function mapTargetLang(targetLang) {
     },
 
     renderTranslationUnit(container, translation) {
+      // LinkedIn 描述区域 / 长文本：绝不能走 tooltip——tooltip 只在悬停时显示，
+      // 页面上永远看不到译文，用户会以为"这段没翻译"。
+      const inJobDescription = container.closest && container.closest(
+        '[data-testid="expandable-text-box"], [data-testid="inline-show-more-text"], ' +
+        '[data-testid="expanded-text-below"], .jobs-description__content, .show-more-less-html__markup'
+      );
+      const isLongText = this.getElementText(container).length > 120;
+
       // For very dangerous layouts (tiny buttons, etc.), use tooltip on hover
-      if (this.isVeryDangerousLayout(container)) {
+      if (!inJobDescription && !isLongText && this.isVeryDangerousLayout(container)) {
         return this.renderTooltipTranslation(container, translation);
       }
 
