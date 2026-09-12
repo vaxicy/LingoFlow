@@ -752,7 +752,7 @@ function refreshCustomModelInputs() {
 
 // SiliconFlow models list (must match background.js)
 // Sources: SiliconFlow 官方模型中心当前在列 + 用户截图确认。
-// 默认仅 4 个（默认推荐 = Hunyuan-MT-7B 翻译专精），末尾 '__custom__' 为自定义占位。
+// 默认模型：Hunyuan-MT-7B（翻译专精），外加用户确认的两个免费 Qwen 模型，末尾 '__custom__' 为自定义占位。
 const SILICONFLOW_MODELS = [
   {
     id: 'tencent/Hunyuan-MT-7B',
@@ -760,6 +760,20 @@ const SILICONFLOW_MODELS = [
     badge: 'free',
     descZh: '翻译专用 · 默认推荐',
     descEn: 'Translation · Default'
+  },
+  {
+    id: 'Qwen/Qwen2.5-7B-Instruct',
+    name: 'Qwen2.5-7B-Instruct',
+    badge: 'free',
+    descZh: '通义千问 · 免费通用',
+    descEn: 'Qwen · Free general'
+  },
+  {
+    id: 'Qwen/Qwen3.5-4B',
+    name: 'Qwen3.5-4B',
+    badge: 'free',
+    descZh: '通义千问 · 轻量长上下文',
+    descEn: 'Qwen · Lightweight long context'
   },
   {
     id: 'Pro/MiniMaxAI/MiniMax-M2.5',

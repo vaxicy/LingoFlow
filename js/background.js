@@ -1443,6 +1443,8 @@ function translateOneForBatch(text, targetLang, engine, fallback) {
 // Priority: verified working models first, then untested ones as backup
 const SILICONFLOW_FALLBACK_MODELS = [
   'tencent/Hunyuan-MT-7B',          // ✅ Verified working - dedicated MT model, fast & reliable (default)
+  'Qwen/Qwen2.5-7B-Instruct',       // Free general-purpose model
+  'Qwen/Qwen3.5-4B',                // Free lightweight long-context model
   'Pro/MiniMaxAI/MiniMax-M2.5',     // MiniMax latest chat
   'deepseek-ai/DeepSeek-V4-Flash',   // ✅ Fast, cheap, good quality
   'deepseek-ai/DeepSeek-V3'          // Flagship DeepSeek chat
@@ -1450,6 +1452,8 @@ const SILICONFLOW_FALLBACK_MODELS = [
 
 const SILICONFLOW_MODEL_META = {
   'tencent/Hunyuan-MT-7B':         { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
+  'Qwen/Qwen2.5-7B-Instruct':      { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
+  'Qwen/Qwen3.5-4B':               { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'Pro/MiniMaxAI/MiniMax-M2.5':    { pricing: 'paid', maxItems: 70, maxChars: 24000, chunkDelay: 60 },
   'deepseek-ai/DeepSeek-V4-Flash': { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 40 },
   'deepseek-ai/DeepSeek-V3':       { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 },
