@@ -2914,6 +2914,7 @@ function mapTargetLang(targetLang) {
 
       const proseParts = [];
       let lastProseBlock = null;
+      let proseEnded = false;           // 遇到“主要职责/公司”等标题后，散文段落终止
       const listAnchors = new Map();   // LI 锚点 → 文本片段
 
       let textNode;
@@ -2921,7 +2922,14 @@ function mapTargetLang(targetLang) {
         const ownText = this.normalizeText(textNode.nodeValue);
         if (!ownText || !this.shouldTranslateText(ownText)) continue;
 
-        const inList = textNode.parentElement.closest('li, ul, ol');
+        const parent = textNode.parentElement;
+        const inHeading = !!parent.closest('h1, h2, h3, h4, h5, h6, [role="heading"]');
+        if (inHeading) {
+          proseEnded = true;   // 标题之后不再计入散文
+          continue;
+        }
+
+        const inList = parent.closest('li, ul, ol');
         if (inList) {
           // 列表项：逐条旁挂（渲染表现已验证 OK）
           const anchor = inList.tagName === 'LI' ? inList : inList.closest('li');
@@ -2931,6 +2939,7 @@ function mapTargetLang(targetLang) {
           listAnchors.set(anchor, parts);
           continue;
         }
+        if (proseEnded) continue;   // 标题之后的普通文本（如公司简介）不混入描述散文
         proseParts.push(ownText);
         const block = this.findDescriptionAnchor(textNode);
         if (block && (block === mainRoot || mainRoot.contains(block))) lastProseBlock = block;
