@@ -2912,22 +2912,13 @@ function mapTargetLang(targetLang) {
         return;
       }
 
-      // 先确定“描述散文”的范围：mainRoot 内第一个列表/标题之前的所有文本。
-      // LinkedIn 的描述根经常把 Company / Job ID 等后续章节也包进来，
-      // 只靠文本 walking 会把它们当成散文，导致面板锚到页面底部。
-      const boundary = mainRoot.querySelector('ul, ol, h1, h2, h3, h4, h5, h6, [role="heading"]');
-      const beforeBoundary = (node) =>
-        !boundary || !!(node.compareDocumentPosition(boundary) & Node.DOCUMENT_POSITION_FOLLOWING);
-
-      const proseParts = [];
-      let lastProseBlock = null;
-      const listAnchors = new Map();   // LI 锚点 → 文本片段
+      const proseAnchors = new Map();   // 块级锚点 → 文本片段（Map 保持文档顺序）
+      const listAnchors = new Map();    // LI 锚点 → 文本片段
 
       let textNode;
       while ((textNode = walker.nextNode())) {
         const ownText = this.normalizeText(textNode.nodeValue);
         if (!ownText || !this.shouldTranslateText(ownText)) continue;
-        if (!beforeBoundary(textNode)) continue;   // 边界之后不收集
 
         const parent = textNode.parentElement;
         if (parent.closest('h1, h2, h3, h4, h5, h6, [role="heading"]')) continue;
@@ -2944,8 +2935,9 @@ function mapTargetLang(targetLang) {
         }
         const block = this.findDescriptionAnchor(textNode);
         if (!block || (block !== mainRoot && !mainRoot.contains(block))) continue;
-        proseParts.push(ownText);
-        lastProseBlock = block;
+        const parts = proseAnchors.get(block) || [];
+        parts.push(ownText);
+        proseAnchors.set(block, parts);
       }
 
       // 1) 列表项逐条旁挂
@@ -2962,14 +2954,38 @@ function mapTargetLang(targetLang) {
         units.set(anchor, { container: anchor, anchor, _anchorHash: hash, textParts: [text] });
       });
 
-      // 2) 散文段落 → 整段译文面板（旁挂在主根之后，折叠层之外）
-      const proseText = this.normalizeText(proseParts.join(' '));
-      console.log('LingoFlow: desc prose collected', proseParts.length, 'parts,', proseText.length, 'chars, boundary=', boundary ? boundary.tagName : 'none', 'lastBlock=', lastProseBlock ? lastProseBlock.tagName : 'null');
+      // 2) 散文 → 整段译文面板，锚定在「描述主体最后一段」之后。
+      // 判定“描述主体”：按文档顺序扫描散文块，只收“长段落”，以及被后续长段落
+      // 跟随的短块（章节小标题如 Key job responsibilities）。
+      // 尾部那些短行（Company / Job ID / 招聘方）永远不进 run，
+      // 这样面板既不会卷进公司简介，也不会掉到区域最底部。
+      const LONG = 100;
+      const run = [];
+      let pendingShort = [];
+      for (const [block, parts] of proseAnchors) {
+        const text = this.normalizeText(parts.join(' '));
+        if (!text) continue;
+        if (text.length >= LONG) {
+          run.push(...pendingShort, { block, text });
+          pendingShort = [];
+        } else {
+          pendingShort.push({ block, text });   // 先挂着，等后面真出现长段落才算主体一部分
+        }
+      }
+      if (!run.length) {
+        // 兜底：一个长段落都没有（短职位描述）→ 取文档顺序最后一个散文块
+        const entries = Array.from(proseAnchors.entries());
+        const last = entries[entries.length - 1];
+        if (!last) return;
+        run.push({ block: last[0], text: this.normalizeText(last[1].join(' ')) });
+      }
+
+      const proseText = this.normalizeText(run.map(item => item.text).join(' '));
       if (!proseText || proseText.length < 60 || !this.shouldTranslateText(proseText)) return;
       if (proseText.length > 9000) return;
       const panelHash = this.hashText(proseText);
       if (this.hasInlineTextBlock(panelHash)) return;   // 面板已渲染
-      const panelAnchor = lastProseBlock || mainRoot;
+      const panelAnchor = run[run.length - 1].block || mainRoot;
       units.set(panelAnchor, {
         container: mainRoot,
         anchor: panelAnchor,
@@ -2977,9 +2993,8 @@ function mapTargetLang(targetLang) {
         _descPanel: true,
         textParts: [proseText]
       });
-      console.log('LingoFlow: created description panel unit, proseChars=' + proseText.length,
-        'anchor=' + (panelAnchor.tagName || '?') + (panelAnchor.className ? '.' + String(panelAnchor.className).split(' ')[0] : '') +
-        ' hash=' + panelHash.substring(0, 16));
+      console.log('LingoFlow: desc panel unit → blocks=' + run.length + ' chars=' + proseText.length +
+        ' anchor=' + (panelAnchor.tagName || '?') + ' hash=' + panelHash.substring(0, 16));
     },
 
     // 找"段落锚点"：文本所在的最小块级祖先（没有就退到最近的非内联祖先）。
@@ -3737,13 +3752,13 @@ function mapTargetLang(targetLang) {
       const isLongText = this.getElementText(container).length > 120;
 
       // For very dangerous layouts (tiny buttons, etc.), use tooltip on hover
-      if (!inJobDescription && !isLongText && this.isVeryDangerousLayout(container)) {
+      const isHeading = /^H[1-6]$/.test(container.tagName) ||
+                        container.getAttribute('role') === 'heading';
+      // 标题永远不走 tooltip：悬停才可见的标题等于"没翻译"
+      if (!inJobDescription && !isLongText && !isHeading && this.isVeryDangerousLayout(container)) {
         return this.renderTooltipTranslation(container, translation);
       }
 
-      // Headings (H1-H6) and role=heading
-      const isHeading = /^H[1-6]$/.test(container.tagName) ||
-                        container.getAttribute('role') === 'heading';
 
       if (isHeading) {
         // Headings: prefer internal rendering (wraps heading text in a block inside the heading),
@@ -3887,8 +3902,8 @@ function mapTargetLang(targetLang) {
       block.style.marginTop = '0.25em';
       block.style.marginBottom = '0.35em';
 
-      // 面板模式：换职位/内容变化时清掉挂在同一根后面的旧面板，避免堆积
-      if (anchor.matches && anchor.matches(this.descriptionSelector())) {
+      // 面板模式：换职位/内容变化时清掉挂在同一锚点后面的旧面板，避免堆积
+      if (isDescPanel) {
         try {
           let next = anchor.nextElementSibling;
           while (next && next.hasAttribute && next.hasAttribute('data-lingoflow-inline-hash')) {
@@ -3938,9 +3953,31 @@ function mapTargetLang(targetLang) {
       } catch (_) {}
       if (!isDescPanel) this.unclampClippingAncestors(block, 8);
 
+      // 描述面板：插在最后一段描述之后。若被站点的 max-height 折叠裁掉 →
+      // 先安全解裁剪（只解 max-height/折叠类，绝不碰 overflow），
+      // 仍不可见就把面板挂到「描述根」之后——依然紧邻描述区，绝不上移到页面底部。
+      if (isDescPanel && inserted && !this.isVisibleElement(block)) {
+        this.unclampClippingAncestors(block, 8);
+        if (!this.isVisibleElement(block)) {
+          let host = anchor;
+          let lastInside = null;
+          let up = 0;
+          while (host && host !== document.body && up < 12) {
+            if (host.matches && host.matches(this.descriptionSelector())) lastInside = host;
+            host = host.parentElement;
+            up++;
+          }
+          if (lastInside && lastInside.parentNode) {
+            try {
+              lastInside.insertAdjacentElement('afterend', block);
+              console.log('LingoFlow: desc panel moved next to description root');
+            } catch (_) {}
+          }
+        }
+      }
+
       // 插入后仍不可见 → 说明被站点折叠/限高裁掉了：把块上移到最近"不裁剪"的祖先之后，
       // 保证用户真的能看到译文（否则就是"注入了但页面没反应"）。
-      // 描述面板锚点已经是最后一段，尽量保持原位；不要再上移到页面底部。
       if (!isDescPanel && inserted && !this.isVisibleElement(block)) {
         let host = block.parentElement;
         let depth = 0;
@@ -4121,7 +4158,14 @@ function mapTargetLang(targetLang) {
     // render translation as a tooltip on hover instead of injecting DOM.
     renderTooltipTranslation(container, translation) {
       if (!container || !container.parentNode) return false;
-      if (container.dataset.lingoflowTooltip) return false; // already added
+      if (container.dataset.lingoflowTooltip) {
+        // 已挂好 → 直接算成功（此前无条件返回 false，导致每轮补扫都重试并刷屏）
+        const existing = container.querySelector(':scope > .lingoflow-tooltip-popup');
+        if (existing) return true;
+        // 标记残留但 popup 已被站点擦掉 → 清标记后重建
+        delete container.dataset.lingoflowTooltip;
+        container.classList.remove('lingoflow-tooltip-host', 'lingoflow-tooltip-active');
+      }
 
       container.dataset.lingoflowTooltip = 'true';
       container.classList.add('lingoflow-tooltip-host');
@@ -4177,11 +4221,17 @@ function mapTargetLang(targetLang) {
       if (rect.width > 0 && rect.width < 100 && rect.height > 0 && rect.height < 50) return true;
       // Narrow containers (< 80px) — Chinese text will render vertically
       if (rect.width > 0 && rect.width < 80) return true;
-      // Elements inside positioned complex widgets
-      let el = container.parentElement;
-      for (let i = 0; el && i < 5; i++, el = el.parentElement) {
-        const s = window.getComputedStyle(el);
-        if (s.position === 'absolute' || s.position === 'fixed') return true;
+      // Elements inside positioned complex widgets.
+      // 仅对"交互控件"生效：LinkedIn 右侧职位详情面板整体处在一个定位容器里，
+      // 若把里面的标题/正文也降级成"悬停才可见的 tooltip"，用户会认为"这块根本没翻译"。
+      const interactive = /^(BUTTON|A|INPUT|SELECT|TEXTAREA|LABEL|SUMMARY)$/.test(container.tagName) ||
+        !!(container.getAttribute && ['button', 'link', 'menuitem', 'tab'].includes(container.getAttribute('role')));
+      if (interactive) {
+        let el = container.parentElement;
+        for (let i = 0; el && i < 5; i++, el = el.parentElement) {
+          const s = window.getComputedStyle(el);
+          if (s.position === 'absolute' || s.position === 'fixed') return true;
+        }
       }
       return false;
     },
@@ -4613,9 +4663,18 @@ function mapTargetLang(targetLang) {
 
         if (rendered) {
           successCount++;
+          if (state.renderFailCounts) state.renderFailCounts.delete(container);
         } else {
-          console.warn('LingoFlow: renderUnit returned false for text:', (translation || '').substring(0, 60));
-          container.removeAttribute('data-lingoflow-processed');
+          // 同一容器反复渲染失败 → 停止再试，否则每轮补扫都会重试（页面持续闪烁 + 控制台刷屏）
+          if (!state.renderFailCounts) state.renderFailCounts = new Map();
+          const fails = (state.renderFailCounts.get(container) || 0) + 1;
+          state.renderFailCounts.set(container, fails);
+          if (fails >= 3) {
+            this.markProcessed(container);   // 放弃这个容器，保持页面稳定
+          } else {
+            console.warn('LingoFlow: renderUnit returned false for text:', (translation || '').substring(0, 60));
+            container.removeAttribute('data-lingoflow-processed');
+          }
         }
       };
 
