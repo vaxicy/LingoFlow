@@ -3828,6 +3828,13 @@ function mapTargetLang(targetLang) {
       const key = hash || this.hashText(translation);
       if (this.hasInlineTextBlock(key)) return true;   // 已渲染过
 
+      // 该锚点已被容器级渲染覆盖（已有 linked 译文，或前后紧邻非旁挂译文块）→ 不重复
+      const covered = (anchor.dataset && anchor.dataset.lingoflowRendered === 'true' &&
+                       this.hasLinkedTranslation(anchor)) ||
+        [anchor.nextElementSibling, anchor.previousElementSibling].some(el => el && el.hasAttribute &&
+          el.hasAttribute('data-lingoflow') && !el.hasAttribute('data-lingoflow-inline-hash'));
+      if (covered) return true;
+
       const block = document.createElement('div');
       block.className = 'lingoflow-inline-translation';
       block.setAttribute('data-lingoflow', 'true');
@@ -3853,6 +3860,14 @@ function mapTargetLang(targetLang) {
       } catch (_) {
         return false;
       }
+      // 标准簿记：让容器级路径知道"这里已经有译文了"（source-id 互链 + processed/rendered），
+      // 否则两条渲染路径互不知情 → 双重翻译
+      try {
+        const id = this.getOrCreateTranslationId(anchor);
+        block.setAttribute('data-lingoflow-source-id', id);
+        anchor.setAttribute('data-lingoflow-rendered', 'true');
+        this.markProcessed(anchor);
+      } catch (_) {}
       this.unclampClippingAncestors(block, 8);
 
       // 插入后仍不可见 → 说明被站点折叠/限高裁掉了：把块上移到最近"不裁剪"的祖先之后，
@@ -4479,7 +4494,9 @@ function mapTargetLang(targetLang) {
         // 避免包裹/隐藏外层时把内层译文块一起吞掉（译文模式空白页的跨批次形态）。
         // 注意：**不能**把容器标记为 processed——那会让"容器里只有别人的译文块、
         // 自己这段还没翻译"的段落被永久判定为已处理（LinkedIn 描述段落漏翻的成因之一）。
-        if (container.querySelector('.lingoflow-block[data-lingoflow="true"]')) {
+        // 另：容器已有 linked 译文（旁挂渲染的簿记）也视为已翻译 → 避免双重翻译。
+        if (container.querySelector('.lingoflow-block[data-lingoflow="true"]') ||
+            this.hasLinkedTranslation(container)) {
           return;
         }
 
