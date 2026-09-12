@@ -2944,7 +2944,10 @@ function mapTargetLang(targetLang) {
           continue;
         }
         if (proseTextRaw) {
-          proseTextRaw += this.hasParagraphBreakBetween(prevProseNode, textNode) ? '\n' : ' ';
+          // 段落分行只在 LinkedIn 启用：该函数内部使用 getComputedStyle，
+          // 在所有网站都跑会造成布局抖动、其它网页翻译闪烁。
+          const useBreak = /(^|\\.)linkedin\\.com$/.test(location.hostname || '');
+          proseTextRaw += useBreak && this.hasParagraphBreakBetween(prevProseNode, textNode) ? '\n' : ' ';
         }
         proseTextRaw += ownText;
         prevProseNode = textNode;
@@ -3010,10 +3013,6 @@ function mapTargetLang(targetLang) {
         } catch (_) {}
       }
 
-      console.log('LingoFlow: desc panel anchor candidate', panelAnchor.tagName,
-        panelAnchor.className ? String(panelAnchor.className).split(' ').slice(0, 3).join(' ') : '-',
-        'lastBlock=' + (lastProseBlock ? lastProseBlock.tagName : 'null'),
-        'insertBefore=' + (insertBeforeEl ? insertBeforeEl.tagName : 'null'));
       units.set(panelAnchor, {
         container: mainRoot,
         anchor: panelAnchor,
@@ -3022,9 +3021,6 @@ function mapTargetLang(targetLang) {
         _insertBefore: insertBeforeEl,
         textParts: [proseText]
       });
-      console.log('LingoFlow: created description panel unit, proseChars=' + proseText.length,
-        'anchor=' + (panelAnchor.tagName || '?') + (panelAnchor.className ? '.' + String(panelAnchor.className).split(' ')[0] : '') +
-        ' hash=' + panelHash.substring(0, 16));
     },
 
     // 两个文本节点之间是否存在段落边界（<br> 或块级元素）→ 决定面板文本里用换行还是空格
@@ -4867,8 +4863,10 @@ function mapTargetLang(targetLang) {
       this.stopDynamicTranslationObserver();
       state.activeTranslationMode = mode;
 
-      // 额外补扫并入 SITE_REPAIR_CONFIG 的统一调度（scheduleSecondScan），
-      // 这里只保留擦除守卫，避免多处定时器叠加造成闪烁。
+      // 只启动擦除守卫（wipe guard）。
+      // 注意：这里不能调 stopDynamicTranslationObserver()，否则会清掉 scheduleSecondScan
+      // 刚排好的补扫定时器，导致 LinkedIn 右侧懒加载内容永远没人补翻。
+      this.stopWipeGuard();
       this.startWipeGuard(mode);
     },
 
