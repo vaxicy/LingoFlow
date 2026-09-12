@@ -2933,7 +2933,7 @@ function mapTargetLang(targetLang) {
           continue;
         }
         proseParts.push(ownText);
-        const block = this.findDescriptionAnchor(textNode);
+        const block = this.findProseBlock(textNode, mainRoot);
         if (block && (block === mainRoot || mainRoot.contains(block))) {
           lastProseBlock = block;
           blockTextLens.set(block, (blockTextLens.get(block) || 0) + ownText.length);
@@ -2980,6 +2980,33 @@ function mapTargetLang(targetLang) {
       console.log('LingoFlow: created description panel unit, proseChars=' + proseText.length,
         'anchor=' + (panelAnchor.tagName || '?') + (panelAnchor.className ? '.' + String(panelAnchor.className).split(' ')[0] : '') +
         ' hash=' + panelHash.substring(0, 16));
+    },
+
+    // 段落级锚点：从文本节点向上找第一个「块级渲染 且 文本量在段落量级(≤2200字符)」的祖先。
+    // LinkedIn 的描述段落常是 display:block 的 <span>（页面上根本没有 <p>），
+    // 按 tagName 找块会把「包住全部段落的大 div」当成唯一块 → 面板被锚到区域最底部。
+    findProseBlock(textNode, mainRoot) {
+      let element = textNode.parentElement;
+      let depth = 0;
+      while (element && element !== document.body && depth < 14) {
+        if (this.skipTags.has(element.tagName)) break;
+        if (element.closest && element.closest('.lingoflow-ui')) return null;
+        let display = '';
+        try { display = window.getComputedStyle(element).display; } catch (_) {}
+        const blockLike = display === 'block' || display === 'list-item' ||
+                          display === 'flow-root' || display === 'table' ||
+                          display.indexOf('flex') === 0 || display.indexOf('grid') === 0 ||
+                          display === '-webkit-box';
+        if (blockLike) {
+          const len = this.normalizeText(element.textContent || '').length;
+          if (len > 0 && len <= 2200) return element;   // 段落量级 → 就是它
+          // 文本量超出段落量级（包住了多段/整个根）→ 继续向上没有意义，交给兜底
+          break;
+        }
+        element = element.parentElement;
+        depth++;
+      }
+      return this.findDescriptionAnchor(textNode);   // 兜底：旧 tagName 逻辑
     },
 
     // 找"段落锚点"：文本所在的最小块级祖先（没有就退到最近的非内联祖先）。
