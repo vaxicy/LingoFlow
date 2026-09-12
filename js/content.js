@@ -63,6 +63,7 @@ function mapTargetLang(targetLang) {
     _spaHooksInstalled: false,
     _spaRepairTimer: null,
     _lastSpaRepair: 0,
+    _descriptionPurged: false,
     _wipeGuard: null,
     _wipeRepairTimer: null,
     translationRoot: null,      // detected main content area (for incremental translation)
@@ -2894,37 +2895,57 @@ function mapTargetLang(targetLang) {
           return;
         }
 
+        // 该区域统一走「段落锚点旁挂渲染」：容器级渲染在这里会连续踩三个坑——
+        // tooltip（悬停才显示）、整包 reparent（把同容器其它内容/译文一起搬走）、
+        // processed 残留（永久跳过）。所以按段落锚点聚合文本，只在其后旁挂译文块。
+        const anchors = new Map();   // anchor 元素 → 文本片段
+
         let textNode;
         while ((textNode = walker.nextNode())) {
           const ownText = this.normalizeText(textNode.nodeValue);
           if (!ownText || !this.shouldTranslateText(ownText)) continue;
 
-          const container = this.findDescriptionUnitContainer(textNode);
-          const containerUsable = container &&
-            !units.has(container) &&
-            container.dataset.lingoflowProcessed !== 'true' &&
-            !(container.querySelector && container.querySelector('.lingoflow-block[data-lingoflow="true"]'));
-
-          if (containerUsable) {
-            const full = this.normalizeText(container.textContent);
-            if (full && this.shouldTranslateText(full) && full.length <= 6000) {
-              units.set(container, { container, textParts: [full] });
-              continue;
-            }
-          }
-
-          // 容器不可用（已被同区域其它译文块/内容占用，整包 reparent 会把别的内容一起搬走）
-          // → 退化为「文本节点级」单元，渲染时只把译文块插到该段落之后。
-          if (ownText.length < 24) continue;                 // 太短的不逐条塞
-          const hash = this.hashText(ownText);
-          if (this.hasInlineTextBlock(hash)) continue;        // 已渲染过
-          units.set(textNode, {
-            container: container || textNode.parentElement,
-            textNode,
-            textParts: [ownText]
-          });
+          const anchor = this.findDescriptionAnchor(textNode);
+          if (!anchor) continue;
+          const parts = anchors.get(anchor) || [];
+          parts.push(ownText);
+          anchors.set(anchor, parts);
         }
+
+        anchors.forEach((parts, anchor) => {
+          const text = this.normalizeText(parts.join(' '));
+          if (!text || text.length < 12 || !this.shouldTranslateText(text)) return;
+          const hash = this.hashText(text);
+          if (this.hasInlineTextBlock(hash)) return;   // 已渲染过
+          units.set(anchor, {
+            container: anchor,
+            anchor,                                    // 段落锚点：译文块旁挂在其后
+            _anchorHash: hash,
+            textParts: [text]
+          });
+        });
       });
+    },
+
+    // 找"段落锚点"：文本所在的最小块级祖先（没有就退到最近的非内联祖先）。
+    // 旁挂渲染会把译文块插到它之后，所以锚点越贴近段落越好。
+    findDescriptionAnchor(textNode) {
+      const inlineTags = new Set(['SPAN', 'A', 'B', 'I', 'EM', 'STRONG', 'SMALL', 'LABEL',
+                                  'TIME', 'U', 'S', 'MARK', 'SUP', 'SUB', 'ABBR', 'CITE', 'Q']);
+      const blockTags = ['DIV', 'P', 'LI', 'SECTION', 'ARTICLE', 'BLOCKQUOTE', 'TD',
+                         'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL'];
+      let element = textNode.parentElement;
+      let nonInline = null;
+      let depth = 0;
+      while (element && element !== document.body && depth < 10) {
+        if (this.skipTags.has(element.tagName)) return nonInline || textNode.parentElement;
+        if (element.closest && element.closest('.lingoflow-ui')) return null;
+        if (blockTags.indexOf(element.tagName) >= 0) return element;
+        if (!nonInline && !inlineTags.has(element.tagName)) nonInline = element;
+        element = element.parentElement;
+        depth++;
+      }
+      return nonInline || textNode.parentElement || null;
     },
 
     // 从文本节点向上找"只装这一段"的容器。
@@ -2989,14 +3010,17 @@ function mapTargetLang(targetLang) {
       // 清理 tooltip 渲染残留：tooltip 只在悬停时显示译文，且 popup 会让
       // hasExistingTranslation 误判"已翻译"→ 段落永久跳过。统一拆掉让它重新渲染。
       document.querySelectorAll('[data-lingoflow-tooltip="true"]').forEach(host => {
-        if (!host.closest || !host.closest(
-          '[data-testid="expandable-text-box"], [data-testid="inline-show-more-text"], ' +
-          '[data-testid="expanded-text-below"], .jobs-description__content, .show-more-less-html__markup'
-        )) return;
+        if (!host.closest || !host.closest(this.descriptionSelector())) return;
         host.querySelectorAll('.lingoflow-tooltip-popup').forEach(popup => popup.remove());
         host.removeAttribute('data-lingoflow-tooltip');
         host.classList.remove('lingoflow-tooltip-host', 'lingoflow-tooltip-active');
       });
+
+      // 描述区域一次性复位（清理历史版本留下的块与被搬空后残留的标记元素）
+      if (!state._descriptionPurged) {
+        state._descriptionPurged = true;
+        try { this.purgeDescriptionResidue(); } catch (_) {}
+      }
 
       // 采集前先自愈：被折叠/限高裁掉的译文块会被移除并重新进入队列
       // （初始整页翻译流程不会经过 runIncrementalTranslation，这里必须也跑一次）
@@ -3087,6 +3111,8 @@ function mapTargetLang(targetLang) {
         .map(unit => ({
           container: unit.container,
           textNode: unit.textNode || null,   // 文本节点级单元（容器被占用时的兜底）
+          anchor: unit.anchor || null,       // 段落锚点单元（描述区域专用旁挂渲染）
+          anchorHash: unit._anchorHash || null,
           text: this.normalizeText(unit.textParts.join(' ')),
           targetLang: mapTargetLang(state.targetLanguage)  // 按设置的目标语言（中/英/西）
         }))
@@ -3110,13 +3136,18 @@ function mapTargetLang(targetLang) {
             preferCurrent = !!unit.container.closest('[data-testid="expanded-text-below"]') &&
                             !prev.container.closest('[data-testid="expanded-text-below"]');
           }
-          // 容器已被其它译文块占用时，容器级渲染一定失败 → 优先保留"文本节点级"方案
-          if (!preferCurrent && unit.textNode && !prev.textNode) {
+          // 描述区域/容器被占用时，容器级渲染一定会失败（tooltip / reparent / 残留标记）
+          // → 优先保留"段落锚点/文本节点级"的旁挂方案
+          if (!preferCurrent && (unit.anchor || unit.textNode) && !(prev.anchor || prev.textNode)) {
             const prevContainer = prev.container;
-            const occupied = prevContainer && (
+            const inDescription = prevContainer && prevContainer.closest &&
+              prevContainer.closest(this.descriptionSelector ? this.descriptionSelector() :
+                '[data-testid="expandable-text-box"], [data-testid="inline-show-more-text"], ' +
+                '[data-testid="expanded-text-below"], .jobs-description__content, .show-more-less-html__markup');
+            const occupied = inDescription || (prevContainer && (
               prevContainer.dataset.lingoflowProcessed === 'true' ||
-              (prevContainer.querySelector && prevContainer.querySelector('.lingoflow-block[data-lingoflow="true"]'))
-            );
+              (prevContainer.querySelector && prevContainer.querySelector('[data-lingoflow="true"]'))
+            ));
             if (occupied) preferCurrent = true;
           }
           if (preferCurrent) {
@@ -3133,9 +3164,9 @@ function mapTargetLang(targetLang) {
       // 句级拆分：对长文本（>120字符且包含2+个句子）按句子边界拆分
       const sentenceUnits = [];
       for (const unit of dedupedUnits) {
-        // 文本节点级单元不参与句级拆分：它们共享同一个宿主容器，
+        // 文本节点级 / 段落锚点级单元不参与句级拆分：它们共享同一个宿主容器，
         // 拆分后按容器分组渲染会整包 reparent，把宿主里其它内容一起搬走
-        if (unit.textNode) {
+        if (unit.textNode || unit.anchor) {
           sentenceUnits.push(unit);
           continue;
         }
@@ -3717,33 +3748,53 @@ function mapTargetLang(targetLang) {
       }
     },
 
-    // 文本节点级翻译：宿主容器已被其它译文块/内容占用（不能整包 reparent）时，
-    // 直接把译文块插到该文本所在块级祖先之后。
-    renderInlineTextTranslation(textNode, translation) {
-      if (!textNode || !textNode.isConnected || !textNode.parentNode) return false;
-      const source = this.normalizeText(textNode.nodeValue);
-      const hash = this.hashText(source);
-      if (this.hasInlineTextBlock(hash)) return true;   // 已渲染过
+    // 职位描述区域选择器（多处复用）
+    descriptionSelector() {
+      return '[data-testid="expandable-text-box"], [data-testid="inline-show-more-text"], ' +
+             '[data-testid="expanded-text-below"], .jobs-description__content, ' +
+             '.show-more-less-html__markup, .jobs-box__html-content';
+    },
 
-      const parent = textNode.parentElement;
-      if (!parent) return false;
-
-      const blockTags = ['DIV', 'P', 'SECTION', 'ARTICLE', 'LI', 'BLOCKQUOTE', 'TD',
-                         'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL'];
-      let anchor = parent;
-      let depth = 0;
-      while (anchor && anchor !== document.body && depth < 8) {
-        if (blockTags.indexOf(anchor.tagName) >= 0) break;
-        anchor = anchor.parentElement;
-        depth++;
+    // 描述区域复位：移除历史版本注入的块（popup/inline/block）与被搬空后遗留的
+    // 标记元素，让该区域回到干净状态再由"段落锚点旁挂"统一接管。
+    purgeDescriptionResidue() {
+      let roots;
+      try {
+        roots = Array.from(document.querySelectorAll(this.descriptionSelector()));
+      } catch (_) {
+        return;
       }
-      if (!anchor || anchor === document.body) anchor = parent;
-      if (!anchor || !anchor.parentNode) return false;
+      roots.forEach(root => {
+        root.querySelectorAll('[data-lingoflow="true"]').forEach(node => {
+          if (node.hasAttribute('data-lingoflow-inline-hash')) return;   // 新的旁挂块保留
+          node.remove();
+        });
+        root.querySelectorAll(
+          '[data-lingoflow-processed="true"], [data-lingoflow-rendered="true"], [data-lingoflow-tooltip="true"]'
+        ).forEach(el => {
+          const text = (el.textContent || '').trim();
+          if (!text && el.children.length === 0) { el.remove(); return; }   // 被搬空的空壳
+          el.removeAttribute('data-lingoflow-processed');
+          el.removeAttribute('data-lingoflow-rendered');
+          el.removeAttribute('data-lingoflow-source-id');
+          el.removeAttribute('data-lingoflow-tooltip');
+          el.classList.remove('lingoflow-tooltip-host', 'lingoflow-tooltip-active');
+        });
+      });
+    },
+
+    // 段落锚点旁挂渲染：在锚点元素**之后**插入一个纯译文块，
+    // 完全不 reparent 站点内容、不改站点元素属性 → 不会踩
+    // tooltip / 整包搬走 / processed 残留 这三个坑。
+    renderAnchorTranslation(anchor, translation, hash) {
+      if (!anchor || !anchor.isConnected || !anchor.parentNode) return false;
+      const key = hash || this.hashText(translation);
+      if (this.hasInlineTextBlock(key)) return true;   // 已渲染过
 
       const block = document.createElement('div');
       block.className = 'lingoflow-inline-translation';
       block.setAttribute('data-lingoflow', 'true');
-      block.setAttribute('data-lingoflow-inline-hash', hash);
+      block.setAttribute('data-lingoflow-inline-hash', key);
       block.textContent = translation;
       block.style.writingMode = 'horizontal-tb';
       block.style.whiteSpace = 'normal';
@@ -3758,8 +3809,20 @@ function mapTargetLang(targetLang) {
       } catch (_) {
         return false;
       }
-      this.unclampClippingAncestors(block, 8);
+      this.unclampClippingAncestors(block, 6);
       return true;
+    },
+
+    // 文本节点级翻译：宿主容器被占用时，找最近块级祖先做锚点后旁挂译文块。
+    renderInlineTextTranslation(textNode, translation) {
+      if (!textNode || !textNode.isConnected || !textNode.parentNode) return false;
+      const source = this.normalizeText(textNode.nodeValue);
+      const hash = this.hashText(source);
+      if (this.hasInlineTextBlock(hash)) return true;   // 已渲染过
+
+      const anchor = this.findDescriptionAnchor(textNode);
+      if (!anchor) return false;
+      return this.renderAnchorTranslation(anchor, translation, hash);
     },
 
     renderConservativeBilingualUnit(container, translation) {
@@ -4072,11 +4135,11 @@ function mapTargetLang(targetLang) {
       if (units.length > 1) {
         const containers = units.map(u => u.container);
         units = units.filter((u, i) => {
-          // 文本节点级单元用宿主祖先做 container，会"包含"其它单元（反之亦然），
+          // 文本节点级/锚点级单元用宿主祖先做 container，会"包含"其它单元（反之亦然），
           // 不能被嵌套过滤误杀
-          if (u.textNode) return true;
+          if (u.textNode || u.anchor) return true;
           for (let j = 0; j < containers.length; j++) {
-            if (j === i || units[j].textNode) continue;
+            if (j === i || units[j].textNode || units[j].anchor) continue;
             // 注意：contains() 对节点自身也返回 true，句级单元共享同一容器，
             // 必须先排除同容器（否则长段落全被误杀，表现为"部分替换"）
             if (containers[j] !== containers[i] && containers[i].contains(containers[j])) return false;
@@ -4267,7 +4330,17 @@ function mapTargetLang(targetLang) {
         const text = String(unit.text || '');
         if (text.length < 160) return;
         unit._chunkRetried = true;
-        if (unit.textNode) {
+        if (unit.anchor) {
+          chunkRetryQueue.push(async () => {
+            if (!unit.anchor || !unit.anchor.isConnected) return;
+            const joined = await translateInPieces(text, unit.targetLang);
+            if (!joined) return;
+            if (this.renderAnchorTranslation(unit.anchor, joined, unit.anchorHash)) {
+              successCount++;
+              console.log('LingoFlow: chunk retry rendered anchored paragraph, len=', text.length);
+            }
+          });
+        } else if (unit.textNode) {
           chunkRetryQueue.push(() => tryChunkTranslateInline(unit.textNode, text, unit.targetLang));
         } else {
           chunkRetryQueue.push(() => tryChunkTranslate(unit.container, text, mode, unit.targetLang));
@@ -4288,6 +4361,23 @@ function mapTargetLang(targetLang) {
             return;
           }
           if (this.renderInlineTextTranslation(unit.textNode, translation)) successCount++;
+          else {
+            scheduleChunkRetry(unit, renderMode);
+            failCount++;
+          }
+          return;
+        }
+
+        // 段落锚点级单元：译文块旁挂在锚点之后（描述区域专用，最稳）
+        if (unit.anchor) {
+          if (!unit.anchor.isConnected) { failCount++; return; }
+          if (!translation || isFallbackText(translation) || isContextInvalidatedText(translation)) {
+            console.warn('LingoFlow: anchor unit translation failed, will retry in pieces');
+            scheduleChunkRetry(unit, renderMode);
+            failCount++;
+            return;
+          }
+          if (this.renderAnchorTranslation(unit.anchor, translation, unit.anchorHash)) successCount++;
           else {
             scheduleChunkRetry(unit, renderMode);
             failCount++;
@@ -4363,6 +4453,7 @@ function mapTargetLang(targetLang) {
           const chunk = chunks[chunkCursor++];
           const activeChunk = chunk.filter(unit => {
             if (unit.textNode) return unit.textNode.isConnected;
+            if (unit.anchor) return unit.anchor.isConnected;
             return unit.container.isConnected && unit.container.dataset.lingoflowProcessed !== 'true';
           });
 
@@ -4607,9 +4698,12 @@ function mapTargetLang(targetLang) {
       const descSel = '.jobs-description__content, .jobs-box__html-content, .show-more-less-html__markup, ' +
                       '[data-testid="expandable-text-box"], [data-testid="expanded-text-below"], [data-testid="inline-show-more-text"]';
       const roots = Array.from(document.querySelectorAll(descSel));
+      let inlineBlocks = 0;
+      try { inlineBlocks = document.querySelectorAll('[data-lingoflow-inline-hash]').length; } catch (_) {}
       lines.push('mode=' + state.activeTranslationMode +
                  ' target=' + state.targetLanguage +
-                 ' descRoots=' + roots.length);
+                 ' descRoots=' + roots.length +
+                 ' inlineBlocks=' + inlineBlocks);
 
       roots.slice(0, 6).forEach((root, i) => {
         lines.push('root' + i + ' <' + root.tagName.toLowerCase() + '>' +
@@ -4653,6 +4747,9 @@ function mapTargetLang(targetLang) {
               txt: (block.textContent || '').slice(0, 20)
             };
           }
+          const anchor = this.findDescriptionAnchor(node);
+          const siblingInline = anchor && anchor.nextElementSibling &&
+            anchor.nextElementSibling.hasAttribute('data-lingoflow-inline-hash');
           candidates.push(JSON.stringify({
             text: own.slice(0, 32),
             container: container.tagName,
@@ -4661,6 +4758,8 @@ function mapTargetLang(targetLang) {
             processed: container.dataset.lingoflowProcessed === 'true',
             hasBlock: !!block,
             blockInfo,
+            anchor: anchor ? anchor.tagName : null,
+            siblingInline: !!siblingInline,
             visible: this.isVisibleElement(container),
             skipContainer: this.shouldSkipContainer(container),
             existing: this.hasExistingTranslation(container)
