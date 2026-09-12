@@ -2823,6 +2823,24 @@ function mapTargetLang(targetLang) {
       return false;
     },
 
+    // 文本节点是否真的显示在页面上（Range 取客户端矩形，display:contents 也适用）
+    isVisibleTextNode(textNode) {
+      if (!textNode || !textNode.isConnected) return false;
+      try {
+        const range = document.createRange();
+        range.selectNodeContents(textNode);
+        const rects = range.getClientRects();
+        if (rects && rects.length) {
+          for (const rect of rects) {
+            if (rect.width > 0 && rect.height > 0) return true;
+          }
+        }
+        return false;
+      } catch (_) {
+        return true;   // 判断失败时不阻塞翻译
+      }
+    },
+
     // 元素是否真的显示在页面上（用于区分折叠/展开双副本里"可见的那一份"）。
     // 注意：LinkedIn 大量使用 display:contents（data-display-contents="true"），
     // 这类元素自身没有盒子、getClientRects() 为空，必须再看后代是否有可见盒子，
@@ -2904,6 +2922,9 @@ function mapTargetLang(targetLang) {
         while ((textNode = walker.nextNode())) {
           const ownText = this.normalizeText(textNode.nodeValue);
           if (!ownText || !this.shouldTranslateText(ownText)) continue;
+          // 只收集真正显示在页面上的文本：LinkedIn 的隐藏副本（折叠副本）也在这里，
+          // 给隐藏副本旁挂译文会得到"块存在但看不到"的假象
+          if (!this.isVisibleTextNode(textNode)) continue;
 
           const anchor = this.findDescriptionAnchor(textNode);
           if (!anchor) continue;
@@ -2917,6 +2938,15 @@ function mapTargetLang(targetLang) {
           if (!text || text.length < 12 || !this.shouldTranslateText(text)) return;
           const hash = this.hashText(text);
           if (this.hasInlineTextBlock(hash)) return;   // 已渲染过
+
+          // 该锚点已被"容器级渲染"覆盖（内部有译文块，或前后紧邻一个非旁挂的译文块）
+          // → 再旁挂一次会变成双重翻译
+          if (anchor.querySelector && anchor.querySelector('[data-lingoflow="true"]')) return;
+          const neighbours = [anchor.nextElementSibling, anchor.previousElementSibling];
+          const coveredByContainerRender = neighbours.some(el => el && el.hasAttribute &&
+            el.hasAttribute('data-lingoflow') && !el.hasAttribute('data-lingoflow-inline-hash'));
+          if (coveredByContainerRender) return;
+
           units.set(anchor, {
             container: anchor,
             anchor,                                    // 段落锚点：译文块旁挂在其后
@@ -3294,8 +3324,10 @@ function mapTargetLang(targetLang) {
       // （否则 existing=true 会让采集器认为"这段已翻译"，于是永远显示原文 = 顽固漏翻）
       document.querySelectorAll('[data-lingoflow="true"]').forEach(block => {
         if (!block.isConnected) return;
+        // 旁挂的 inline 译文块不参与"不可见就删掉重译"的循环：
+        // 它被裁是站点折叠造成的，反复删除/重建只会造成闪烁（去重靠内容哈希）
+        if (block.hasAttribute && block.hasAttribute('data-lingoflow-inline-hash')) return;
         if (!block.classList || !block.classList.contains('lingoflow-block') &&
-            !block.classList.contains('lingoflow-inline-translation') &&
             !block.classList.contains('lingoflow-translation-only') &&
             !block.classList.contains('lingoflow-sentence-trans')) {
           return;
@@ -3739,13 +3771,18 @@ function mapTargetLang(targetLang) {
       return (hash >>> 0).toString(36) + '-' + value.length.toString(36);
     },
 
+    // 是否已渲染过该内容的旁挂译文块。
+    // 必须要求"块可见"：被站点折叠裁掉的块存在但看不到，若算作"已渲染"
+    // 就会让这段永远不翻译（LinkedIn 描述段落漏翻的最后一环）。
     hasInlineTextBlock(hash) {
       if (!hash) return false;
       try {
-        return !!document.querySelector(`[data-lingoflow-inline-hash="${hash}"]`);
-      } catch (_) {
-        return false;
-      }
+        const blocks = document.querySelectorAll(`[data-lingoflow-inline-hash="${hash}"]`);
+        for (const block of blocks) {
+          if (this.isVisibleElement(block)) return true;
+        }
+      } catch (_) {}
+      return false;
     },
 
     // 职位描述区域选择器（多处复用）
@@ -3804,12 +3841,42 @@ function mapTargetLang(targetLang) {
       block.style.marginTop = '0.25em';
       block.style.marginBottom = '0.35em';
 
+      // 清掉同内容的"不可见遗留块"，避免越积越多
+      try {
+        document.querySelectorAll(`[data-lingoflow-inline-hash="${key}"]`).forEach(el => {
+          if (!this.isVisibleElement(el)) el.remove();
+        });
+      } catch (_) {}
+
       try {
         anchor.insertAdjacentElement('afterend', block);
       } catch (_) {
         return false;
       }
-      this.unclampClippingAncestors(block, 6);
+      this.unclampClippingAncestors(block, 8);
+
+      // 插入后仍不可见 → 说明被站点折叠/限高裁掉了：把块上移到最近"不裁剪"的祖先之后，
+      // 保证用户真的能看到译文（否则就是"注入了但页面没反应"）
+      if (!this.isVisibleElement(block)) {
+        let host = block.parentElement;
+        let depth = 0;
+        while (host && host !== document.body && depth < 10) {
+          try {
+            const style = window.getComputedStyle(host);
+            const clips = /(hidden|clip)/.test(`${style.overflow} ${style.overflowY} ${style.overflowX}`);
+            const limited = !!style.maxHeight && style.maxHeight !== 'none' && style.maxHeight !== '0px';
+            if (!clips && !limited) break;
+          } catch (_) {}
+          host = host.parentElement;
+          depth++;
+        }
+        if (host && host !== document.body && host.parentNode) {
+          try {
+            host.insertAdjacentElement('afterend', block);
+            console.log('LingoFlow: moved inline translation out of clipped container');
+          } catch (_) {}
+        }
+      }
       return true;
     },
 
@@ -4748,8 +4815,17 @@ function mapTargetLang(targetLang) {
             };
           }
           const anchor = this.findDescriptionAnchor(node);
-          const siblingInline = anchor && anchor.nextElementSibling &&
-            anchor.nextElementSibling.hasAttribute('data-lingoflow-inline-hash');
+          let siblingInfo = null;
+          const sib = anchor && anchor.nextElementSibling;
+          if (sib && sib.hasAttribute && sib.hasAttribute('data-lingoflow-inline-hash')) {
+            const rect = sib.getBoundingClientRect();
+            siblingInfo = {
+              w: Math.round(rect.width),
+              h: Math.round(rect.height),
+              txt: (sib.textContent || '').slice(0, 16),
+              visible: this.isVisibleElement(sib)
+            };
+          }
           candidates.push(JSON.stringify({
             text: own.slice(0, 32),
             container: container.tagName,
@@ -4759,7 +4835,7 @@ function mapTargetLang(targetLang) {
             hasBlock: !!block,
             blockInfo,
             anchor: anchor ? anchor.tagName : null,
-            siblingInline: !!siblingInline,
+            siblingInfo,
             visible: this.isVisibleElement(container),
             skipContainer: this.shouldSkipContainer(container),
             existing: this.hasExistingTranslation(container)
