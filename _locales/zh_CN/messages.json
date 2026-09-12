@@ -515,6 +515,18 @@
     "message": "自定义 (OpenAI 兼容)",
     "description": "自定义 OpenAI 兼容翻译引擎选项"
   },
+  "fallback_engine": {
+    "message": "降级引擎",
+    "description": "Fallback translation engine setting label"
+  },
+  "fallback_engine_desc": {
+    "message": "当首选引擎失败或缺少 API Key 时自动改用此引擎",
+    "description": "Fallback engine setting description"
+  },
+  "fallback_none": {
+    "message": "不降级（直接失败）",
+    "description": "Fallback engine option: do not fall back"
+  },
   "custom_api_key_label": {
     "message": "API Key",
     "description": "自定义引擎 API Key 标签"

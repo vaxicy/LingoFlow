@@ -312,6 +312,26 @@
           </div>
         </div>
 
+        <div class="settings-row settings-row-stack">
+          <div class="settings-row-copy">
+            <strong data-i18n="fallback_engine">Fallback Engine</strong>
+            <span data-i18n="fallback_engine_desc">首选引擎失败或缺少 Key 时自动改用此引擎</span>
+          </div>
+          <select class="panel-select wide" id="popup-fallback-engine">
+            <option value="" data-i18n="fallback_none">不降级（直接失败）</option>
+            <option value="microsoft" data-i18n="engine_microsoft">Microsoft Translator</option>
+            <option value="gemini" data-i18n="engine_gemini">Gemini AI</option>
+            <option value="siliconflow" data-i18n="engine_siliconflow">硅基流动 AI</option>
+            <option value="bailian" data-i18n="engine_bailian">阿里百炼</option>
+            <option value="deepseek" data-i18n="engine_deepseek">DeepSeek AI</option>
+            <option value="youdao" data-i18n="engine_youdao">有道翻译</option>
+            <option value="youdaollm" data-i18n="engine_youdaollm">有道大模型</option>
+            <option value="baidu" data-i18n="engine_baidu">百度翻译</option>
+            <option value="baidullm" data-i18n="engine_baidullm">百度大模型</option>
+            <option value="custom" data-i18n="engine_custom">自定义 (OpenAI 兼容)</option>
+          </select>
+        </div>
+
         <div class="settings-section-title" data-i18n="preferences_settings">Preferences</div>
 
         <div class="settings-row settings-row-inline">

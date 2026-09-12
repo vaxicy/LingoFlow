@@ -515,6 +515,18 @@
     "message": "Custom (OpenAI Compatible)",
     "description": "Custom OpenAI-compatible translation engine option"
   },
+  "fallback_engine": {
+    "message": "Fallback Engine",
+    "description": "Fallback translation engine setting label"
+  },
+  "fallback_engine_desc": {
+    "message": "Automatically switch to this engine when the primary engine fails or has no API key",
+    "description": "Fallback engine setting description"
+  },
+  "fallback_none": {
+    "message": "No fallback (fail directly)",
+    "description": "Fallback engine option: do not fall back"
+  },
   "custom_api_key_label": {
     "message": "API Key",
     "description": "Custom engine API Key label"

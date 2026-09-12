@@ -53,6 +53,7 @@ chrome.runtime.onInstalled.addListener(() => {
       chrome.storage.local.set({
         lingoflow_settings: {
           translationEngine: 'siliconflow',
+          fallbackEngine: '',
           siliconflowApiKey: '',
           siliconflowModel: 'tencent/Hunyuan-MT-7B',
           siliconflowModelCustom: '',
@@ -581,6 +582,7 @@ function updateSettings(settings, sendResponse) {
 function getDefaultSettings(overrides = {}) {
   return {
     translationEngine: 'siliconflow',
+    fallbackEngine: '',
     siliconflowApiKey: '',
     siliconflowModel: 'tencent/Hunyuan-MT-7B',
     siliconflowModelCustom: '',
@@ -1250,42 +1252,60 @@ function parseDictionaryJson(txt, word) {
   };
 }
 
+function dispatchEngine(engine, text, targetLang, cb) {
+  if (engine === 'siliconflow') {
+    translateWithSiliconFlow(text, targetLang, cb);
+  } else if (engine === 'bailian') {
+    translateWithBailian(text, targetLang, cb);
+  } else if (engine === 'microsoft') {
+    translateWithMicrosoft(text, targetLang, cb);
+  } else if (engine === 'gemini') {
+    translateWithGemini(text, targetLang, cb);
+  } else if (engine === 'mymemory') {
+    translateWithMyMemory(text, targetLang, cb);
+  } else if (engine === 'youdao') {
+    translateWithYoudao(text, targetLang, cb);
+  } else if (engine === 'youdaollm') {
+    translateWithYoudaoLLM(text, targetLang, cb);
+  } else if (engine === 'deepseek') {
+    translateWithDeepSeekCb(text, targetLang, cb);
+  } else if (engine === 'baidu') {
+    translateWithBaidu(text, targetLang, cb);
+  } else if (engine === 'baidullm') {
+    translateWithBaiduLLMCb(text, targetLang, cb);
+  } else if (engine === 'custom') {
+    translateWithCustom(text, targetLang, cb);
+  } else {
+    // retired/unknown engines fall back to Google so inline translation still works
+    translateWithGoogle(text, targetLang, cb);
+  }
+}
+
+// Try the primary engine; on failure, retry once with the configured fallback engine.
+function translateWithFallback(engine, fallback, text, targetLang, sendResponse) {
+  let triedFallback = false;
+  const respond = (resp) => {
+    if (resp && resp.success && resp.translation) {
+      sendResponse(resp);
+    } else if (fallback && engine !== fallback && !triedFallback) {
+      triedFallback = true;
+      console.warn('LingoFlow: Primary engine failed, falling back to', fallback);
+      dispatchEngine(fallback, text, targetLang, respond);
+    } else {
+      sendResponse(resp || { success: false, error: 'translation failed' });
+    }
+  };
+  dispatchEngine(engine, text, targetLang, respond);
+}
+
 function translateText(text, targetLang, sendResponse) {
   // Read engine preference from settings
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = getDefaultSettings(result.lingoflow_settings || {});
     const engine = settings.translationEngine || 'siliconflow';
-    console.log('LingoFlow: Selected translation engine:', engine, 'targetLang:', targetLang, 'storedEngine:', result.lingoflow_settings && result.lingoflow_settings.translationEngine);
-        if (engine === 'siliconflow') {
-      translateWithSiliconFlow(text, targetLang, sendResponse);
-    } else if (engine === 'bailian') {
-      translateWithBailian(text, targetLang, sendResponse);
-    } else if (engine === 'microsoft') {
-      translateWithMicrosoft(text, targetLang, sendResponse);
-    } else if (engine === 'gemini') {
-      translateWithGemini(text, targetLang, sendResponse);
-    } else if (engine === 'mymemory') {
-      translateWithMyMemory(text, targetLang, sendResponse);
-    } else if (engine === 'youdao') {
-      translateWithYoudao(text, targetLang, sendResponse);
-        } else if (engine === 'youdaollm') {
-      translateWithYoudaoLLM(text, targetLang, sendResponse);
-        } else if (engine === 'deepseek') {
-      translateWithDeepSeekCb(text, targetLang, sendResponse);
-    } else if (engine === 'baidu') {
-      translateWithBaidu(text, targetLang, sendResponse);
-    } else if (engine === 'baidullm') {
-      translateWithBaiduLLMCb(text, targetLang, sendResponse);
-    } else if (engine === 'custom') {
-      translateWithCustom(text, targetLang, sendResponse);
-    } else if (engine === 'translatejs') {
-      // translate.js is a full-page DOM translation library (injected via
-      // inject_translatejs_page). Single-text/selection translation falls back
-      // to Google so inline translation still works.
-      translateWithGoogle(text, targetLang, sendResponse);
-    } else {
-      translateWithGoogle(text, targetLang, sendResponse);
-    }
+    const fallback = settings.fallbackEngine || '';
+    console.log('LingoFlow: Selected translation engine:', engine, 'fallback:', fallback, 'targetLang:', targetLang, 'storedEngine:', result.lingoflow_settings && result.lingoflow_settings.translationEngine);
+    translateWithFallback(engine, fallback, text, targetLang, sendResponse);
   });
 }
 
@@ -1299,48 +1319,69 @@ function translateBatch(texts, targetLang, sendResponse) {
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = getDefaultSettings(result.lingoflow_settings || {});
     const engine = settings.translationEngine || 'siliconflow';
-    console.log('LingoFlow: Selected batch translation engine:', engine, `(${list.length} items)`, 'targetLang:', targetLang, 'storedEngine:', result.lingoflow_settings && result.lingoflow_settings.translationEngine);
+    console.log('LingoFlow: Selected batch translation engine:', engine, `(${list.length} items)`, 'fallback:', fallback, 'targetLang:', targetLang, 'storedEngine:', result.lingoflow_settings && result.lingoflow_settings.translationEngine);
+
+    // On an overall batch failure from a dedicated engine, retry once via the
+    // generic per-item path using the configured fallback engine.
+    const onBatchFail = () => {
+      if (fallback && fallback !== engine) {
+        console.warn('LingoFlow: Batch primary engine failed, falling back to', fallback);
+        runGenericBatch(list, targetLang, fallback, '', sendResponse);
+      } else {
+        sendResponse({ success: false, error: 'batch translation failed' });
+      }
+    };
+    const sendWrapped = (resp) => {
+      if (resp && resp.success) sendResponse(resp);
+      else onBatchFail();
+    };
 
     if (engine === 'gemini') {
-      translateBatchWithGemini(list, targetLang, sendResponse);
+      translateBatchWithGemini(list, targetLang, sendWrapped);
       return;
     }
 
     if (engine === 'siliconflow') {
-      translateBatchWithSiliconFlow(list, targetLang, sendResponse);
+      translateBatchWithSiliconFlow(list, targetLang, sendWrapped);
       return;
     }
 
     if (engine === 'youdao') {
-      translateBatchWithYoudao(list, targetLang, sendResponse);
+      translateBatchWithYoudao(list, targetLang, sendWrapped);
       return;
     }
 
     if (engine === 'youdaollm') {
-      translateBatchWithYoudaoLLM(list, targetLang, sendResponse);
+      translateBatchWithYoudaoLLM(list, targetLang, sendWrapped);
       return;
     }
 
     if (engine === 'deepseek') {
-      translateBatchWithDeepSeek(list, targetLang, sendResponse);
+      translateBatchWithDeepSeek(list, targetLang, sendWrapped);
       return;
     }
 
     if (engine === 'baidu') {
-      translateBatchWithBaidu(list, targetLang, sendResponse);
+      translateBatchWithBaidu(list, targetLang, sendWrapped);
       return;
     }
 
     if (engine === 'baidullm') {
-      translateBatchWithBaiduLLM(list, targetLang, sendResponse);
+      translateBatchWithBaiduLLM(list, targetLang, sendWrapped);
       return;
     }
 
     if (engine === 'custom') {
-      translateBatchWithCustom(list, targetLang, sendResponse);
+      translateBatchWithCustom(list, targetLang, sendWrapped);
       return;
     }
 
+    // Generic per-item path (engines without a dedicated batch function, e.g.
+    // microsoft, bailian, mymemory). Honors the per-item fallback engine.
+    runGenericBatch(list, targetLang, engine, fallback, sendResponse);
+  });
+
+  function runGenericBatch(list, targetLang, engine, fallback, sendResponse) {
     const translations = new Array(list.length);
     const concurrency = 3;
     let cursor = 0;
@@ -1352,7 +1393,7 @@ function translateBatch(texts, targetLang, sendResponse) {
         const index = cursor++;
         active++;
 
-        translateOneForBatch(list[index], targetLang, engine)
+        translateOneForBatch(list[index], targetLang, engine, fallback)
           .then(translation => {
             translations[index] = translation;
           })
@@ -1366,7 +1407,7 @@ function translateBatch(texts, targetLang, sendResponse) {
             finished++;
 
             if (finished === list.length) {
-              sendResponse({ success: true, translations, model: 'google' });
+              sendResponse({ success: true, translations, model: engine });
               return;
             }
 
@@ -1376,34 +1417,24 @@ function translateBatch(texts, targetLang, sendResponse) {
     }
 
     runNext();
-  });
+  }
 }
 
-function translateOneForBatch(text, targetLang, engine) {
+function translateOneForBatch(text, targetLang, engine, fallback) {
   return new Promise((resolve) => {
+    let triedFallback = false;
     const respond = (response) => {
       if (response && response.success && response.translation) {
         resolve(response.translation);
+      } else if (fallback && engine !== fallback && !triedFallback) {
+        triedFallback = true;
+        dispatchEngine(fallback, text, targetLang, respond);
       } else {
         resolve(`[LingoFlow translation failed] ${text}`);
       }
     };
 
-    if (engine === 'siliconflow') {
-      translateWithSiliconFlow(text, targetLang, respond);
-    } else if (engine === 'bailian') {
-      translateWithBailian(text, targetLang, respond);
-    } else if (engine === 'microsoft') {
-      translateWithMicrosoft(text, targetLang, respond);
-    } else if (engine === 'gemini') {
-      translateWithGemini(text, targetLang, respond);
-    } else if (engine === 'mymemory') {
-      translateWithMyMemory(text, targetLang, respond);
-    } else if (engine === 'custom') {
-      translateWithCustom(text, targetLang, respond);
-    } else {
-      translateWithGoogle(text, targetLang, respond);
-    }
+    dispatchEngine(engine, text, targetLang, respond);
   });
 }
 

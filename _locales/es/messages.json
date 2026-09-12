@@ -515,6 +515,18 @@
     "message": "Personalizado (compatible con OpenAI)",
     "description": "Custom OpenAI-compatible translation engine option"
   },
+  "fallback_engine": {
+    "message": "Motor de respaldo",
+    "description": "Fallback translation engine setting label"
+  },
+  "fallback_engine_desc": {
+    "message": "Cambia automáticamente a este motor cuando el principal falla o no tiene clave API",
+    "description": "Fallback engine setting description"
+  },
+  "fallback_none": {
+    "message": "Sin respaldo (fallar directamente)",
+    "description": "Fallback engine option: do not fall back"
+  },
   "custom_api_key_label": {
     "message": "Clave API",
     "description": "Custom engine API Key label"

@@ -1933,6 +1933,8 @@ function applyPopupSettings(settings) {
 
   if (translationEngine) {
     translationEngine.value = settings.translationEngine || 'siliconflow';
+    const fallbackEngine = document.getElementById('popup-fallback-engine');
+    if (fallbackEngine) fallbackEngine.value = settings.fallbackEngine || '';
     const isSF = translationEngine.value === 'siliconflow';
     const isMS = translationEngine.value === 'microsoft';
     const isGemini = translationEngine.value === 'gemini';
@@ -2050,6 +2052,7 @@ function applyPopupTheme(theme) {
 function getPopupSettingsFromUI() {
   return {
     translationEngine: document.getElementById('popup-translation-engine')?.value || 'siliconflow',
+    fallbackEngine: document.getElementById('popup-fallback-engine')?.value || '',
     siliconflowApiKey: document.getElementById('popup-siliconflow-key')?.value || '',
     siliconflowModel: document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B',
     siliconflowModelCustom: getCustomModelFromUI('siliconflowModelCustom') || (window.__customModelCache && window.__customModelCache.siliconflow) || '',
@@ -2192,6 +2195,7 @@ function cloneSettings(settings) {
 function getDefaultSettings(overrides = {}) {
   return {
     translationEngine: 'siliconflow',
+    fallbackEngine: '',
     siliconflowApiKey: '',
     siliconflowModel: 'tencent/Hunyuan-MT-7B',
     siliconflowModelCustom: '',
