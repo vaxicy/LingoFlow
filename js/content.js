@@ -3883,8 +3883,14 @@ function mapTargetLang(targetLang) {
       } catch (_) {}
 
       let inserted = false;
+      let insertAfter = anchor;
+      const isDescPanel = anchor.matches && anchor.matches(this.descriptionSelector());
+      if (isDescPanel) {
+        const clip = this.findClippingAncestor(anchor);
+        if (clip && clip.parentElement) insertAfter = clip;
+      }
       try {
-        anchor.insertAdjacentElement('afterend', block);
+        insertAfter.insertAdjacentElement('afterend', block);
         inserted = true;
       } catch (_) {
         return false;
@@ -3897,11 +3903,12 @@ function mapTargetLang(targetLang) {
         anchor.setAttribute('data-lingoflow-rendered', 'true');
         this.markProcessed(anchor);
       } catch (_) {}
-      this.unclampClippingAncestors(block, 8);
+      if (!isDescPanel) this.unclampClippingAncestors(block, 8);
 
       // 插入后仍不可见 → 说明被站点折叠/限高裁掉了：把块上移到最近"不裁剪"的祖先之后，
-      // 保证用户真的能看到译文（否则就是"注入了但页面没反应"）
-      if (inserted && !this.isVisibleElement(block)) {
+      // 保证用户真的能看到译文（否则就是"注入了但页面没反应"）。
+      // 描述面板已经主动插在裁剪层之后，不要再继续上移到页面底部。
+      if (!isDescPanel && inserted && !this.isVisibleElement(block)) {
         let host = block.parentElement;
         let depth = 0;
         while (host && host !== document.body && depth < 10) {
@@ -3922,6 +3929,24 @@ function mapTargetLang(targetLang) {
         }
       }
       return true;
+    },
+
+    // 找最近的“裁剪祖先”（max-height/overflow:hidden 等），描述面板需要插在它之后，
+    // 否则译文会被折叠进看不见的区域。
+    findClippingAncestor(el) {
+      let host = el;
+      let depth = 0;
+      while (host && host !== document.body && depth < 12) {
+        try {
+          const style = window.getComputedStyle(host);
+          const clips = /(hidden|clip)/.test(`${style.overflow} ${style.overflowY} ${style.overflowX}`);
+          const limited = !!style.maxHeight && style.maxHeight !== 'none' && style.maxHeight !== '0px';
+          if (clips || limited) return host;
+        } catch (_) {}
+        host = host.parentElement;
+        depth++;
+      }
+      return null;
     },
 
     // 文本节点级翻译：宿主容器被占用时，找最近块级祖先做锚点后旁挂译文块。
