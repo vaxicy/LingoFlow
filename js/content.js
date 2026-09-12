@@ -2957,6 +2957,9 @@ function mapTargetLang(targetLang) {
       const panelHash = this.hashText(proseText);
       if (this.hasInlineTextBlock(panelHash)) return;   // 面板已渲染
       const panelAnchor = lastProseBlock || mainRoot;
+      console.log('LingoFlow: desc panel anchor candidate', panelAnchor.tagName,
+        panelAnchor.className ? String(panelAnchor.className).split(' ').slice(0, 3).join(' ') : '-',
+        'lastBlock=' + (lastProseBlock ? lastProseBlock.tagName : 'null'));
       units.set(panelAnchor, {
         container: mainRoot,
         anchor: panelAnchor,
@@ -3889,11 +3892,26 @@ function mapTargetLang(targetLang) {
       } catch (_) {}
 
       let inserted = false;
+      if (isDescPanel) {
+        console.log('LingoFlow: rendering desc panel after', anchor.tagName,
+          anchor.className ? String(anchor.className).split(' ').slice(0, 3).join(' ') : '-');
+      }
       try {
         anchor.insertAdjacentElement('afterend', block);
         inserted = true;
       } catch (_) {
         return false;
+      }
+      if (isDescPanel) {
+        try {
+          const p = block.parentElement;
+          const prev = block.previousElementSibling;
+          const r = block.getBoundingClientRect();
+          console.log('LingoFlow: desc panel inserted; parent=' + (p && p.tagName) +
+            ' prev=' + (prev && prev.tagName) +
+            ' rect=' + Math.round(r.width) + 'x' + Math.round(r.height) +
+            '@' + Math.round(r.top) + ',' + Math.round(r.left));
+        } catch (_) {}
       }
       // 标准簿记：让容器级路径知道"这里已经有译文了"（source-id 互链 + processed/rendered），
       // 否则两条渲染路径互不知情 → 双重翻译
