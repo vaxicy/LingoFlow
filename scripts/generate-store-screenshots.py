@@ -316,7 +316,7 @@ def screenshot_03_engines():
     draw = ImageDraw.Draw(img)
     rounded_rect(draw, (x, y, x + w, y + h), COLORS["white"], outline="#e2e8f7", width=2, radius=28)
     rows = [
-        ("engine", "SiliconFlow AI", "Default", "AI translation with free models after sign-up.", COLORS["green"]),
+        ("engine", "SiliconFlow AI", "", "AI translation with free models after sign-up.", COLORS["green"]),
         ("engine", "Microsoft Translator", "API", "Stable and professional for long-term reading.", COLORS["red"]),
         ("engine", "Gemini AI", "API", "More natural, context-aware translations.", COLORS["red"]),
         ("color", "Translation Color", "Blue", "Pick a color to tell original and translated text apart at a glance.", None),
@@ -326,11 +326,14 @@ def screenshot_03_engines():
         if kind == "engine":
             name, tag, desc, tag_color = rest
             draw.text((x + 28, cy), name, fill=COLORS["ink"], font=F["card_title"])
-            tw = draw.textlength(name, font=F["card_title"])
-            tag_x = x + 38 + int(tw)
-            tag_bg = "#d1fae5" if tag_color == COLORS["green"] else "#fee2e2"
-            draw.rounded_rectangle((tag_x, cy, tag_x + 60, cy + 24), radius=12, fill=tag_bg)
-            draw.text((tag_x + 30, cy + 2), tag, fill=tag_color, font=F["tiny"], anchor="ma")
+            if tag:
+                tw = draw.textlength(name, font=F["card_title"])
+                tag_x = x + 38 + int(tw)
+                tag_w = int(draw.textlength(tag, font=F["tiny"])) + 30
+                tag_h = 24
+                tag_bg = "#d1fae5" if tag_color == COLORS["green"] else "#fee2e2"
+                draw.rounded_rectangle((tag_x, cy, tag_x + tag_w, cy + tag_h), radius=12, fill=tag_bg)
+                draw.text((tag_x + tag_w // 2, cy + 3), tag, fill=tag_color, font=F["tiny"], anchor="ma")
             cy += F["card_title"].size + 8
             draw.text((x + 28, cy), desc, fill=COLORS["muted"], font=F["card_body"])
             cy += F["card_body"].size + 26
