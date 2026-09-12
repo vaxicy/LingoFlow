@@ -2869,91 +2869,95 @@ function mapTargetLang(targetLang) {
       return false;
     },
 
-    // 职位描述区域兜底收集：按「文本节点 → 最近的段落级容器」配对，
-    // 不依赖 <p> 标签（LinkedIn 不同布局用 div/span/带 data-display-contents 的包裹层），
-    // 同时绕开通用遍历里会导致整段被跳过的各种判定。
+    // 职位描述区域专用收集（该区域由本函数全权接管，通用遍历会跳过它）：
+    //   - 散文段落（li/ul 之外）→ 聚合为一个「整段译文面板」，旁挂在可见主根之后。
+    //     面板在折叠层之外，绝不会被裁掉（逐段旁挂曾反复落进隐藏副本/被限高层）。
+    //   - li 列表项 → 逐条旁挂在 LI 之后（与现有表现一致）。
     collectJobDescriptionUnits(root, units) {
       const scope = (root && root.querySelectorAll) ? root : document;
-      const descSelectors = [
-        '.jobs-description__content',
-        '.jobs-box__html-content',
-        '.show-more-less-html__markup',
-        '[data-testid="expandable-text-box"]',
-        '[data-testid="expanded-text-below"]',
-        '[data-testid="inline-show-more-text"]'
-      ].join(',');
-
       let descRoots;
       try {
-        descRoots = Array.from(scope.querySelectorAll(descSelectors));
+        descRoots = Array.from(scope.querySelectorAll(this.descriptionSelector()));
       } catch (_) {
         return;
       }
       if (!descRoots.length) return;
 
-      descRoots.forEach(descRoot => {
-        if (descRoot.closest && descRoot.closest('.lingoflow-ui')) return;
-        // 不做展开（un-clamp）：展开只在真正注入译文时做，避免每轮补扫与站点折叠逻辑拉锯。
+      // 只取「可见且文本最多」的根作为主描述区（其余是嵌套/隐藏副本）
+      const candidates = descRoots
+        .filter(r => !r.closest('.lingoflow-ui'))
+        .map(r => ({ root: r, text: this.normalizeText(r.textContent || '') }))
+        .filter(item => item.text.length > 60);
+      if (!candidates.length) return;
+      candidates.sort((a, b) => b.text.length - a.text.length);
+      const mainRoot = candidates[0].root;
+      if (!mainRoot || !this.isVisibleElement(mainRoot)) return;
 
-        let walker;
-        try {
-          walker = document.createTreeWalker(descRoot, NodeFilter.SHOW_TEXT, {
-            acceptNode: (node) => {
-              if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
-              const parent = node.parentElement;
-              if (!parent) return NodeFilter.FILTER_REJECT;
-              if (this.skipTags.has(parent.tagName)) return NodeFilter.FILTER_REJECT;
-              if (parent.closest && parent.closest('[data-lingoflow="true"], .lingoflow-ui')) {
-                return NodeFilter.FILTER_REJECT;
-              }
-              return NodeFilter.FILTER_ACCEPT;
+      let walker;
+      try {
+        walker = document.createTreeWalker(mainRoot, NodeFilter.SHOW_TEXT, {
+          acceptNode: (node) => {
+            if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+            const parent = node.parentElement;
+            if (!parent) return NodeFilter.FILTER_REJECT;
+            if (this.skipTags.has(parent.tagName)) return NodeFilter.FILTER_REJECT;
+            if (parent.closest && parent.closest('[data-lingoflow="true"], .lingoflow-ui')) {
+              return NodeFilter.FILTER_REJECT;
             }
-          });
-        } catch (_) {
-          return;
-        }
-
-        // 该区域统一走「段落锚点旁挂渲染」：容器级渲染在这里会连续踩三个坑——
-        // tooltip（悬停才显示）、整包 reparent（把同容器其它内容/译文一起搬走）、
-        // processed 残留（永久跳过）。所以按段落锚点聚合文本，只在其后旁挂译文块。
-        const anchors = new Map();   // anchor 元素 → 文本片段
-
-        let textNode;
-        while ((textNode = walker.nextNode())) {
-          const ownText = this.normalizeText(textNode.nodeValue);
-          if (!ownText || !this.shouldTranslateText(ownText)) continue;
-          // 只收集真正显示在页面上的文本：LinkedIn 的隐藏副本（折叠副本）也在这里，
-          // 给隐藏副本旁挂译文会得到"块存在但看不到"的假象
-          if (!this.isVisibleTextNode(textNode)) continue;
-
-          const anchor = this.findDescriptionAnchor(textNode);
-          if (!anchor) continue;
-          const parts = anchors.get(anchor) || [];
-          parts.push(ownText);
-          anchors.set(anchor, parts);
-        }
-
-        anchors.forEach((parts, anchor) => {
-          const text = this.normalizeText(parts.join(' '));
-          if (!text || text.length < 12 || !this.shouldTranslateText(text)) return;
-          const hash = this.hashText(text);
-          if (this.hasInlineTextBlock(hash)) return;   // 已渲染过
-
-          // 该锚点已被"容器级渲染"覆盖（内部有译文块，或前后紧邻一个非旁挂的译文块）
-          // → 再旁挂一次会变成双重翻译
-          if (anchor.querySelector && anchor.querySelector('[data-lingoflow="true"]')) return;
-          const neighbours = [anchor.nextElementSibling, anchor.previousElementSibling];
-          const coveredByContainerRender = neighbours.some(el => el && el.hasAttribute &&
-            el.hasAttribute('data-lingoflow') && !el.hasAttribute('data-lingoflow-inline-hash'));
-          if (coveredByContainerRender) return;
-
-          units.set(anchor, {
-            container: anchor,
-            anchor,                                    // 段落锚点：译文块旁挂在其后
-            _anchorHash: hash,
-            textParts: [text]
-          });
+            if (!this.isVisibleTextNode(node)) return NodeFilter.FILTER_REJECT;  // 隐藏副本不要
+            return NodeFilter.FILTER_ACCEPT;
+          }
         });
+      } catch (_) {
+        return;
+      }
+
+      const proseParts = [];
+      const listAnchors = new Map();   // LI 锚点 → 文本片段
+
+      let textNode;
+      while ((textNode = walker.nextNode())) {
+        const ownText = this.normalizeText(textNode.nodeValue);
+        if (!ownText || !this.shouldTranslateText(ownText)) continue;
+
+        const inList = textNode.parentElement.closest('li, ul, ol');
+        if (inList) {
+          // 列表项：逐条旁挂（渲染表现已验证 OK）
+          const anchor = inList.tagName === 'LI' ? inList : inList.closest('li');
+          if (!anchor) continue;
+          const parts = listAnchors.get(anchor) || [];
+          parts.push(ownText);
+          listAnchors.set(anchor, parts);
+          continue;
+        }
+        proseParts.push(ownText);
+      }
+
+      // 1) 列表项逐条旁挂
+      listAnchors.forEach((parts, anchor) => {
+        const text = this.normalizeText(parts.join(' '));
+        if (!text || text.length < 12 || !this.shouldTranslateText(text)) return;
+        const hash = this.hashText(text);
+        if (this.hasInlineTextBlock(hash)) return;   // 已渲染过
+        if (anchor.querySelector && anchor.querySelector('[data-lingoflow="true"]')) return;
+        const neighbours = [anchor.nextElementSibling, anchor.previousElementSibling];
+        const covered = neighbours.some(el => el && el.hasAttribute &&
+          el.hasAttribute('data-lingoflow') && !el.hasAttribute('data-lingoflow-inline-hash'));
+        if (covered) return;
+        units.set(anchor, { container: anchor, anchor, _anchorHash: hash, textParts: [text] });
+      });
+
+      // 2) 散文段落 → 整段译文面板（旁挂在主根之后，折叠层之外）
+      const proseText = this.normalizeText(proseParts.join(' '));
+      if (!proseText || proseText.length < 60 || !this.shouldTranslateText(proseText)) return;
+      if (proseText.length > 9000) return;
+      const panelHash = this.hashText(proseText);
+      if (this.hasInlineTextBlock(panelHash)) return;   // 面板已渲染
+      units.set(mainRoot, {
+        container: mainRoot,
+        anchor: mainRoot,
+        _anchorHash: panelHash,
+        textParts: [proseText]
       });
     },
 
@@ -3073,6 +3077,12 @@ function mapTargetLang(targetLang) {
 
       let node;
       while ((node = walker.nextNode())) {
+        // 描述区域由专用收集器接管（面板 + LI 旁挂），通用遍历不再处理，
+        // 否则两条路径会各翻一遍造成双重翻译
+        if (node.parentElement && node.parentElement.closest &&
+            node.parentElement.closest(this.descriptionSelector())) {
+          continue;
+        }
         let container = this.findTextContainer(node);
         if (!container || container.dataset.lingoflowProcessed === 'true') continue;
 
@@ -3847,6 +3857,18 @@ function mapTargetLang(targetLang) {
       block.style.maxWidth = '100%';
       block.style.marginTop = '0.25em';
       block.style.marginBottom = '0.35em';
+
+      // 面板模式：换职位/内容变化时清掉挂在同一根后面的旧面板，避免堆积
+      if (anchor.matches && anchor.matches(this.descriptionSelector())) {
+        try {
+          let next = anchor.nextElementSibling;
+          while (next && next.hasAttribute && next.hasAttribute('data-lingoflow-inline-hash')) {
+            const stale = next;
+            next = next.nextElementSibling;
+            stale.remove();
+          }
+        } catch (_) {}
+      }
 
       // 清掉同内容的"不可见遗留块"，避免越积越多
       try {
