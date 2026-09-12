@@ -2913,6 +2913,7 @@ function mapTargetLang(targetLang) {
       }
 
       const proseParts = [];
+      const blockTextLens = new Map(); // 块级锚点 → 累计文本长度（Map 保持文档顺序）
       let lastProseBlock = null;
       const listAnchors = new Map();   // LI 锚点 → 文本片段
 
@@ -2933,7 +2934,10 @@ function mapTargetLang(targetLang) {
         }
         proseParts.push(ownText);
         const block = this.findDescriptionAnchor(textNode);
-        if (block && (block === mainRoot || mainRoot.contains(block))) lastProseBlock = block;
+        if (block && (block === mainRoot || mainRoot.contains(block))) {
+          lastProseBlock = block;
+          blockTextLens.set(block, (blockTextLens.get(block) || 0) + ownText.length);
+        }
       }
 
       // 1) 列表项逐条旁挂
@@ -2956,7 +2960,13 @@ function mapTargetLang(targetLang) {
       if (proseText.length > 9000) return;
       const panelHash = this.hashText(proseText);
       if (this.hasInlineTextBlock(panelHash)) return;   // 面板已渲染
-      const panelAnchor = lastProseBlock || mainRoot;
+      // 面板锚点 = 最后一个「长段落」块（累计 ≥100 字符）。
+      // 尾部的 Company / Job ID 等短行不属于描述主体，锚到它们会把面板带到区域最底部。
+      let panelAnchor = null;
+      for (const [block, len] of blockTextLens) {
+        if (len >= 100) panelAnchor = block;
+      }
+      if (!panelAnchor) panelAnchor = lastProseBlock || mainRoot;   // 短描述兜底：维持原行为
       console.log('LingoFlow: desc panel anchor candidate', panelAnchor.tagName,
         panelAnchor.className ? String(panelAnchor.className).split(' ').slice(0, 3).join(' ') : '-',
         'lastBlock=' + (lastProseBlock ? lastProseBlock.tagName : 'null'));
