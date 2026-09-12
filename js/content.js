@@ -2912,7 +2912,8 @@ function mapTargetLang(targetLang) {
         return;
       }
 
-      const proseParts = [];
+      let proseTextRaw = '';           // 散文全文（段落之间用 \n 分隔）
+      let prevProseNode = null;        // 上一个散文文本节点（判断段落边界用）
       const blockTextLens = new Map(); // 块级锚点 → 累计文本长度（Map 保持文档顺序）
       let lastProseBlock = null;
       let firstLongTextNode = null;    // 扁平 DOM 用：第一个 ≥100 字符的散文文本节点
@@ -2934,7 +2935,11 @@ function mapTargetLang(targetLang) {
           listAnchors.set(anchor, parts);
           continue;
         }
-        proseParts.push(ownText);
+        if (proseTextRaw) {
+          proseTextRaw += this.hasParagraphBreakBetween(prevProseNode, textNode) ? '\n' : ' ';
+        }
+        proseTextRaw += ownText;
+        prevProseNode = textNode;
         if (ownText.length >= 100) {
           if (!firstLongTextNode) firstLongTextNode = textNode;
           lastLongTextNode = textNode;
@@ -2961,7 +2966,8 @@ function mapTargetLang(targetLang) {
       });
 
       // 2) 散文段落 → 整段译文面板（旁挂在主根之后，折叠层之外）
-      const proseText = this.normalizeText(proseParts.join(' '));
+      // 注意保留 \n：面板用 pre-line 渲染，按原文段落分行
+      const proseText = (proseTextRaw || '').trim();
       if (!proseText || proseText.length < 60 || !this.shouldTranslateText(proseText)) return;
       if (proseText.length > 9000) return;
       const panelHash = this.hashText(proseText);
@@ -3011,6 +3017,45 @@ function mapTargetLang(targetLang) {
       console.log('LingoFlow: created description panel unit, proseChars=' + proseText.length,
         'anchor=' + (panelAnchor.tagName || '?') + (panelAnchor.className ? '.' + String(panelAnchor.className).split(' ')[0] : '') +
         ' hash=' + panelHash.substring(0, 16));
+    },
+
+    // 两个文本节点之间是否存在段落边界（<br> 或块级元素）→ 决定面板文本里用换行还是空格
+    hasParagraphBreakBetween(prev, cur) {
+      if (!prev || !cur || !prev.isConnected || !cur.isConnected) return true;
+      const isBlockLike = (el) => {
+        if (!el || el.nodeType !== 1) return false;
+        if (el.tagName === 'BR') return true;
+        if (/^(DIV|P|LI|UL|OL|SECTION|ARTICLE|BLOCKQUOTE|H[1-6]|TABLE|TR)$/.test(el.tagName)) return true;
+        try {
+          const d = window.getComputedStyle(el).display;
+          return /^(block|list-item|flow-root|table)/.test(d) || d.indexOf('flex') === 0 || d.indexOf('grid') === 0;
+        } catch (_) { return false; }
+      };
+      // 最近公共祖先
+      const ancestors = new Set();
+      let n = prev;
+      while (n) { ancestors.add(n); n = n.parentNode; }
+      let lca = cur;
+      while (lca && !ancestors.has(lca)) lca = lca.parentNode;
+      if (!lca) return true;
+      // prev → lca：沿途检查每个层级的后续兄弟
+      n = prev;
+      while (n && n !== lca) {
+        for (let s = n.nextSibling; s; s = s.nextSibling) {
+          if (isBlockLike(s)) return true;
+        }
+        n = n.parentNode;
+      }
+      // cur → lca：沿途检查每个层级的前驱兄弟（碰到 prev 所在子树即停）
+      n = cur;
+      while (n && n !== lca) {
+        for (let s = n.previousSibling; s; s = s.previousSibling) {
+          if (s === prev || (s.contains && s.contains(prev))) break;
+          if (isBlockLike(s)) return true;
+        }
+        n = n.parentNode;
+      }
+      return false;
     },
 
     // 段落级锚点：从文本节点向上找第一个「块级渲染 且 文本量在段落量级(≤2200字符)」的祖先。
@@ -3234,7 +3279,8 @@ function mapTargetLang(targetLang) {
           anchorHash: unit._anchorHash || null,
           descPanel: !!unit._descPanel,               // 描述面板标记（必须透传，否则按普通内联块处理）
           insertBefore: unit._insertBefore || null,   // 描述面板的精确插入点（扁平 DOM）
-          text: this.normalizeText(unit.textParts.join(' ')),
+          // 单片段（描述面板）保留原文 \n 段落结构；多片段仍按空格合并
+          text: unit.textParts.length === 1 ? unit.textParts[0] : this.normalizeText(unit.textParts.join(' ')),
           targetLang: mapTargetLang(state.targetLanguage)  // 按设置的目标语言（中/英/西）
         }))
         .filter(unit => this.shouldTranslateText(unit.text));
@@ -3936,6 +3982,7 @@ function mapTargetLang(targetLang) {
       block.textContent = translation;
       block.style.writingMode = 'horizontal-tb';
       block.style.whiteSpace = 'normal';
+      if (isDescPanel) block.style.whiteSpace = 'pre-line';   // 面板按原文段落分行
       block.style.wordBreak = 'break-word';
       block.style.overflowWrap = 'anywhere';
       block.style.maxWidth = '100%';
@@ -5066,6 +5113,19 @@ function mapTargetLang(targetLang) {
         if (e.target && e.target.closest && e.target.closest('.lingoflow-ui')) return;
         requestRepair('click');
       }, true);
+
+      // 3) 滚动：LinkedIn 的职位列表是虚拟化渲染，滚动会重挂载卡片节点，
+      //    已注入的译文被整批擦掉且无人恢复（表现为"译文随滚动变化/丢失"）。
+      //    用节流滚动补扫（冷却 2s + requestRepair 自带 1.2s 冷却/0.9s 防抖），
+      //    只补缺失的译文（幂等），不删不重译，不会引起拉锯闪烁。
+      //    scroll 事件不冒泡，必须用 capture 才能捕获右栏/列表容器的滚动。
+      let scrollCooling = false;
+      document.addEventListener('scroll', () => {
+        if (scrollCooling) return;
+        scrollCooling = true;
+        window.setTimeout(() => { scrollCooling = false; }, 2000);
+        requestRepair('scroll');
+      }, { capture: true, passive: true });
     },
 
     async translatePage() {
