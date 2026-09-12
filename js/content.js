@@ -2915,6 +2915,7 @@ function mapTargetLang(targetLang) {
       const proseParts = [];
       const blockTextLens = new Map(); // 块级锚点 → 累计文本长度（Map 保持文档顺序）
       let lastProseBlock = null;
+      let lastLongTextNode = null;     // 扁平 DOM 用：最后一个 ≥100 字符的散文文本节点
       const listAnchors = new Map();   // LI 锚点 → 文本片段
 
       let textNode;
@@ -2933,6 +2934,7 @@ function mapTargetLang(targetLang) {
           continue;
         }
         proseParts.push(ownText);
+        if (ownText.length >= 100) lastLongTextNode = textNode;
         const block = this.findProseBlock(textNode, mainRoot);
         if (block && (block === mainRoot || mainRoot.contains(block))) {
           lastProseBlock = block;
@@ -2967,14 +2969,34 @@ function mapTargetLang(targetLang) {
         if (len >= 100) panelAnchor = block;
       }
       if (!panelAnchor) panelAnchor = lastProseBlock || mainRoot;   // 短描述兜底：维持原行为
+
+      // 扁平 DOM（正文段落只是 mainRoot 下的裸文本节点 + <br> 分隔，没有任何段落级元素）
+      // 时，块级锚点只能落到 mainRoot → 面板会被插到整个区域最底部。
+      // 此时改用「最后一个长文本节点」定位：面板插到它后面第一个非 <br> 元素之前，
+      // 正好落在描述正文最后一段之下、后续章节（Basic Qualifications 等）之上。
+      let insertBeforeEl = null;
+      if (lastLongTextNode && lastLongTextNode.isConnected) {
+        try {
+          for (const el of mainRoot.querySelectorAll('*')) {
+            if (el.tagName !== 'BR' &&
+                (el.compareDocumentPosition(lastLongTextNode) & Node.DOCUMENT_POSITION_PRECEDING)) {
+              insertBeforeEl = el;
+              break;
+            }
+          }
+        } catch (_) {}
+      }
+
       console.log('LingoFlow: desc panel anchor candidate', panelAnchor.tagName,
         panelAnchor.className ? String(panelAnchor.className).split(' ').slice(0, 3).join(' ') : '-',
-        'lastBlock=' + (lastProseBlock ? lastProseBlock.tagName : 'null'));
+        'lastBlock=' + (lastProseBlock ? lastProseBlock.tagName : 'null'),
+        'insertBefore=' + (insertBeforeEl ? insertBeforeEl.tagName : 'null'));
       units.set(panelAnchor, {
         container: mainRoot,
         anchor: panelAnchor,
         _anchorHash: panelHash,
         _descPanel: true,
+        _insertBefore: insertBeforeEl,
         textParts: [proseText]
       });
       console.log('LingoFlow: created description panel unit, proseChars=' + proseText.length,
@@ -3201,6 +3223,7 @@ function mapTargetLang(targetLang) {
           textNode: unit.textNode || null,   // 文本节点级单元（容器被占用时的兜底）
           anchor: unit.anchor || null,       // 段落锚点单元（描述区域专用旁挂渲染）
           anchorHash: unit._anchorHash || null,
+          insertBefore: unit._insertBefore || null,   // 描述面板的精确插入点（扁平 DOM）
           text: this.normalizeText(unit.textParts.join(' ')),
           targetLang: mapTargetLang(state.targetLanguage)  // 按设置的目标语言（中/英/西）
         }))
@@ -3881,7 +3904,7 @@ function mapTargetLang(targetLang) {
     // 段落锚点旁挂渲染：在锚点元素**之后**插入一个纯译文块，
     // 完全不 reparent 站点内容、不改站点元素属性 → 不会踩
     // tooltip / 整包搬走 / processed 残留 这三个坑。
-    renderAnchorTranslation(anchor, translation, hash, isDescPanel = false) {
+    renderAnchorTranslation(anchor, translation, hash, isDescPanel = false, insertBeforeEl = null) {
       if (!anchor || !anchor.isConnected || !anchor.parentNode) return false;
       const key = hash || this.hashText(translation);
       if (this.hasInlineTextBlock(key)) return true;   // 已渲染过
@@ -3934,7 +3957,11 @@ function mapTargetLang(targetLang) {
           anchor.className ? String(anchor.className).split(' ').slice(0, 3).join(' ') : '-');
       }
       try {
-        anchor.insertAdjacentElement('afterend', block);
+        if (isDescPanel && insertBeforeEl && insertBeforeEl.isConnected && insertBeforeEl.parentNode) {
+          insertBeforeEl.insertAdjacentElement('beforebegin', block);   // 扁平 DOM：插到正文最后一段之后
+        } else {
+          anchor.insertAdjacentElement('afterend', block);
+        }
         inserted = true;
       } catch (_) {
         return false;
@@ -4526,7 +4553,7 @@ function mapTargetLang(targetLang) {
             if (!unit.anchor || !unit.anchor.isConnected) return;
             const joined = await translateInPieces(text, unit.targetLang);
             if (!joined) return;
-            if (this.renderAnchorTranslation(unit.anchor, joined, unit.anchorHash, !!unit._descPanel)) {
+            if (this.renderAnchorTranslation(unit.anchor, joined, unit.anchorHash, !!unit._descPanel, unit.insertBefore)) {
               successCount++;
               console.log('LingoFlow: chunk retry rendered anchored paragraph, len=', text.length);
             }
@@ -4568,7 +4595,7 @@ function mapTargetLang(targetLang) {
             failCount++;
             return;
           }
-          if (this.renderAnchorTranslation(unit.anchor, translation, unit.anchorHash, !!unit._descPanel)) successCount++;
+          if (this.renderAnchorTranslation(unit.anchor, translation, unit.anchorHash, !!unit._descPanel, unit.insertBefore)) successCount++;
           else {
             scheduleChunkRetry(unit, renderMode);
             failCount++;
