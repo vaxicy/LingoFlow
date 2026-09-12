@@ -2913,6 +2913,7 @@ function mapTargetLang(targetLang) {
       }
 
       const proseParts = [];
+      let lastProseBlock = null;
       const listAnchors = new Map();   // LI 锚点 → 文本片段
 
       let textNode;
@@ -2931,6 +2932,8 @@ function mapTargetLang(targetLang) {
           continue;
         }
         proseParts.push(ownText);
+        const block = this.findDescriptionAnchor(textNode);
+        if (block && (block === mainRoot || mainRoot.contains(block))) lastProseBlock = block;
       }
 
       // 1) 列表项逐条旁挂
@@ -2953,14 +2956,17 @@ function mapTargetLang(targetLang) {
       if (proseText.length > 9000) return;
       const panelHash = this.hashText(proseText);
       if (this.hasInlineTextBlock(panelHash)) return;   // 面板已渲染
-      units.set(mainRoot, {
+      const panelAnchor = lastProseBlock || mainRoot;
+      units.set(panelAnchor, {
         container: mainRoot,
-        anchor: mainRoot,
+        anchor: panelAnchor,
         _anchorHash: panelHash,
+        _descPanel: true,
         textParts: [proseText]
       });
       console.log('LingoFlow: created description panel unit, proseChars=' + proseText.length,
-        'hash=' + panelHash.substring(0, 16));
+        'anchor=' + (panelAnchor.tagName || '?') + (panelAnchor.className ? '.' + String(panelAnchor.className).split(' ')[0] : '') +
+        ' hash=' + panelHash.substring(0, 16));
     },
 
     // 找"段落锚点"：文本所在的最小块级祖先（没有就退到最近的非内联祖先）。
@@ -3835,7 +3841,7 @@ function mapTargetLang(targetLang) {
     // 段落锚点旁挂渲染：在锚点元素**之后**插入一个纯译文块，
     // 完全不 reparent 站点内容、不改站点元素属性 → 不会踩
     // tooltip / 整包搬走 / processed 残留 这三个坑。
-    renderAnchorTranslation(anchor, translation, hash) {
+    renderAnchorTranslation(anchor, translation, hash, isDescPanel = false) {
       if (!anchor || !anchor.isConnected || !anchor.parentNode) return false;
       const key = hash || this.hashText(translation);
       if (this.hasInlineTextBlock(key)) return true;   // 已渲染过
@@ -3851,7 +3857,7 @@ function mapTargetLang(targetLang) {
       block.className = 'lingoflow-inline-translation';
       block.setAttribute('data-lingoflow', 'true');
       block.setAttribute('data-lingoflow-inline-hash', key);
-      if (anchor.matches && anchor.matches(this.descriptionSelector())) {
+      if (isDescPanel) {
         block.setAttribute('data-lingoflow-desc-panel', '1');
       }
       block.textContent = translation;
@@ -3883,14 +3889,8 @@ function mapTargetLang(targetLang) {
       } catch (_) {}
 
       let inserted = false;
-      let insertAfter = anchor;
-      const isDescPanel = anchor.matches && anchor.matches(this.descriptionSelector());
-      if (isDescPanel) {
-        const clip = this.findClippingAncestor(anchor);
-        if (clip && clip.parentElement) insertAfter = clip;
-      }
       try {
-        insertAfter.insertAdjacentElement('afterend', block);
+        anchor.insertAdjacentElement('afterend', block);
         inserted = true;
       } catch (_) {
         return false;
@@ -3907,7 +3907,7 @@ function mapTargetLang(targetLang) {
 
       // 插入后仍不可见 → 说明被站点折叠/限高裁掉了：把块上移到最近"不裁剪"的祖先之后，
       // 保证用户真的能看到译文（否则就是"注入了但页面没反应"）。
-      // 描述面板已经主动插在裁剪层之后，不要再继续上移到页面底部。
+      // 描述面板锚点已经是最后一段，尽量保持原位；不要再上移到页面底部。
       if (!isDescPanel && inserted && !this.isVisibleElement(block)) {
         let host = block.parentElement;
         let depth = 0;
@@ -4471,7 +4471,7 @@ function mapTargetLang(targetLang) {
             if (!unit.anchor || !unit.anchor.isConnected) return;
             const joined = await translateInPieces(text, unit.targetLang);
             if (!joined) return;
-            if (this.renderAnchorTranslation(unit.anchor, joined, unit.anchorHash)) {
+            if (this.renderAnchorTranslation(unit.anchor, joined, unit.anchorHash, !!unit._descPanel)) {
               successCount++;
               console.log('LingoFlow: chunk retry rendered anchored paragraph, len=', text.length);
             }
@@ -4513,7 +4513,7 @@ function mapTargetLang(targetLang) {
             failCount++;
             return;
           }
-          if (this.renderAnchorTranslation(unit.anchor, translation, unit.anchorHash)) successCount++;
+          if (this.renderAnchorTranslation(unit.anchor, translation, unit.anchorHash, !!unit._descPanel)) successCount++;
           else {
             scheduleChunkRetry(unit, renderMode);
             failCount++;
