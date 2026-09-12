@@ -2912,15 +2912,12 @@ function mapTargetLang(targetLang) {
         return;
       }
 
-      // 先确定“描述散文”的范围：mainRoot 内第一个列表/标题之前的 <p> 段落。
+      // 先确定“描述散文”的范围：mainRoot 内第一个列表/标题之前的所有文本。
       // LinkedIn 的描述根经常把 Company / Job ID 等后续章节也包进来，
       // 只靠文本 walking 会把它们当成散文，导致面板锚到页面底部。
       const boundary = mainRoot.querySelector('ul, ol, h1, h2, h3, h4, h5, h6, [role="heading"]');
-      const allPs = Array.from(mainRoot.querySelectorAll('p'));
-      const descPs = boundary
-        ? allPs.filter(p => (p.compareDocumentPosition(boundary) & Node.DOCUMENT_POSITION_FOLLOWING))
-        : allPs;
-      const descSet = new Set(descPs);
+      const beforeBoundary = (node) =>
+        !boundary || !!(node.compareDocumentPosition(boundary) & Node.DOCUMENT_POSITION_FOLLOWING);
 
       const proseParts = [];
       let lastProseBlock = null;
@@ -2930,6 +2927,7 @@ function mapTargetLang(targetLang) {
       while ((textNode = walker.nextNode())) {
         const ownText = this.normalizeText(textNode.nodeValue);
         if (!ownText || !this.shouldTranslateText(ownText)) continue;
+        if (!beforeBoundary(textNode)) continue;   // 边界之后不收集
 
         const parent = textNode.parentElement;
         if (parent.closest('h1, h2, h3, h4, h5, h6, [role="heading"]')) continue;
@@ -2946,7 +2944,6 @@ function mapTargetLang(targetLang) {
         }
         const block = this.findDescriptionAnchor(textNode);
         if (!block || (block !== mainRoot && !mainRoot.contains(block))) continue;
-        if (descSet.size && !descSet.has(block)) continue;   // 只收集描述段落的文本
         proseParts.push(ownText);
         lastProseBlock = block;
       }
@@ -2967,6 +2964,7 @@ function mapTargetLang(targetLang) {
 
       // 2) 散文段落 → 整段译文面板（旁挂在主根之后，折叠层之外）
       const proseText = this.normalizeText(proseParts.join(' '));
+      console.log('LingoFlow: desc prose collected', proseParts.length, 'parts,', proseText.length, 'chars, boundary=', boundary ? boundary.tagName : 'none', 'lastBlock=', lastProseBlock ? lastProseBlock.tagName : 'null');
       if (!proseText || proseText.length < 60 || !this.shouldTranslateText(proseText)) return;
       if (proseText.length > 9000) return;
       const panelHash = this.hashText(proseText);
