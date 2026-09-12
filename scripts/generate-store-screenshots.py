@@ -316,7 +316,7 @@ def screenshot_03_engines():
     draw = ImageDraw.Draw(img)
     rounded_rect(draw, (x, y, x + w, y + h), COLORS["white"], outline="#e2e8f7", width=2, radius=28)
     rows = [
-        ("engine", "SiliconFlow AI", "", "AI translation with free models after sign-up.", COLORS["green"]),
+        ("engine", "SiliconFlow AI", "API", "AI translation with free models after sign-up.", COLORS["red"]),
         ("engine", "Microsoft Translator", "API", "Stable and professional for long-term reading.", COLORS["red"]),
         ("engine", "Gemini AI", "API", "More natural, context-aware translations.", COLORS["red"]),
         ("color", "Translation Color", "Blue", "Pick a color to tell original and translated text apart at a glance.", None),
