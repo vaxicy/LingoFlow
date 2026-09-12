@@ -116,8 +116,7 @@ Download from the [Chrome Web Store](https://chromewebstore.google.com/detail/li
 
 ### Setting Up Translation Engines / 设置翻译引擎
 
-- **默认引擎（SiliconFlow AI）** — 注册 [siliconflow.cn](https://siliconflow.cn) 即可获得免费额度，把 API Key 填入设置即可使用。
-- **其它引擎（需要 Key）** — Gemini / Microsoft / 有道 / 百度 / 百炼 / DeepSeek / 自定义端点均需在对应平台申请 API Key 并在设置中填写。请参阅设置面板中的 **API Setup Guide / API 配置指南** 获取分步指引。
+- 所有需要 API Key 的引擎（SiliconFlow / Gemini / Microsoft / 有道 / 百度 / 百炼 / DeepSeek / 自定义端点），请在对应平台申请 Key 后在扩展设置中填写。设置面板提供 **API Setup Guide / API 配置指南**，可根据所选引擎查看分步指引。
 
 ---
 
