@@ -3994,7 +3994,10 @@ function mapTargetLang(targetLang) {
         anchor.setAttribute('data-lingoflow-rendered', 'true');
         this.markProcessed(anchor);
       } catch (_) {}
-      if (!isDescPanel) this.unclampClippingAncestors(block, 8);
+      // 描述面板也要解裁剪：插入那一刻描述往往还处于"see more"折叠态（max-height 裁剪），
+      // 块在内里不可见 → 自愈逻辑会把面板挪到/重渲染到区域底部。
+      // unclamp 只动 max-height 和折叠 class，绝不碰 overflow（滚动容器安全）。
+      this.unclampClippingAncestors(block, 8);
 
       // 插入后仍不可见 → 说明被站点折叠/限高裁掉了：把块上移到最近"不裁剪"的祖先之后，
       // 保证用户真的能看到译文（否则就是"注入了但页面没反应"）。
