@@ -1139,10 +1139,6 @@
     "message": "前往百度大模型翻译",
     "description": "百度大模型 CTA"
   },
-  "guide_note": {
-    "message": "💡 <strong>提示：</strong>默认引擎为硅基流动 AI，注册后即可获得免费模型额度，把 API Key 填入设置即可使用。",
-    "description": "接入教程底部提示"
-  },
   "model_custom_option": {
     "message": "Custom (手动输入模型)",
     "description": "模型下拉最后一项：选自己输入模型名"

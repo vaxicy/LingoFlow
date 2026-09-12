@@ -1139,10 +1139,6 @@
     "message": "Ir a la traducción con modelo grande de Baidu",
     "description": "Baidu LLM CTA"
   },
-  "guide_note": {
-    "message": "💡 <strong>Consejo:</strong> El motor predeterminado es SiliconFlow AI: regístrate para obtener cuota gratuita de modelos y pega tu clave API en los ajustes.",
-    "description": "Setup guide footer note"
-  },
   "model_custom_option": {
     "message": "Personalizado (escribe el modelo manualmente)",
     "description": "Last item in model select: type a model id yourself"

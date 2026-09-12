@@ -1139,10 +1139,6 @@
     "message": "Go to Baidu LLM translation",
     "description": "Baidu LLM CTA"
   },
-  "guide_note": {
-    "message": "💡 <strong>Tip:</strong> The default engine is SiliconFlow AI — sign up to get free model quota, then paste your API key in settings.",
-    "description": "Setup guide footer note"
-  },
   "model_custom_option": {
     "message": "Custom (type model manually)",
     "description": "Last item in model select: type a model id yourself"
