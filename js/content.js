@@ -4402,6 +4402,32 @@ function mapTargetLang(targetLang) {
       return chunks;
     },
 
+    // LinkedIn 预翻译隐匿：开始翻译前把主内容区（右侧详情 + 左侧列表）设为透明，
+    // 译文逐批渲染时用户看不到「跳着出」的过程；译完后再统一淡入（见 revealLinkedInStealth）。
+    // 其它网站不启用（它们已稳定，没必要遮罩）。
+    applyLinkedInStealth() {
+      if (!/(^|\.)linkedin\.com$/.test(location.hostname || '')) return null;
+      const sel = '.jobs-search__job-details, .jobs-details__main-content, ' +
+        '.jobs-search__results-list, [data-testid="jobsearch-jobdetails"], ' +
+        '.scaffold-layout__detail, .jobs-details';
+      const els = Array.from(document.querySelectorAll(sel))
+        .filter(el => el.getClientRects().length > 0);
+      if (!els.length) return null;
+      els.forEach(el => el.classList.add('lingoflow-linkedin-stealth'));
+      return els;
+    },
+
+    revealLinkedInStealth(els) {
+      if (!els || !els.length) return;
+      // 下一帧再加 reveal，确保 transition 能触发淡入
+      requestAnimationFrame(() => els.forEach(el => el.classList.add('lingoflow-reveal')));
+      // 过渡结束后移除标记，避免残留影响后续交互/重渲染
+      setTimeout(() => els.forEach(el => {
+        el.classList.remove('lingoflow-linkedin-stealth');
+        el.classList.remove('lingoflow-reveal');
+      }), 700);
+    },
+
     async translateAndRenderUnits(units, renderMode) {
       // 嵌套单元过滤：若某单元容器包含同批其他单元的容器，丢弃外层单元（只译叶子）。
       // 否则译文模式隐藏外层容器的 original div 时，内层已渲染的译文块会被一起藏掉，
@@ -4422,12 +4448,14 @@ function mapTargetLang(targetLang) {
         });
       }
 
-      const chunks = this.chunkUnits(units, 10);
+      // LinkedIn：批次调大、并发略升 → 减少「分批逐块冒出」的闪烁感（方案 C）
+      const isLi = /(^|\.)linkedin\.com$/.test(location.hostname || '');
+      const chunks = this.chunkUnits(units, isLi ? 40 : 10);
       let chunkCursor = 0;
       let successCount = 0;
       let failCount = 0;
       let stoppedByInvalidContext = false;
-      const concurrency = 2;
+      const concurrency = isLi ? 3 : 2;
 
       // 句级分组：收集同一容器的所有句级翻译结果，统一渲染
       const sentenceGroups = new Map();  // groupId → { unit, translation }[]
@@ -5137,6 +5165,7 @@ function mapTargetLang(targetLang) {
     },
 
     async enableTranslationMode() {
+      let stealthEls = null;
       try {
         if (state.isTranslating) {
           UI.showNotification(statusText('translationInProgress'));
@@ -5208,6 +5237,9 @@ function mapTargetLang(targetLang) {
         // Show persistent notification (won't auto-dismiss until result comes in)
         UI.showNotification(statusText('found', units.length), true);
 
+        // LinkedIn：翻译开始前隐藏主内容区，译文逐批渲染时用户看不到跳闪；译完统一淡入
+        stealthEls = this.applyLinkedInStealth();
+
         const result = await this.translateAndRenderUnits(units, 'translation');
         const { successCount, failCount, stoppedByInvalidContext } = result;
 
@@ -5236,6 +5268,7 @@ function mapTargetLang(targetLang) {
         console.error('LingoFlow: enableTranslationMode error:', err);
         UI.showNotification(statusText('translationFailed'));
       } finally {
+        this.revealLinkedInStealth(stealthEls);
         state.isTranslating = false;
       }
     },
@@ -5252,6 +5285,7 @@ function mapTargetLang(targetLang) {
     },
 
     async enableBilingualMode() {
+      let stealthEls = null;
       try {
         if (state.isTranslating) {
           UI.showNotification(statusText('translationInProgress'));
@@ -5299,6 +5333,8 @@ function mapTargetLang(targetLang) {
         // Show persistent notification (won't auto-dismiss until result comes in)
         UI.showNotification(statusText('found', units.length), true);
 
+        stealthEls = this.applyLinkedInStealth();
+
         const result = await this.translateAndRenderUnits(units, 'bilingual');
         const { successCount, failCount, stoppedByInvalidContext } = result;
 
@@ -5325,6 +5361,7 @@ function mapTargetLang(targetLang) {
         console.error('LingoFlow: enableBilingualMode error:', err);
         UI.showNotification(statusText('translationFailed'));
       } finally {
+        this.revealLinkedInStealth(stealthEls);
         state.isTranslating = false;
       }
     },

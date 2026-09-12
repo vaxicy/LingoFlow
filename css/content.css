@@ -351,6 +351,18 @@
   transform: translateX(-50%) translateY(10px);
 }
 
+/* LinkedIn 预翻译隐匿 + 一次性淡入：翻译进行中隐藏主内容区，避免逐块译文"跳着"出现造成闪烁；
+   全部批次译完后再加 .lingoflow-reveal 触发淡入（见 content.js applyLinkedInStealth/revealLinkedInStealth） */
+.lingoflow-linkedin-stealth {
+  opacity: 0 !important;
+  transition: opacity 0.35s ease !important;
+  pointer-events: none !important;
+}
+.lingoflow-linkedin-stealth.lingoflow-reveal {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
 /* Bilingual Mode */
 .lingoflow-block {
   max-width: 100% !important;
