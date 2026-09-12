@@ -2912,9 +2912,18 @@ function mapTargetLang(targetLang) {
         return;
       }
 
+      // 先确定“描述散文”的范围：mainRoot 内第一个列表/标题之前的 <p> 段落。
+      // LinkedIn 的描述根经常把 Company / Job ID 等后续章节也包进来，
+      // 只靠文本 walking 会把它们当成散文，导致面板锚到页面底部。
+      const boundary = mainRoot.querySelector('ul, ol, h1, h2, h3, h4, h5, h6, [role="heading"]');
+      const allPs = Array.from(mainRoot.querySelectorAll('p'));
+      const descPs = boundary
+        ? allPs.filter(p => (p.compareDocumentPosition(boundary) & Node.DOCUMENT_POSITION_FOLLOWING))
+        : allPs;
+      const descSet = new Set(descPs);
+
       const proseParts = [];
       let lastProseBlock = null;
-      let proseEnded = false;           // 遇到“主要职责/公司”等标题后，散文段落终止
       const listAnchors = new Map();   // LI 锚点 → 文本片段
 
       let textNode;
@@ -2923,11 +2932,7 @@ function mapTargetLang(targetLang) {
         if (!ownText || !this.shouldTranslateText(ownText)) continue;
 
         const parent = textNode.parentElement;
-        const inHeading = !!parent.closest('h1, h2, h3, h4, h5, h6, [role="heading"]');
-        if (inHeading) {
-          proseEnded = true;   // 标题之后不再计入散文
-          continue;
-        }
+        if (parent.closest('h1, h2, h3, h4, h5, h6, [role="heading"]')) continue;
 
         const inList = parent.closest('li, ul, ol');
         if (inList) {
@@ -2939,10 +2944,11 @@ function mapTargetLang(targetLang) {
           listAnchors.set(anchor, parts);
           continue;
         }
-        if (proseEnded) continue;   // 标题之后的普通文本（如公司简介）不混入描述散文
-        proseParts.push(ownText);
         const block = this.findDescriptionAnchor(textNode);
-        if (block && (block === mainRoot || mainRoot.contains(block))) lastProseBlock = block;
+        if (!block || (block !== mainRoot && !mainRoot.contains(block))) continue;
+        if (descSet.size && !descSet.has(block)) continue;   // 只收集描述段落的文本
+        proseParts.push(ownText);
+        lastProseBlock = block;
       }
 
       // 1) 列表项逐条旁挂
@@ -2968,7 +2974,7 @@ function mapTargetLang(targetLang) {
       const panelAnchor = lastProseBlock || mainRoot;
       console.log('LingoFlow: desc panel anchor candidate', panelAnchor.tagName,
         panelAnchor.className ? String(panelAnchor.className).split(' ').slice(0, 3).join(' ') : '-',
-        'lastBlock=' + (lastProseBlock ? lastProseBlock.tagName : 'null'));
+        'descPs=' + descPs.length, 'lastBlock=' + (lastProseBlock ? lastProseBlock.tagName : 'null'));
       units.set(panelAnchor, {
         container: mainRoot,
         anchor: panelAnchor,
