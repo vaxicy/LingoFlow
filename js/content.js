@@ -2970,9 +2970,6 @@ function mapTargetLang(targetLang) {
       const panelHash = this.hashText(proseText);
       if (this.hasInlineTextBlock(panelHash)) return;   // 面板已渲染
       const panelAnchor = lastProseBlock || mainRoot;
-      console.log('LingoFlow: desc panel anchor candidate', panelAnchor.tagName,
-        panelAnchor.className ? String(panelAnchor.className).split(' ').slice(0, 3).join(' ') : '-',
-        'descPs=' + descPs.length, 'lastBlock=' + (lastProseBlock ? lastProseBlock.tagName : 'null'));
       units.set(panelAnchor, {
         container: mainRoot,
         anchor: panelAnchor,
@@ -3169,7 +3166,12 @@ function mapTargetLang(targetLang) {
       // LinkedIn / 招聘站点：职位描述区域兜底收集。
       // 该区域的段落常因「祖先容器被判已有译文」「UI chrome 误判」「折叠双副本」等原因
       // 在通用遍历里整段漏掉，这里按段落（p/li/h3/h4/blockquote）直接补收集。
-      this.collectJobDescriptionUnits(root, units);
+      // 用 try/catch 隔离：描述区收集出问题绝不能拖垮主收集流程。
+      try {
+        this.collectJobDescriptionUnits(root, units);
+      } catch (err) {
+        console.warn('LingoFlow: desc collect error:', err);
+      }
 
       const rawUnits = Array.from(units.values())
         .map(unit => ({
