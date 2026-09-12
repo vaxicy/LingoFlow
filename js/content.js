@@ -3474,18 +3474,10 @@ function mapTargetLang(targetLang) {
         const host = block.parentElement;
         if (!host || !this.isVisibleElement(host)) return;   // 宿主本身也在隐藏副本里 → 不动
 
-        if (this.unclampClippingAncestors(block, 8) > 0 && this.isVisibleElement(block)) return;
-
-        const id = block.getAttribute('data-lingoflow-source-id');
-        if (id) {
-          document.querySelectorAll(this.getSourceIdSelector(id)).forEach(el => {
-            if (el === block) return;
-            el.removeAttribute('data-lingoflow-processed');
-            el.removeAttribute('data-lingoflow-rendered');
-          });
-        }
-        block.remove();
-        repaired++;
+        // 只解裁剪，**绝不删除重建**。"不可见就删掉重译"会造成删→建→删的
+        // 持续闪烁（尤其滚动/懒加载场景，isVisibleElement 偶发误判时无限循环）。
+        // 解裁剪后仍不可见的块，等用户展开内容后自然可见。
+        this.unclampClippingAncestors(block, 8);
       });
 
       document.querySelectorAll('[data-lingoflow-processed="true"][data-lingoflow-rendered="true"]').forEach(container => {
@@ -5116,15 +5108,22 @@ function mapTargetLang(targetLang) {
 
       // 3) 滚动：LinkedIn 的职位列表是虚拟化渲染，滚动会重挂载卡片节点，
       //    已注入的译文被整批擦掉且无人恢复（表现为"译文随滚动变化/丢失"）。
-      //    用节流滚动补扫（冷却 2s + requestRepair 自带 1.2s 冷却/0.9s 防抖），
-      //    只补缺失的译文（幂等），不删不重译，不会引起拉锯闪烁。
+      //    注意：这里只做**增量补翻**，绝不走 repairTranslationIntegrity——
+      //    后者的"不可见就删块重建"在滚动场景下会造成删→建→删的持续闪烁，
+      //    还会波及所有正在翻译的普通网页。增量补翻是幂等的：只添加缺失的译文。
       //    scroll 事件不冒泡，必须用 capture 才能捕获右栏/列表容器的滚动。
       let scrollCooling = false;
       document.addEventListener('scroll', () => {
         if (scrollCooling) return;
+        if (!state.activeTranslationMode || state.isTranslating) return;
         scrollCooling = true;
-        window.setTimeout(() => { scrollCooling = false; }, 2000);
-        requestRepair('scroll');
+        window.setTimeout(() => { scrollCooling = false; }, 2500);
+        window.setTimeout(() => {
+          if (!state.activeTranslationMode || state.isTranslating) return;
+          try {
+            this.runIncrementalTranslation(state.activeTranslationMode, null, false);
+          } catch (_) {}
+        }, 600);
       }, { capture: true, passive: true });
     },
 
