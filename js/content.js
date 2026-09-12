@@ -2959,6 +2959,8 @@ function mapTargetLang(targetLang) {
         _anchorHash: panelHash,
         textParts: [proseText]
       });
+      console.log('LingoFlow: created description panel unit, proseChars=' + proseText.length,
+        'hash=' + panelHash.substring(0, 16));
     },
 
     // 找"段落锚点"：文本所在的最小块级祖先（没有就退到最近的非内联祖先）。
@@ -3849,6 +3851,9 @@ function mapTargetLang(targetLang) {
       block.className = 'lingoflow-inline-translation';
       block.setAttribute('data-lingoflow', 'true');
       block.setAttribute('data-lingoflow-inline-hash', key);
+      if (anchor.matches && anchor.matches(this.descriptionSelector())) {
+        block.setAttribute('data-lingoflow-desc-panel', '1');
+      }
       block.textContent = translation;
       block.style.writingMode = 'horizontal-tb';
       block.style.whiteSpace = 'normal';
@@ -3877,8 +3882,10 @@ function mapTargetLang(targetLang) {
         });
       } catch (_) {}
 
+      let inserted = false;
       try {
         anchor.insertAdjacentElement('afterend', block);
+        inserted = true;
       } catch (_) {
         return false;
       }
@@ -3894,7 +3901,7 @@ function mapTargetLang(targetLang) {
 
       // 插入后仍不可见 → 说明被站点折叠/限高裁掉了：把块上移到最近"不裁剪"的祖先之后，
       // 保证用户真的能看到译文（否则就是"注入了但页面没反应"）
-      if (!this.isVisibleElement(block)) {
+      if (inserted && !this.isVisibleElement(block)) {
         let host = block.parentElement;
         let depth = 0;
         while (host && host !== document.body && depth < 10) {
@@ -4806,10 +4813,17 @@ function mapTargetLang(targetLang) {
       const roots = Array.from(document.querySelectorAll(descSel));
       let inlineBlocks = 0;
       try { inlineBlocks = document.querySelectorAll('[data-lingoflow-inline-hash]').length; } catch (_) {}
+      const panels = Array.from(document.querySelectorAll('[data-lingoflow-desc-panel="1"]'));
+      const firstPanel = panels[0];
+      const pRect = firstPanel && firstPanel.getBoundingClientRect ? firstPanel.getBoundingClientRect() : null;
       lines.push('mode=' + state.activeTranslationMode +
                  ' target=' + state.targetLanguage +
                  ' descRoots=' + roots.length +
-                 ' inlineBlocks=' + inlineBlocks);
+                 ' inlineBlocks=' + inlineBlocks +
+                 ' panels=' + panels.length +
+                 ' firstPanel=' + (firstPanel ? (Math.round(pRect ? pRect.width : 0) + 'x' +
+                                                   Math.round(pRect ? pRect.height : 0) + ' ' +
+                                                   (firstPanel.textContent || '').slice(0, 24)) : 'none'));
 
       roots.slice(0, 6).forEach((root, i) => {
         lines.push('root' + i + ' <' + root.tagName.toLowerCase() + '>' +
