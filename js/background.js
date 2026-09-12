@@ -1319,6 +1319,7 @@ function translateBatch(texts, targetLang, sendResponse) {
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = getDefaultSettings(result.lingoflow_settings || {});
     const engine = settings.translationEngine || 'siliconflow';
+    const fallback = settings.fallbackEngine || '';
     console.log('LingoFlow: Selected batch translation engine:', engine, `(${list.length} items)`, 'fallback:', fallback, 'targetLang:', targetLang, 'storedEngine:', result.lingoflow_settings && result.lingoflow_settings.translationEngine);
 
     // On an overall batch failure from a dedicated engine, retry once via the

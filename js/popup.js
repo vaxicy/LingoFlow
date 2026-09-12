@@ -834,6 +834,7 @@ function populateDeepSeekModelSelect(selectId) {
 function initSettingsPanel() {
   const controls = [
     'popup-translation-engine',
+    'popup-fallback-engine',
     'popup-siliconflow-key',
     'popup-siliconflow-model',
     'popup-bailian-key',
