@@ -196,9 +196,6 @@
             <span data-i18n="translation_engine_desc">Select translation service provider</span>
           </div>
           <select class="panel-select native-select-hidden" id="popup-translation-engine" aria-hidden="true" tabindex="-1">
-            <option value="google" data-i18n="engine_google">Google Translate</option>
-            <option value="translatejs" data-i18n="engine_translatejs">translate.js (免费无需Key)</option>
-            <option value="mymemory" data-i18n="engine_mymemory">MyMemory (Free)</option>
             <option value="microsoft" data-i18n="engine_microsoft">Microsoft Translator</option>
             <option value="gemini" data-i18n="engine_gemini">Gemini AI</option>
             <option value="siliconflow" data-i18n="engine_siliconflow">硅基流动 AI</option>
@@ -213,41 +210,14 @@
           <div class="engine-select" id="engine-select">
             <button class="engine-select-trigger" id="engine-select-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
               <span class="engine-select-text">
-                <strong id="engine-select-label">Google 翻译</strong>
-                <small id="engine-select-desc">免费 · 无需 Key</small>
+                <strong id="engine-select-label">硅基流动 AI</strong>
+                <small id="engine-select-desc">需 Key · 有免费模型</small>
               </span>
               <svg class="engine-select-chevron" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="m6 9 6 6 6-6"/>
               </svg>
             </button>
             <div class="engine-select-menu" id="engine-select-menu" role="listbox" aria-label="Translation engine" hidden>
-              <button class="engine-select-option" type="button" role="option" data-engine-value="google" aria-selected="false">
-                <span>
-                  <strong>Google 翻译</strong>
-                  <small>免费 · 无需 Key</small>
-                </span>
-                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-                  <path d="M20 6 9 17l-5-5"/>
-                </svg>
-              </button>
-              <button class="engine-select-option" type="button" role="option" data-engine-value="translatejs" aria-selected="false">
-                <span>
-                  <strong>translate.js (免费无需Key)</strong>
-                  <small>免费 · 无需 Key</small>
-                </span>
-                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-                  <path d="M20 6 9 17l-5-5"/>
-                </svg>
-              </button>
-              <button class="engine-select-option" type="button" role="option" data-engine-value="mymemory" aria-selected="true">
-                <span>
-                  <strong>MyMemory（免费）</strong>
-                  <small>免费 · 无需 Key</small>
-                </span>
-                <svg class="engine-select-check" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
-                  <path d="M20 6 9 17l-5-5"/>
-                </svg>
-              </button>
               <button class="engine-select-option" type="button" role="option" data-engine-value="microsoft" aria-selected="false">
                 <span>
                   <strong>Microsoft Translator</strong>

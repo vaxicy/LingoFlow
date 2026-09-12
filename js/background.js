@@ -41,15 +41,18 @@ chrome.runtime.onInstalled.addListener(() => {
   console.log('LingoFlow: Extension installed');
   setupContextMenus();
 
-  // Initialize default settings + migrate old users (mymemory → google)
+  // Initialize default settings + migrate old users
+  // （google/mymemory/translatejs 已从引擎列表下线 → 迁移到 siliconflow）
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const isNewInstall = !result.lingoflow_settings;
-    const needsMigration = result.lingoflow_settings && result.lingoflow_settings.translationEngine === 'mymemory';
+    const RETIRED_ENGINES = ['google', 'mymemory', 'translatejs'];
+    const needsMigration = result.lingoflow_settings &&
+      RETIRED_ENGINES.includes(result.lingoflow_settings.translationEngine);
     if (isNewInstall || needsMigration) {
       const base = isNewInstall ? {} : result.lingoflow_settings;
       chrome.storage.local.set({
         lingoflow_settings: {
-          translationEngine: 'google',
+          translationEngine: 'siliconflow',
           siliconflowApiKey: '',
           siliconflowModel: 'tencent/Hunyuan-MT-7B',
           siliconflowModelCustom: '',
@@ -577,7 +580,7 @@ function updateSettings(settings, sendResponse) {
 
 function getDefaultSettings(overrides = {}) {
   return {
-    translationEngine: 'google',
+    translationEngine: 'siliconflow',
     siliconflowApiKey: '',
     siliconflowModel: 'tencent/Hunyuan-MT-7B',
     siliconflowModelCustom: '',
@@ -1251,7 +1254,7 @@ function translateText(text, targetLang, sendResponse) {
   // Read engine preference from settings
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = getDefaultSettings(result.lingoflow_settings || {});
-    const engine = settings.translationEngine || 'google';
+    const engine = settings.translationEngine || 'siliconflow';
     console.log('LingoFlow: Selected translation engine:', engine, 'targetLang:', targetLang, 'storedEngine:', result.lingoflow_settings && result.lingoflow_settings.translationEngine);
         if (engine === 'siliconflow') {
       translateWithSiliconFlow(text, targetLang, sendResponse);
@@ -1295,7 +1298,7 @@ function translateBatch(texts, targetLang, sendResponse) {
 
   chrome.storage.local.get(['lingoflow_settings'], (result) => {
     const settings = getDefaultSettings(result.lingoflow_settings || {});
-    const engine = settings.translationEngine || 'google';
+    const engine = settings.translationEngine || 'siliconflow';
     console.log('LingoFlow: Selected batch translation engine:', engine, `(${list.length} items)`, 'targetLang:', targetLang, 'storedEngine:', result.lingoflow_settings && result.lingoflow_settings.translationEngine);
 
     if (engine === 'gemini') {

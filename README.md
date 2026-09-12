@@ -3,7 +3,7 @@
 **一款轻量的 Chrome 扩展，助你轻松阅读外文网站。**
 A lightweight Chrome Extension for reading foreign-language websites with ease.
 
-[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-v1.2.5-blue)](https://chromewebstore.google.com/detail/lingoflow-%F0%9F%8C%90-foreign-web/fkloicgbhpomiadliefangbfegkccmlh) [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-v1.2.6-blue)](https://chromewebstore.google.com/detail/lingoflow-%F0%9F%8C%90-foreign-web/fkloicgbhpomiadliefangbfegkccmlh) [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
 
 ---
 
@@ -45,10 +45,7 @@ A lightweight Chrome Extension for reading foreign-language websites with ease.
 
 | Engine | Type | Key Required | 需要密钥 |
 |--------|------|-------------|---------|
-| Google Translate | Free (web scraping) | **No — 无需 Key** ✅ | 免费即用 |
-| translate.js | Free (built-in, no key) | **No — 无需 Key** ✅ | 内置免费，开箱即用 |
-| MyMemory | Free (with quota) | **No — 无需 Key** ✅ | 免费（有配额限制） |
-| SiliconFlow AI | API key | Yes | 需要 |
+| **SiliconFlow AI**（默认 / Default） | API key | Yes | 需要（有免费模型） |
 | Gemini AI | API key | Yes | 需要 |
 | Microsoft Translator (Azure) | API key | Yes | 需要 |
 | Youdao Translate | API key | Yes | 需要 |
@@ -58,13 +55,10 @@ A lightweight Chrome Extension for reading foreign-language websites with ease.
 | Alibaba Bailian (Qwen) | API key | Yes | 需要 |
 | Custom (OpenAI Compatible) | API key + Base URL + Model | Yes | 需要 |
 
-> **免费引擎说明**：Google 翻译、translate.js 和 MyMemory 三个引擎**完全免费且无需任何 API Key**，安装后即可直接使用。其余引擎需要用户自行申请对应平台的 API Key 并在设置中填写。
-
-### About translate.js / 关于 translate.js
-
-The built-in free translation channel in LingoFlow is powered by the open-source project **translate.js** by **xnx3** — official site: [translate.zvo.cn](https://translate.zvo.cn/), source code: [github.com/xnx3/translate](https://github.com/xnx3/translate). It runs entirely as a content script injected into the page — no API key, no configuration, and no server round-trip to LingoFlow itself. The library rotates across multiple backends (Google, MyMemory, and your own custom AI API) to maximize availability. All credit for the underlying translation logic goes to the original author **xnx3** and the translate.js project.
-
-LingoFlow 内置的免费翻译通道基于开源项目 **translate.js**（作者 **xnx3**）实现 —— 官方网址：[translate.zvo.cn](https://translate.zvo.cn/)，源代码：[github.com/xnx3/translate](https://github.com/xnx3/translate)。它完全以内容脚本的形式注入页面运行——**无需 API Key、无需配置**，也不会向 LingoFlow 自身回传任何数据。该库会在多个后端（Google、MyMemory 以及用户自定义的 AI API）之间自动轮换以保证可用性。翻译底层逻辑的全部归属与致谢均归于原作者 **xnx3** 及 translate.js 项目。
+> **默认引擎 / Default engine**：**SiliconFlow AI**（有免费模型，注册即可获得免费额度）。
+> 注意：早期的免费引擎（Google 翻译、translate.js、MyMemory）因服务不稳定已从引擎列表中移除；老用户的设置会自动迁移到 SiliconFlow。
+>
+> The legacy free engines (Google Translate, translate.js, MyMemory) have been removed from the engine list due to instability. Existing users are migrated to SiliconFlow automatically.
 
 ### About ECDICT / 关于 ECDICT 离线词库
 
@@ -122,8 +116,8 @@ Download from the [Chrome Web Store](https://chromewebstore.google.com/detail/li
 
 ### Setting Up Translation Engines / 设置翻译引擎
 
-- **Free engines (无需 Key)** — Google 翻译、translate.js、MyMemory 三个引擎**开箱即用，无需任何配置和 API Key**。
-- **API-key engines (需要 Key)** — 其余引擎需要你在对应平台申请 API Key，并在设置中填写。请参阅设置面板中的 **API Setup Guide / API 配置指南** 获取各引擎的分步指引。
+- **默认引擎（SiliconFlow AI）** — 注册 [siliconflow.cn](https://siliconflow.cn) 即可获得免费额度，把 API Key 填入设置即可使用。
+- **其它引擎（需要 Key）** — Gemini / Microsoft / 有道 / 百度 / 百炼 / DeepSeek / 自定义端点均需在对应平台申请 API Key 并在设置中填写。请参阅设置面板中的 **API Setup Guide / API 配置指南** 获取分步指引。
 
 ---
 
@@ -216,7 +210,7 @@ git clone https://github.com/vaxicy/LingoFlow.git
 # 创建干净的 zip 包用于上传 Chrome Web Store
 # (excludes .git, .codebuddy, scripts/, store-assets/, dev docs)
 # （排除 .git、.codebuddy、scripts/、store-assets/、开发文档）
-cd LingoFlow && zip -r ../LingoFlow-v1.2.5.zip . \
+cd LingoFlow && zip -r ../LingoFlow-v1.2.6.zip . \
   -x ".git/*" ".codebuddy/*" "scripts/*" "store-assets/*" \
   -x "create-icons.html" "README.md" "INSTALL.md" "I18N_COMPLETE.md"
 ```
@@ -231,7 +225,6 @@ LingoFlow 基于以下开源项目与服务构建，特此致谢！
 | Project / 项目 | Author / 作者 | License / 协议 | Used for / 用途 |
 |----------------|---------------|----------------|-----------------|
 | [ECDICT](https://github.com/skywind3000/ECDICT) | skywind3000 | MIT (data) | Offline English→Chinese dictionary (bundled, filtered & repacked) / 内置离线英汉词库（裁剪重打包） |
-| [translate.js](https://github.com/xnx3/translate) | xnx3 | (see project) | Built-in free translation channel / 内置免费翻译通道 |
 | [Free Dictionary API](https://github.com/meetDeveloper/freeDictionaryAPI) | meetDeveloper | GPL-3.0 (service) | Optional online English definitions & examples / 可选的在线英文释义与例句 |
 
 Full notices are kept alongside the data: [`dict/LICENSE-ecdict.txt`](dict/LICENSE-ecdict.txt).

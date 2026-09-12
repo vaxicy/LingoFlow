@@ -342,7 +342,7 @@ function mapTargetLang(targetLang) {
   // Translation Engine - Pluggable architecture
   const TranslationEngine = {
     // Current active engine (loaded from settings)
-    activeEngine: 'google',
+    activeEngine: 'siliconflow',
 
     // Google Translate via background script (bypasses page CSP)
     googleTranslator: {
@@ -1549,7 +1549,7 @@ function mapTargetLang(targetLang) {
             state.uiLanguage = s.uiLanguage || 'auto';
             state.targetLanguage = s.targetLanguage || 'zh';
             state.existingBilingualStrategy = s.existingBilingualStrategy || 'skip';
-            TranslationEngine.activeEngine = s.translationEngine || 'google';
+            TranslationEngine.activeEngine = s.translationEngine || 'siliconflow';
             applyTranslationColorStyle(s.translationColor || 'inherit');
             if (wasSelectionEnabled && !state.selectionTranslationEnabled) {
               UI.removeFloatingToolbar();
@@ -5438,7 +5438,7 @@ function mapTargetLang(targetLang) {
           state.uiLanguage = result.lingoflow_settings.uiLanguage || 'auto';
           state.targetLanguage = result.lingoflow_settings.targetLanguage || 'zh';
           state.existingBilingualStrategy = result.lingoflow_settings.existingBilingualStrategy || 'skip';
-          TranslationEngine.activeEngine = result.lingoflow_settings.translationEngine || 'google';
+          TranslationEngine.activeEngine = result.lingoflow_settings.translationEngine || 'siliconflow';
           applyTranslationColorStyle(result.lingoflow_settings.translationColor || 'inherit');
         }
       });
@@ -5526,7 +5526,7 @@ function mapTargetLang(targetLang) {
           state.uiLanguage = settings.uiLanguage || 'auto';
           state.targetLanguage = settings.targetLanguage || 'zh';
           state.existingBilingualStrategy = settings.existingBilingualStrategy || 'skip';
-          TranslationEngine.activeEngine = settings.translationEngine || 'google';
+          TranslationEngine.activeEngine = settings.translationEngine || 'siliconflow';
           applyTranslationColorStyle(settings.translationColor || 'inherit');
 
           // 目标语言 / 翻译引擎变化 → 清空旧译文并用新设置自动重译
@@ -5534,7 +5534,7 @@ function mapTargetLang(targetLang) {
           const oldS = changes.lingoflow_settings.oldValue || {};
           const newS = changes.lingoflow_settings.newValue || {};
           if (((oldS.targetLanguage || 'zh') !== (newS.targetLanguage || 'zh')) ||
-              ((oldS.translationEngine || 'google') !== (newS.translationEngine || 'google'))) {
+              ((oldS.translationEngine || 'siliconflow') !== (newS.translationEngine || 'siliconflow'))) {
             onTranslationSettingsChanged();
           }
 

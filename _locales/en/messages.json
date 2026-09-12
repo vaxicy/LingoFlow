@@ -479,14 +479,6 @@
     "message": "Select translation service provider",
     "description": "Translation engine setting description"
   },
-  "engine_google": {
-    "message": "Google Translate",
-    "description": "Google Translate engine option"
-  },
-  "engine_mymemory": {
-    "message": "MyMemory (Free)",
-    "description": "MyMemory translation engine option"
-  },
   "engine_siliconflow": {
     "message": "SiliconFlow AI",
     "description": "SiliconFlow translation engine option"
@@ -522,10 +514,6 @@
   "engine_custom": {
     "message": "Custom (OpenAI Compatible)",
     "description": "Custom OpenAI-compatible translation engine option"
-  },
-  "engine_translatejs": {
-    "message": "translate.js (Free, No Key)",
-    "description": "translate.js free translation engine option, no API key required"
   },
   "custom_api_key_label": {
     "message": "API Key",
@@ -1140,7 +1128,7 @@
     "description": "Baidu LLM CTA"
   },
   "guide_note": {
-    "message": "💡 <strong>Tip:</strong> MyMemory and Google Translate need no API key — just select them in settings and skip the steps above.",
+    "message": "💡 <strong>Tip:</strong> The default engine is SiliconFlow AI — sign up to get free model quota, then paste your API key in settings.",
     "description": "Setup guide footer note"
   },
   "model_custom_option": {

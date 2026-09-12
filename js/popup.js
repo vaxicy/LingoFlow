@@ -652,7 +652,7 @@ function resetUnsavedSettingsPreview(nextPanelId) {
   applyPopupSettings(panelState.savedSettings);
   if (typeof setLanguage === 'function') {
     setLanguage(panelState.savedSettings.uiLanguage || 'auto');
-    syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+    syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'siliconflow');
   }
   setSettingsDirty(false);
 }
@@ -663,7 +663,7 @@ function loadPopupLanguage() {
     if (settings && typeof setLanguage === 'function') {
       applyPopupTheme(settings.theme || 'light');
       setLanguage(settings.uiLanguage || 'auto');
-      syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+      syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'siliconflow');
       // 弹窗打开时同步「翻译为」下拉框，否则搜索词典会拿到 HTML 默认值 zh
       const translateTo = document.getElementById('popup-translate-to');
       if (translateTo) translateTo.value = settings.targetLanguage || 'zh';
@@ -893,7 +893,7 @@ function initSettingsPanel() {
       }
       if (id === 'popup-ui-language' && typeof setLanguage === 'function') {
         Promise.resolve(setLanguage(control.value || 'auto')).then(() => {
-          syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+          syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'siliconflow');
           syncSiliconFlowModelSelect(document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B');
           syncPanelCustomSelects();
           updateSettingsFooter();
@@ -1044,7 +1044,7 @@ function initSettingsPanel() {
         applyPopupSettings(panelState.savedSettings);
         if (typeof setLanguage === 'function') {
           setLanguage(panelState.savedSettings.uiLanguage || 'auto');
-          syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'google');
+          syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'siliconflow');
         }
       }
       setSettingsDirty(false);
@@ -1136,9 +1136,6 @@ function scheduleSettingsAutoSave() {
 }
 
 const ENGINE_SELECT_META = {
-  google:      { label: 'Google 翻译',          description: '免费 · 无需 Key' },
-  translatejs: { label: 'translate.js',         description: '免费 · 无需 Key' },
-  mymemory:    { label: 'MyMemory（免费）',      description: '免费 · 无需 Key' },
   microsoft:   { label: 'Microsoft Translator', description: '需 Azure Key · 企业级' },
   siliconflow: { label: '硅基流动 AI',           description: '需 Key · 有免费模型' },
   gemini:      { label: 'Gemini AI',            description: '需 Key · 有免费层' },
@@ -1231,7 +1228,7 @@ function initEngineSelect() {
 
   menu.querySelectorAll('[data-engine-value]').forEach(option => {
     option.addEventListener('click', () => {
-      const value = option.getAttribute('data-engine-value') || 'google';
+      const value = option.getAttribute('data-engine-value') || 'siliconflow';
       nativeSelect.value = value;
       nativeSelect.dispatchEvent(new Event('change', { bubbles: true }));
       setEngineSelectOpen(false);
@@ -1250,7 +1247,7 @@ function initEngineSelect() {
     }
   });
 
-  syncEngineSelect(nativeSelect.value || 'google');
+  syncEngineSelect(nativeSelect.value || 'siliconflow');
 }
 
 // 同步读 chrome.storage 的自定义模型缓存（用 chrome.storage.local.get 是异步的，
@@ -1297,10 +1294,10 @@ function getEngineSelectLabel(value) {
 }
 
 function syncEngineSelect(value) {
-  const currentValue = value || 'google';
+  const currentValue = value || 'siliconflow';
   const label = document.getElementById('engine-select-label');
   const desc = document.getElementById('engine-select-desc');
-  const meta = ENGINE_SELECT_META[currentValue] || ENGINE_SELECT_META.google;
+  const meta = ENGINE_SELECT_META[currentValue] || ENGINE_SELECT_META.siliconflow;
 
   if (label) label.textContent = getEngineSelectLabel(currentValue);
   if (desc) {
@@ -1311,10 +1308,10 @@ function syncEngineSelect(value) {
 
   document.querySelectorAll('[data-engine-value]').forEach(option => {
     const selected = option.getAttribute('data-engine-value') === currentValue;
-    const optionValue = option.getAttribute('data-engine-value') || 'google';
+    const optionValue = option.getAttribute('data-engine-value') || 'siliconflow';
     const optionLabel = option.querySelector('strong');
     const optionDesc = option.querySelector('small');
-    const optionMeta = ENGINE_SELECT_META[optionValue] || ENGINE_SELECT_META.google;
+    const optionMeta = ENGINE_SELECT_META[optionValue] || ENGINE_SELECT_META.siliconflow;
 
     option.setAttribute('aria-selected', String(selected));
     if (optionLabel) optionLabel.textContent = getEngineSelectLabel(optionValue);
@@ -1935,7 +1932,7 @@ function applyPopupSettings(settings) {
   applyPopupTheme(theme);
 
   if (translationEngine) {
-    translationEngine.value = settings.translationEngine || 'google';
+    translationEngine.value = settings.translationEngine || 'siliconflow';
     const isSF = translationEngine.value === 'siliconflow';
     const isMS = translationEngine.value === 'microsoft';
     const isGemini = translationEngine.value === 'gemini';
@@ -2052,7 +2049,7 @@ function applyPopupTheme(theme) {
 
 function getPopupSettingsFromUI() {
   return {
-    translationEngine: document.getElementById('popup-translation-engine')?.value || 'google',
+    translationEngine: document.getElementById('popup-translation-engine')?.value || 'siliconflow',
     siliconflowApiKey: document.getElementById('popup-siliconflow-key')?.value || '',
     siliconflowModel: document.getElementById('popup-siliconflow-model')?.value || 'tencent/Hunyuan-MT-7B',
     siliconflowModelCustom: getCustomModelFromUI('siliconflowModelCustom') || (window.__customModelCache && window.__customModelCache.siliconflow) || '',
@@ -2194,7 +2191,7 @@ function cloneSettings(settings) {
 
 function getDefaultSettings(overrides = {}) {
   return {
-    translationEngine: 'google',
+    translationEngine: 'siliconflow',
     siliconflowApiKey: '',
     siliconflowModel: 'tencent/Hunyuan-MT-7B',
     siliconflowModelCustom: '',

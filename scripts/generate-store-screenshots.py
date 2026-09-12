@@ -304,7 +304,7 @@ def screenshot_03_engines():
     img, draw = base()
     y = draw_brand(draw, img, 74, 64)
     draw_text_block(draw, 74, y, "MULTIPLE ENGINES",
-                    "Free, API & AI Models Clearly Labeled",
+                    "API & AI Models Clearly Labeled",
                     "Choose the engine that fits your workflow and pick a translation color to tell original and translated text apart.",
                     max_w=560)
     # settings panel
@@ -316,7 +316,7 @@ def screenshot_03_engines():
     draw = ImageDraw.Draw(img)
     rounded_rect(draw, (x, y, x + w, y + h), COLORS["white"], outline="#e2e8f7", width=2, radius=28)
     rows = [
-        ("engine", "Google Translate", "Free", "Fast and general-purpose for light web translation.", COLORS["green"]),
+        ("engine", "SiliconFlow AI", "Default", "AI translation with free models after sign-up.", COLORS["green"]),
         ("engine", "Microsoft Translator", "API", "Stable and professional for long-term reading.", COLORS["red"]),
         ("engine", "Gemini AI", "API", "More natural, context-aware translations.", COLORS["red"]),
         ("color", "Translation Color", "Blue", "Pick a color to tell original and translated text apart at a glance.", None),
