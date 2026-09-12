@@ -799,6 +799,10 @@
     "message": "微信赞赏与 PayPal 支持",
     "description": "支持入口说明"
   },
+  "partial_translation_note": {
+    "message": "部分复杂网页（如 LinkedIn）可能无法自动翻译全部内容，遇到漏翻请使用划词翻译。",
+    "description": "设置面板底部关于部分网页可能漏翻的提示"
+  },
   "support_kicker": {
     "message": "自愿支持",
     "description": "支持页小标题"

@@ -2748,6 +2748,32 @@ body[data-theme="light"] #vocabulary-panel .panel-empty span {
   color: #ffc0ce;
 }
 
+/* 漏翻提示（设置面板底部） */
+.settings-row-note {
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255, 193, 7, 0.08);
+  border: 1px solid rgba(255, 193, 7, 0.22);
+  border-radius: 12px;
+  margin: 4px 0 6px;
+}
+
+.settings-note-text {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--lf-text-muted, #a0a8c0);
+  text-align: left;
+}
+
+body[data-theme="light"] .settings-row-note {
+  background: rgba(245, 166, 35, 0.08);
+  border-color: rgba(245, 166, 35, 0.22);
+}
+
+body[data-theme="light"] .settings-note-text {
+  color: #6b7280;
+}
+
 .setup-guide-copy {
   display: flex;
   flex-direction: column;

@@ -799,6 +799,10 @@
     "message": "Donación por WeChat y PayPal",
     "description": "Support link description"
   },
+  "partial_translation_note": {
+    "message": "Algunas páginas complejas (p. ej. LinkedIn) pueden no traducirse completamente. Usa la traducción por selección para las partes omitidas.",
+    "description": "Nota en el panel de ajustes sobre traducciones parciales en algunos sitios"
+  },
   "support_kicker": {
     "message": "Apoyo voluntario",
     "description": "Support page kicker"

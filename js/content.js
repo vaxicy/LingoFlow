@@ -4406,15 +4406,9 @@ function mapTargetLang(targetLang) {
     // 译文逐批渲染时用户看不到「跳着出」的过程；译完后再统一淡入（见 revealLinkedInStealth）。
     // 其它网站不启用（它们已稳定，没必要遮罩）。
     applyLinkedInStealth() {
-      if (!/(^|\.)linkedin\.com$/.test(location.hostname || '')) return null;
-      const sel = '.jobs-search__job-details, .jobs-details__main-content, ' +
-        '.jobs-search__results-list, [data-testid="jobsearch-jobdetails"], ' +
-        '.scaffold-layout__detail, .jobs-details';
-      const els = Array.from(document.querySelectorAll(sel))
-        .filter(el => el.getClientRects().length > 0);
-      if (!els.length) return null;
-      els.forEach(el => el.classList.add('lingoflow-linkedin-stealth'));
-      return els;
+      // 已禁用：LinkedIn 回归与普通网站一致的稳定策略，不再隐藏主内容区。
+      // 保留函数名以兼容调用方。
+      return null;
     },
 
     revealLinkedInStealth(els) {
@@ -4448,14 +4442,12 @@ function mapTargetLang(targetLang) {
         });
       }
 
-      // LinkedIn：批次调大、并发略升 → 减少「分批逐块冒出」的闪烁感（方案 C）
-      const isLi = /(^|\.)linkedin\.com$/.test(location.hostname || '');
-      const chunks = this.chunkUnits(units, isLi ? 40 : 10);
+      const chunks = this.chunkUnits(units, 10);
       let chunkCursor = 0;
       let successCount = 0;
       let failCount = 0;
       let stoppedByInvalidContext = false;
-      const concurrency = isLi ? 3 : 2;
+      const concurrency = 2;
 
       // 句级分组：收集同一容器的所有句级翻译结果，统一渲染
       const sentenceGroups = new Map();  // groupId → { unit, translation }[]
@@ -4867,21 +4859,14 @@ function mapTargetLang(targetLang) {
     },
 
     scheduleSecondScan(mode) {
-      // 补扫仅 LinkedIn 启用（虚拟化列表 + 懒加载需要；见 SITE_REPAIR_CONFIG）。
-      // 其它网站：初始翻译自带多次收集重试 + 一次性残留清扫，已经足够，
-      // 任何补扫都可能造成闪烁 —— 保持零补扫。
-      if (!/(^|\.)linkedin\.com$/.test(location.hostname || '')) return;
-      state.repairPassTimers = state.repairPassTimers || [];
-      for (let i = 0; i < SITE_REPAIR_CONFIG.passes; i++) {
-        const timer = window.setTimeout(() => {
-          if (!state.activeTranslationMode || state.isTranslating) return;
-          try {
-            this.repairTranslationIntegrity();
-            this.runIncrementalTranslation(mode, null, false);
-          } catch (_) {}
-        }, (i + 1) * SITE_REPAIR_CONFIG.intervalSec * 1000);
-        state.repairPassTimers.push(timer);
-      }
+      // 完全禁用延迟补扫：LinkedIn 等 SPA 上的虚拟化列表/懒加载 + 补扫会形成
+      // "站点擦掉/重渲染 → 扩展重新注入" 的拉锯，滚动时一闪一闪，最后彻底不翻译。
+      // 用户选择回归稳定策略：只保留初始翻译 + 一次性残留清扫，漏翻用划词翻译。
+      // 参数 mode 保留以兼容调用方；函数不再排任何定时器。
+      void mode;
+      // 顺手清掉可能残留的定时器，防止历史版本留下 pass 继续跑
+      (state.repairPassTimers || []).forEach(timer => clearTimeout(timer));
+      state.repairPassTimers = [];
     },
 
     // 兜底补漏：只做有限次数的延迟补扫，不使用持续 MutationObserver。
@@ -4891,9 +4876,10 @@ function mapTargetLang(targetLang) {
       this.stopDynamicTranslationObserver();
       state.activeTranslationMode = mode;
 
-      // 只启动擦除守卫（wipe guard）。
-      // 注意：这里不能调 stopDynamicTranslationObserver()，否则会清掉 scheduleSecondScan
-      // 刚排好的补扫定时器，导致 LinkedIn 右侧懒加载内容永远没人补翻。
+      // LinkedIn 不再启动任何动态守卫：wipe guard 在滚动/虚拟化列表场景下
+      // 会反复复译，造成闪烁并最终停止翻译。其它网站保留 wipe guard。
+      if (/(^|\.)linkedin\.com$/.test(location.hostname || '')) return;
+
       this.stopWipeGuard();
       this.startWipeGuard(mode);
     },
@@ -5100,6 +5086,9 @@ function mapTargetLang(targetLang) {
       const isLinkedIn = /(^|\.)linkedin\.com$/.test(location.hostname || '');
       const requestRepair = (reason) => {
         if (!state.activeTranslationMode || state.isTranslating) return;
+        // LinkedIn 完全不走任何 SPA 动态补翻：点击职位卡片/展开/滚动都已交由初始翻译完成，
+        // 继续补翻只会和站点虚拟化列表拉锯，导致闪烁和彻底不翻译。
+        if (isLinkedIn) return;
         const now = Date.now();
         if (now - state._lastSpaRepair < 1200) return;   // 点击风暴冷却
         state._lastSpaRepair = now;
@@ -5109,8 +5098,6 @@ function mapTargetLang(targetLang) {
           if (!state.activeTranslationMode || state.isTranslating) return;
           const mode = state.activeTranslationMode;
           try {
-            // 修复（解裁剪等）只在 LinkedIn 做；其它网站只增量补翻（幂等、只加不删）
-            if (isLinkedIn) this.repairTranslationIntegrity();
             this.runIncrementalTranslation(mode, null, false);
           } catch (err) {
             console.warn('LingoFlow: SPA repair failed (' + reason + '):', getErrorMessage(err));
@@ -5132,32 +5119,9 @@ function mapTargetLang(targetLang) {
       window.addEventListener('hashchange', () => requestRepair('hashchange'));
       window.addEventListener('lingoflow:locationchange', () => requestRepair('pushState'));
 
-      // 2) 点击（切换职位卡片 / 展开「查看更多」/ 切 Tab）后补翻 —— 仅 LinkedIn。
-      //    其它站点的 SPA 路由变化已由 pushState/popstate/hashchange 钩子覆盖。
-      if (isLinkedIn) {
-        document.addEventListener('click', (e) => {
-          if (e.target && e.target.closest && e.target.closest('.lingoflow-ui')) return;
-          requestRepair('click');
-        }, true);
-      }
-
-      // 3) 滚动补扫：**仅 LinkedIn 启用**（虚拟化列表需要，见上方说明）。
-      //    scroll 事件不冒泡，必须用 capture 才能捕获右栏/列表容器的滚动。
-      if (isLinkedIn) {
-        let scrollCooling = false;
-        document.addEventListener('scroll', () => {
-          if (scrollCooling) return;
-          if (!state.activeTranslationMode || state.isTranslating) return;
-          scrollCooling = true;
-          window.setTimeout(() => { scrollCooling = false; }, SITE_REPAIR_CONFIG.scrollCooldownSec * 1000);
-          window.setTimeout(() => {
-            if (!state.activeTranslationMode || state.isTranslating) return;
-            try {
-              this.runIncrementalTranslation(state.activeTranslationMode, null, false);
-            } catch (_) {}
-          }, 600);
-        }, { capture: true, passive: true });
-      }
+      // 2) 点击/滚动动态补翻：LinkedIn 已完全关闭，避免虚拟化列表滚动时反复重译导致闪烁。
+      //    其它站点仍保留 history 路由变化的增量补翻（只加不删）。
+      //    注：原先此处有为 LinkedIn 注册的 click 与 scroll 监听器，已移除。
     },
 
     async translatePage() {
