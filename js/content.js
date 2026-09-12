@@ -2915,6 +2915,7 @@ function mapTargetLang(targetLang) {
       const proseParts = [];
       const blockTextLens = new Map(); // 块级锚点 → 累计文本长度（Map 保持文档顺序）
       let lastProseBlock = null;
+      let firstLongTextNode = null;    // 扁平 DOM 用：第一个 ≥100 字符的散文文本节点
       let lastLongTextNode = null;     // 扁平 DOM 用：最后一个 ≥100 字符的散文文本节点
       const listAnchors = new Map();   // LI 锚点 → 文本片段
 
@@ -2934,7 +2935,10 @@ function mapTargetLang(targetLang) {
           continue;
         }
         proseParts.push(ownText);
-        if (ownText.length >= 100) lastLongTextNode = textNode;
+        if (ownText.length >= 100) {
+          if (!firstLongTextNode) firstLongTextNode = textNode;
+          lastLongTextNode = textNode;
+        }
         const block = this.findProseBlock(textNode, mainRoot);
         if (block && (block === mainRoot || mainRoot.contains(block))) {
           lastProseBlock = block;
@@ -2972,18 +2976,23 @@ function mapTargetLang(targetLang) {
 
       // 扁平 DOM（正文段落只是 mainRoot 下的裸文本节点 + <br> 分隔，没有任何段落级元素）
       // 时，块级锚点只能落到 mainRoot → 面板会被插到整个区域最底部。
-      // 此时改用「最后一个长文本节点」定位：面板插到它后面第一个非 <br> 元素之前，
-      // 正好落在描述正文最后一段之下、后续章节（Basic Qualifications 等）之上。
+      // 改用「第一个长文本节点」定位：面板插到它之后第一个「章节边界元素」
+      // （UL/OL/标题/段落/表格）之前——正好落在正文段落之下、
+      // Key job responsibilities / Basic Qualifications 等章节之上。
+      // 注意不能用"最后一个"长文本节点：尾部陈述段在所有列表之后，其后没有元素，
+      // 会拿不到插入点而回退到底部（1.3.0 初版踩坑）。
       let insertBeforeEl = null;
-      if (lastLongTextNode && lastLongTextNode.isConnected) {
+      const anchorTextNode = firstLongTextNode || lastLongTextNode;
+      if (anchorTextNode && anchorTextNode.isConnected) {
         try {
+          const after = [];
           for (const el of mainRoot.querySelectorAll('*')) {
             if (el.tagName !== 'BR' &&
-                (el.compareDocumentPosition(lastLongTextNode) & Node.DOCUMENT_POSITION_PRECEDING)) {
-              insertBeforeEl = el;
-              break;
+                (el.compareDocumentPosition(anchorTextNode) & Node.DOCUMENT_POSITION_PRECEDING)) {
+              after.push(el);
             }
           }
+          insertBeforeEl = after.find(el => /^(UL|OL|H[1-6]|P|TABLE)$/.test(el.tagName)) || after[0] || null;
         } catch (_) {}
       }
 
