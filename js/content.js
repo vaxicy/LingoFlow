@@ -5106,25 +5106,26 @@ function mapTargetLang(targetLang) {
         requestRepair('click');
       }, true);
 
-      // 3) 滚动：LinkedIn 的职位列表是虚拟化渲染，滚动会重挂载卡片节点，
-      //    已注入的译文被整批擦掉且无人恢复（表现为"译文随滚动变化/丢失"）。
-      //    注意：这里只做**增量补翻**，绝不走 repairTranslationIntegrity——
-      //    后者的"不可见就删块重建"在滚动场景下会造成删→建→删的持续闪烁，
-      //    还会波及所有正在翻译的普通网页。增量补翻是幂等的：只添加缺失的译文。
+      // 3) 滚动补扫：**仅 LinkedIn 启用**。它的职位列表是虚拟化渲染，滚动会重挂载
+      //    卡片节点、把已注入的译文整批擦掉，需要节流补翻（只加不删，幂等）。
+      //    其它网站滚动绝不触发任何补扫——普通站点的译文是静态注入的，滚动不需要
+      //    任何处理，任何多余动作都只会造成闪烁（remote.com 的教训）。
       //    scroll 事件不冒泡，必须用 capture 才能捕获右栏/列表容器的滚动。
-      let scrollCooling = false;
-      document.addEventListener('scroll', () => {
-        if (scrollCooling) return;
-        if (!state.activeTranslationMode || state.isTranslating) return;
-        scrollCooling = true;
-        window.setTimeout(() => { scrollCooling = false; }, 2500);
-        window.setTimeout(() => {
+      if (/(^|\.)linkedin\.com$/.test(location.hostname || '')) {
+        let scrollCooling = false;
+        document.addEventListener('scroll', () => {
+          if (scrollCooling) return;
           if (!state.activeTranslationMode || state.isTranslating) return;
-          try {
-            this.runIncrementalTranslation(state.activeTranslationMode, null, false);
-          } catch (_) {}
-        }, 600);
-      }, { capture: true, passive: true });
+          scrollCooling = true;
+          window.setTimeout(() => { scrollCooling = false; }, 2500);
+          window.setTimeout(() => {
+            if (!state.activeTranslationMode || state.isTranslating) return;
+            try {
+              this.runIncrementalTranslation(state.activeTranslationMode, null, false);
+            } catch (_) {}
+          }, 600);
+        }, { capture: true, passive: true });
+      }
     },
 
     async translatePage() {
