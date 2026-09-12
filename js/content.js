@@ -3232,6 +3232,7 @@ function mapTargetLang(targetLang) {
           textNode: unit.textNode || null,   // 文本节点级单元（容器被占用时的兜底）
           anchor: unit.anchor || null,       // 段落锚点单元（描述区域专用旁挂渲染）
           anchorHash: unit._anchorHash || null,
+          descPanel: !!unit._descPanel,               // 描述面板标记（必须透传，否则按普通内联块处理）
           insertBefore: unit._insertBefore || null,   // 描述面板的精确插入点（扁平 DOM）
           text: this.normalizeText(unit.textParts.join(' ')),
           targetLang: mapTargetLang(state.targetLanguage)  // 按设置的目标语言（中/英/西）
@@ -4565,7 +4566,7 @@ function mapTargetLang(targetLang) {
             if (!unit.anchor || !unit.anchor.isConnected) return;
             const joined = await translateInPieces(text, unit.targetLang);
             if (!joined) return;
-            if (this.renderAnchorTranslation(unit.anchor, joined, unit.anchorHash, !!unit._descPanel, unit.insertBefore)) {
+            if (this.renderAnchorTranslation(unit.anchor, joined, unit.anchorHash, !!unit.descPanel, unit.insertBefore)) {
               successCount++;
               console.log('LingoFlow: chunk retry rendered anchored paragraph, len=', text.length);
             }
@@ -4607,7 +4608,7 @@ function mapTargetLang(targetLang) {
             failCount++;
             return;
           }
-          if (this.renderAnchorTranslation(unit.anchor, translation, unit.anchorHash, !!unit._descPanel, unit.insertBefore)) successCount++;
+          if (this.renderAnchorTranslation(unit.anchor, translation, unit.anchorHash, !!unit.descPanel, unit.insertBefore)) successCount++;
           else {
             scheduleChunkRetry(unit, renderMode);
             failCount++;
