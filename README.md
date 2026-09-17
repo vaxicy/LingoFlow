@@ -139,16 +139,20 @@ See the full [Privacy Policy](https://vaxicy.github.io/LingoFlow/pages/privacy.h
 ```
 LingoFlow/
 ├── manifest.json              # Manifest V3
-├── popup.html / .css / .js    # Popup UI / 弹出界面
+├── popup.html                 # Popup UI / 弹出界面
 ├── js/
 │   ├── background.js          # Service Worker / 服务工作线程
 │   ├── content.js             # Content script (injected into pages) / 内容脚本（注入页面）
-│   ├── popup.js               # Popup logic / 弹出界面逻辑
+│   ├── popup.js               # Popup logic + Settings page logic (shared) / 弹窗逻辑 + 设置页逻辑（共用）
+│   ├── settings.js            # Settings page shell (anchor nav) / 设置整页外壳脚本
 │   ├── vocabulary.js          # Vocabulary book / 生词本
 │   ├── history.js             # Translation history / 翻译历史
 │   └── i18n.js                # Internationalization helpers / 国际化辅助
 ├── css/                       # Stylesheets / 样式表
+│   ├── popup.css              # Component styles (shared) / 组件样式（弹窗与设置页共用）
+│   └── settings.css           # Full-page settings layout / 设置整页布局
 ├── pages/                     # Settings, Vocabulary, History, Privacy, Support / 设置、生词本、历史、隐私、支持
+│   ├── settings.html          # Settings page (options_ui) / 设置页（扩展选项页）
 │   ├── vocabulary.html        # Vocabulary book page / 生词本页
 │   ├── history.html           # Translation history page / 翻译历史页
 │   ├── privacy.html           # Privacy policy / 隐私政策

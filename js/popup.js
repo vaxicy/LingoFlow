@@ -1,8 +1,13 @@
 // LingoFlow Popup Script
 
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('LingoFlow: Popup loaded');
-  applyPopupTheme('light');
+  // 同一个 js/popup.js 被两个宿主复用：popup.html（小窗）与 pages/settings.html（整页）。
+  // 设置面板已从 popup 移到整页，这里按宿主分流初始化，避免在缺失 DOM 上瞎跑。
+  const isSettingsPage = document.body.classList.contains('settings-page');
+  console.log(isSettingsPage ? 'LingoFlow: Settings page loaded' : 'LingoFlow: Popup loaded');
+
+  // popup 固定浅色起始（避免暗色闪一下）；设置页直接用保存的主题，不强制
+  if (!isSettingsPage) applyPopupTheme('light');
 
   // Preload saved settings to avoid losing data on force-save.
   // Also pre-fill all hidden API key inputs so they have correct values
@@ -27,7 +32,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Initialize mode switches + buttons
+  if (isSettingsPage) {
+    // 整页设置：只需要设置面板相关的初始化
+    initPanels();        // 内部按需调用 initSettingsPanel / initSecretToggles / initModelCustomRowToggles
+    initBackup();
+    loadPopupLanguage();
+    initSettingsPage();  // 把已保存的设置填进表单
+    return;
+  }
+
+  // popup：模式开关 / 词典 / 词库 / 历史
   initModeSwitches();
   initPanels();
   initDictionarySearch();
@@ -86,7 +100,7 @@ function initModeSwitches() {
   const settingsBtn = document.querySelector('[data-action="settings"]');
   if (vocabBtn) vocabBtn.addEventListener('click', () => openVocabularyPanel());
   if (historyBtn) historyBtn.addEventListener('click', () => openHistoryPanel());
-  if (settingsBtn) settingsBtn.addEventListener('click', () => openSettingsPanel());
+  if (settingsBtn) settingsBtn.addEventListener('click', () => openSettingsPage());
 }
 
 // 用户模式操作代数：每次手动切换/恢复都 +1，
@@ -752,9 +766,12 @@ function initPanels() {
     exportVocabulary.addEventListener('click', () => exportVocabularyFile('csv'));
   }
 
-  initSettingsPanel();
-  initSecretToggles();
-  initModelCustomRowToggles();
+  // 设置面板现在只在独立整页（pages/settings.html）存在；popup 里点击「设置」直接跳转整页
+  if (document.getElementById('settings-panel')) {
+    initSettingsPanel();
+    initSecretToggles();
+    initModelCustomRowToggles();
+  }
 }
 
 // 眼睛按钮：切换 input type=password <-> text
@@ -867,6 +884,8 @@ function openPanel(panelId) {
 }
 
 function closePanels() {
+  // 独立设置页里设置本身就是整页，没有「面板」可关（否则保存后会把自己藏起来）
+  if (document.body.classList.contains('settings-page')) return;
   resetUnsavedSettingsPreview(null);
   document.querySelectorAll('.popup-panel').forEach(panel => {
     if (panel.classList.contains('vocab-inline')) return;
@@ -899,8 +918,10 @@ function loadPopupLanguage() {
     if (settings && typeof setLanguage === 'function') {
       applyPopupTheme(settings.theme || 'light');
       setLanguage(settings.uiLanguage || 'auto');
-      syncEngineSelect(document.getElementById('popup-translation-engine')?.value || 'siliconflow');
-      // 弹窗打开时同步「翻译为」下拉框，否则搜索词典会拿到 HTML 默认值 zh
+      // 引擎选择器只存在于独立设置整页（popup 已移除设置面板）→ 缺失时跳过
+      const engineSelect = document.getElementById('popup-translation-engine');
+      if (engineSelect) syncEngineSelect(engineSelect.value || 'siliconflow');
+      // 设置页存在「翻译为」下拉框时同步；popup 里已移除，目标语言改由 storage 提供
       const translateTo = document.getElementById('popup-translate-to');
       if (translateTo) translateTo.value = settings.targetLanguage || 'zh';
       panelState.savedSettings = cloneSettings(settings);
@@ -929,31 +950,22 @@ function openVocabularyPanel() {
   });
 }
 
-function openSettingsPanel() {
-  openPanel('settings-panel');
+// 独立设置整页启动：把已保存的设置填进表单
+// （等价于 popup 里「打开设置面板」那一步，只是这里页面一加载就要填）
+function initSettingsPage() {
   chrome.runtime.sendMessage({ action: 'get_settings' }, (response) => {
     const settings = (response && response.settings) || getDefaultSettings();
-    
-    console.log('LingoFlow: Loading settings', {
-      translationEngine: settings.translationEngine,
-      siliconflowApiKey: settings.siliconflowApiKey ? '***' : '(empty)',
-      microsoftApiKey: settings.microsoftApiKey ? '***' : '(empty)',
-      geminiApiKey: settings.geminiApiKey ? '***' : '(empty)',
-      deepseekApiKey: settings.deepseekApiKey ? '***' : '(empty)',
-      baiduAppId: settings.baiduAppId ? '***' : '(empty)',
-      baiduSecretKey: settings.baiduSecretKey ? '***' : '(empty)',
-      baiduLLMApiKey: settings.baiduLLMApiKey ? '***' : '(empty)',
-      youdaoAppKey: settings.youdaoAppKey ? '***' : '(empty)',
-      youdaoAppSecret: settings.youdaoAppSecret ? '***' : '(empty)'
-    });
-    
-    panelState.savedSettings = cloneSettings(settings);
-    applyPopupSettings(panelState.savedSettings);
-    setSettingsDirty(false);
-    // 同步缓存自定义模型值，给 prompt 输入前的 getCustomModelFromUI 用
-    refreshCustomModelCache();
-    // 设置面板打开后：刷新 5 个 provider 模型下拉同步自定义内联框的 value + 可见性
-    refreshCustomModelInputs();
+    try {
+      panelState.savedSettings = cloneSettings(settings);
+      applyPopupSettings(panelState.savedSettings);
+      setSettingsDirty(false);
+      // 同步缓存自定义模型值，给 prompt 输入前的 getCustomModelFromUI 用
+      refreshCustomModelCache();
+      // 刷新 5 个 provider 模型下拉同步自定义内联框的 value + 可见性
+      refreshCustomModelInputs();
+    } catch (error) {
+      console.error('LingoFlow: Failed to populate settings page', error);
+    }
   });
 }
 
@@ -2489,6 +2501,8 @@ function getDefaultSettings(overrides = {}) {
 // If force-save fires before settings panel is opened, it would read empty strings
 // from hidden inputs and overwrite storage. This function prevents that.
 function prefillHiddenInputs(settings) {
+  // 设置面板已移到独立整页，popup 里没有这些输入框 → 直接跳过
+  if (!document.getElementById('popup-siliconflow-key')) return;
   const fields = [
     { id: 'popup-siliconflow-key', key: 'siliconflowApiKey' },
     { id: 'popup-siliconflow-model', key: 'siliconflowModel' },
@@ -3413,9 +3427,17 @@ function openHistoryPage() {
   });
 }
 
-// Open settings page
+// Open settings page（独立整页）
 function openSettingsPage() {
-  chrome.runtime.openOptionsPage();
+  // manifest 里已配置 options_ui（open_in_tab）→ 走官方入口，和 chrome://extensions 的
+  // 「扩展程序选项」是同一个页面；极端情况下回退到直接开标签页。
+  try {
+    if (chrome.runtime && typeof chrome.runtime.openOptionsPage === 'function') {
+      chrome.runtime.openOptionsPage();
+      return;
+    }
+  } catch (_) {}
+  chrome.tabs.create({ url: chrome.runtime.getURL('pages/settings.html') });
 }
 
 // Update status
@@ -3596,8 +3618,10 @@ function fallbackDownload(url, filename) {
 // Show status
 function showStatus(text, type = 'success') {
   const statusElement = document.querySelector('.popup-status');
+  if (!statusElement) return; // 独立设置页没有 popup 状态条
   const statusText = statusElement.querySelector('.status-text');
   const statusIndicator = statusElement.querySelector('.status-indicator');
+  if (!statusText || !statusIndicator) return;
 
   statusText.textContent = text;
 

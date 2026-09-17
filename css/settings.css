@@ -1,0 +1,237 @@
+/* LingoFlow Settings Page (pages/settings.html)
+   只做「整页布局覆盖」：组件样式继续复用 css/popup.css，
+   这里仅解除弹窗的 330px 宽 / 600px 高限制，并加上左侧锚点导航与吸底操作条。 */
+
+/* ===== 页面骨架 ===== */
+body.settings-page {
+  width: auto;
+  max-width: none;
+  min-height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.settings-page-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 28px;
+  border-bottom: 1px solid var(--lf-border);
+  background: rgba(16, 22, 43, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+body[data-theme="light"] .settings-page-header {
+  background: rgba(248, 251, 255, 0.9);
+  border-bottom-color: rgba(103, 116, 255, 0.16);
+}
+
+.settings-page-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-page-logo {
+  width: 28px;
+  height: 28px;
+  border-radius: 9px;
+  flex: 0 0 auto;
+}
+
+.settings-page-brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.18;
+}
+
+.settings-page-brand-text strong {
+  font-size: 14px;
+  letter-spacing: 0.02em;
+}
+
+.settings-page-brand-text span {
+  font-size: 11.5px;
+  color: var(--lf-muted);
+}
+
+body[data-theme="light"] .settings-page-brand-text span {
+  color: #5b6d89;
+}
+
+.settings-page-body {
+  display: grid;
+  grid-template-columns: 206px minmax(0, 1fr);
+  align-items: start;
+  gap: 26px;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px 28px 104px;
+}
+
+/* ===== 左侧锚点导航（解决"设置太长找不到"） ===== */
+.settings-nav {
+  position: sticky;
+  top: 82px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid var(--lf-border);
+  border-radius: 16px;
+  background: var(--lf-surface);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.settings-nav-item {
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: var(--lf-muted);
+  font-size: 12.5px;
+  font-weight: 650;
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.settings-nav-item:hover {
+  background: rgba(124, 108, 255, 0.14);
+  color: var(--lf-text);
+}
+
+.settings-nav-item.active {
+  background: linear-gradient(135deg, rgba(124, 108, 255, 0.3), rgba(98, 168, 255, 0.22));
+  color: #fff;
+}
+
+body[data-theme="light"] .settings-nav {
+  background: rgba(255, 255, 255, 0.74);
+  border-color: rgba(103, 116, 255, 0.16);
+}
+
+body[data-theme="light"] .settings-nav-item {
+  color: #5b6d89;
+}
+
+body[data-theme="light"] .settings-nav-item:hover {
+  background: rgba(124, 108, 255, 0.1);
+  color: #172033;
+}
+
+body[data-theme="light"] .settings-nav-item.active {
+  background: rgba(124, 108, 255, 0.16);
+  color: #3b3fb8;
+}
+
+/* ===== 内容区：解除弹窗尺寸绑死 ===== */
+.settings-shell {
+  max-height: none;
+  height: auto;
+  padding: 0;
+  overflow: visible;
+}
+
+.settings-page #settings-panel {
+  position: static;
+  inset: auto;
+  display: block;
+  gap: 0;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  padding: 0;
+  overflow: visible;
+  /* .popup-panel 自带深色渐变底（弹窗里当覆盖层用）；整页里必须去掉，
+     否则浅色主题下会露出一整块深色背景 */
+  background: transparent;
+  border-radius: 0;
+}
+
+.settings-page .settings-panel-frame {
+  flex: none;
+  min-height: 0;
+  overflow: visible;
+  box-shadow: var(--lf-shadow);
+}
+
+.settings-page .settings-panel-list {
+  overflow: visible;
+  padding-right: 0;
+}
+
+/* 分节之间留白，避免长页面挤在一起 */
+.settings-page .settings-section-title {
+  padding-top: 22px;
+}
+
+/* ===== 锚点：滚动时留出吸顶 header 的高度 ===== */
+.settings-anchor {
+  display: block;
+  height: 1px;
+  margin-top: -1px;
+}
+
+.settings-page [id^="sec-"] {
+  scroll-margin-top: 96px;
+}
+
+/* ===== 吸底操作条 ===== */
+.settings-page .settings-panel-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 30;
+  margin-top: 16px;
+  border: 1px solid var(--lf-border);
+  border-radius: 14px;
+  background: rgba(22, 27, 50, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 -8px 26px rgba(2, 6, 23, 0.3);
+}
+
+body[data-theme="light"] .settings-page .settings-panel-footer {
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 -8px 26px rgba(61, 99, 242, 0.12);
+}
+
+/* ===== 窄屏：导航变成横向滚动条 ===== */
+@media (max-width: 900px) {
+  .settings-page-header {
+    padding: 12px 16px;
+  }
+
+  .settings-page-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding: 14px 16px 96px;
+  }
+
+  .settings-nav {
+    position: sticky;
+    top: 60px;
+    z-index: 35;
+    flex-direction: row;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 6px;
+    scrollbar-width: none;
+  }
+
+  .settings-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .settings-nav-item {
+    white-space: nowrap;
+  }
+
+  .settings-page [id^="sec-"] {
+    scroll-margin-top: 126px;
+  }
+}
