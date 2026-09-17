@@ -637,6 +637,12 @@ function generateId() {
  * provider 形参: 'siliconflow' | 'bailian' | 'gemini' | 'deepseek' | 'youdaollm'
  * 返回: 选择 id 字符串（已替换为用户输入的自定义模型名），或输入 null → 返回 null 表示未配置。
  */
+// 已下架的模型 id → 替代 id。老用户 storage 里可能还存着旧 id，
+// 直接静默映射，避免每次都先撞 404/400 再走完整条降级链。
+const RETIRED_MODEL_ALIASES = {
+  'deepseek-ai/DeepSeek-V3': 'deepseek-ai/DeepSeek-V3.2'
+};
+
 function resolveModel(provider, selected, custom) {
   const fallback = {
     siliconflow: 'tencent/Hunyuan-MT-7B',
@@ -649,7 +655,7 @@ function resolveModel(provider, selected, custom) {
   const userCustom = (custom || '').trim();
   if (chosen === '__custom__') return userCustom || fallback;
   if (!chosen) return fallback;
-  return chosen;
+  return RETIRED_MODEL_ALIASES[chosen] || chosen;
 }
 
 // ===== 统一目标语言映射 =====
@@ -1535,23 +1541,36 @@ function translateOneForBatch(text, targetLang, engine, fallback) {
 }
 
 // SiliconFlow models - auto fallback in order
-// Priority: verified working models first, then untested ones as backup
+// Priority: 免费档优先（翻译专精 → 通用），随后付费档按「越便宜越靠前」
 const SILICONFLOW_FALLBACK_MODELS = [
-  'tencent/Hunyuan-MT-7B',          // ✅ Verified working - dedicated MT model, fast & reliable (default)
-  'Qwen/Qwen2.5-7B-Instruct',       // Free general-purpose model
-  'Qwen/Qwen3.5-4B',                // Free lightweight long-context model
-  'Pro/MiniMaxAI/MiniMax-M2.5',     // MiniMax latest chat
-  'deepseek-ai/DeepSeek-V4-Flash',   // ✅ Fast, cheap, good quality
-  'deepseek-ai/DeepSeek-V3'          // Flagship DeepSeek chat
+  'tencent/Hunyuan-MT-7B',          // ✅ 免费 · 翻译专用模型，默认
+  'Qwen/Qwen2.5-7B-Instruct',       // 免费 · 通用
+  'Qwen/Qwen3.5-4B',                // 免费 · 轻量长上下文
+  'Qwen/Qwen3.5-35B-A3B',           // 付费 · 0.40/3.20 最便宜 MoE
+  'inclusionAI/Ling-mini-2.0',      // 付费 · 0.50/2.00 输出最便宜
+  'Qwen/Qwen3.5-27B',               // 付费 · 0.60/4.80 小模型均衡
+  'Qwen/Qwen3.5-122B-A10B',         // 付费 · 0.80/6.40 质量档 MoE
+  'Pro/MiniMaxAI/MiniMax-M2.5',     // 付费 · MiniMax 对话
+  'deepseek-ai/DeepSeek-V4-Flash',   // ✅ 付费 · 快、便宜
+  'deepseek-ai/DeepSeek-V3.2'        // 付费 · 旗舰对话（替代已下架的 DeepSeek-V3）
 ];
 
+// 价格（¥/M tokens，输入→输出，以 siliconflow.cn/pricing 为准，仅供维护参考，代码不读取）：
+//   Hunyuan-MT-7B 免费 | Qwen2.5-7B-Instruct 免费 | Qwen3.5-4B 免费
+//   Qwen3.5-35B-A3B 0.40→3.20 | Ling-mini-2.0 0.50→2.00
+//   Qwen3.5-27B 0.60→4.80 | Qwen3.5-122B-A10B 0.80→6.40
+//   MiniMax-M2.5 2.10→8.40 | DeepSeek-V4-Flash 1.50~3.00→4.50~9.00 | DeepSeek-V3.2 4.00→6.00
 const SILICONFLOW_MODEL_META = {
   'tencent/Hunyuan-MT-7B':         { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'Qwen/Qwen2.5-7B-Instruct':      { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'Qwen/Qwen3.5-4B':               { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
+  'Qwen/Qwen3.5-35B-A3B':          { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
+  'inclusionAI/Ling-mini-2.0':     { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
+  'Qwen/Qwen3.5-27B':              { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
+  'Qwen/Qwen3.5-122B-A10B':        { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
   'Pro/MiniMaxAI/MiniMax-M2.5':    { pricing: 'paid', maxItems: 70, maxChars: 24000, chunkDelay: 60 },
   'deepseek-ai/DeepSeek-V4-Flash': { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 40 },
-  'deepseek-ai/DeepSeek-V3':       { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 },
+  'deepseek-ai/DeepSeek-V3.2':     { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 },
   '__custom__':                     { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 }
 };
 
