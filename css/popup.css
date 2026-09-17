@@ -3186,6 +3186,7 @@ body[data-theme="light"] .lf-inline-modal-btn-cancel {
 }
 
 .dict-card-close {
+  position: relative;
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -3209,6 +3210,35 @@ body[data-theme="light"] .lf-inline-modal-btn-cancel {
 .dict-card-close svg {
   width: 13px;
   height: 13px;
+}
+
+/* 自绘提示（替代原生 title tooltip） */
+.dict-card-close::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  padding: 4px 8px;
+  border: 1px solid rgba(184, 173, 255, 0.24);
+  border-radius: 7px;
+  background: rgba(26, 28, 46, 0.96);
+  color: #eef0ff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+
+.dict-card-close:hover::after,
+.dict-card-close:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .dict-meaning {
@@ -3366,6 +3396,11 @@ body[data-theme="light"] .dict-card-close {
 body[data-theme="light"] .dict-card-close:hover {
   background: rgba(124, 108, 255, 0.14);
   color: #172033;
+}
+body[data-theme="light"] .dict-card-close::after {
+  border-color: rgba(23, 32, 51, 0.88);
+  background: rgba(23, 32, 51, 0.94);
+  color: #f7f8ff;
 }
 body[data-theme="light"] .dict-card-save.is-saved {
   color: #15803d;

@@ -312,7 +312,8 @@ function clearDictResult() {
 
 function dictCardCloseButtonHtml() {
   const label = getMessage('clear') || 'Clear';
-  return '<button class="dict-card-close" type="button" title="' + escapeHtml(label) +
+  // 用 data-tip + CSS 伪元素自绘提示，避免原生 title 的黑框 tooltip
+  return '<button class="dict-card-close" type="button" data-tip="' + escapeHtml(label) +
     '" aria-label="' + escapeHtml(label) + '">' +
     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">' +
     '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
