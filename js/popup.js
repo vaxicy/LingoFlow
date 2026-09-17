@@ -989,8 +989,8 @@ function refreshCustomModelInputs() {
 // SiliconFlow models list (must match background.js)
 // Sources: SiliconFlow 官方模型中心当前在列 + 用户截图确认。
 // 默认模型：Hunyuan-MT-7B（翻译专精）；免费档另有 2 个 Qwen；
-// 付费档按「越便宜越靠前」排序（Qwen3.5-35B-A3B → Ling-mini → Qwen3.5-27B →
-// Qwen3.5-122B-A10B → DeepSeek-V4-Flash → DeepSeek-V3.2）。
+// 付费档按「越便宜越靠前」排序（Ling-mini-2.0 → DeepSeek-V4-Flash → DeepSeek-V3.2）。
+// 2026-09-17：Qwen3.5-35B-A3B / Qwen3.5-27B / Qwen3.5-122B-A10B 因实测响应过慢移除。
 // 末尾 '__custom__' 为自定义占位。
 const SILICONFLOW_MODELS = [
   {
@@ -1015,32 +1015,11 @@ const SILICONFLOW_MODELS = [
     descEn: 'Qwen · Lightweight long context'
   },
   {
-    id: 'Qwen/Qwen3.5-35B-A3B',
-    name: 'Qwen3.5-35B-A3B',
-    badge: 'paid',
-    descZh: '通义千问 · 极便宜 MoE',
-    descEn: 'Qwen · Cheapest MoE'
-  },
-  {
     id: 'inclusionAI/Ling-mini-2.0',
     name: 'Ling-mini-2.0',
     badge: 'paid',
     descZh: '蚂蚁 Ling · 输出最便宜',
     descEn: 'Ling · Cheapest output'
-  },
-  {
-    id: 'Qwen/Qwen3.5-27B',
-    name: 'Qwen3.5-27B',
-    badge: 'paid',
-    descZh: '通义千问 · 小模型均衡',
-    descEn: 'Qwen · Balanced small'
-  },
-  {
-    id: 'Qwen/Qwen3.5-122B-A10B',
-    name: 'Qwen3.5-122B-A10B',
-    badge: 'paid',
-    descZh: '通义千问 · 质量档 MoE',
-    descEn: 'Qwen · Quality MoE'
   },
   {
     id: 'deepseek-ai/DeepSeek-V4-Flash',

@@ -637,13 +637,19 @@ function generateId() {
  * provider 形参: 'siliconflow' | 'bailian' | 'gemini' | 'deepseek' | 'youdaollm'
  * 返回: 选择 id 字符串（已替换为用户输入的自定义模型名），或输入 null → 返回 null 表示未配置。
  */
-// 已下架 / 已废弃的模型 id → 替代 id。老用户 storage 里可能还存着旧 id，
+// 已下架 / 已废弃 / 因过慢被移除的模型 id → 替代 id。老用户 storage 里可能还存着旧 id，
 // 直接静默映射，避免每次都先撞 404/400 再走完整条降级链。
+// 规则：有同族继任者就用继任者（DeepSeek-V3 → V3.2），否则一律回落默认
+// tencent/Hunyuan-MT-7B（免费、翻译专用、快）。
 const RETIRED_MODEL_ALIASES = {
   'deepseek-ai/DeepSeek-V3': 'deepseek-ai/DeepSeek-V3.2',
-  // 模型广场已标 Deprecated（2026-09-17 确认）→ 换同「质量档 MoE」且更便宜的 Qwen3.5-122B
-  'Pro/MiniMaxAI/MiniMax-M2.5': 'Qwen/Qwen3.5-122B-A10B',
-  'MiniMaxAI/MiniMax-M2.5': 'Qwen/Qwen3.5-122B-A10B'
+  // 模型广场标记 Deprecated（2026-09-17 确认）
+  'Pro/MiniMaxAI/MiniMax-M2.5': 'tencent/Hunyuan-MT-7B',
+  'MiniMaxAI/MiniMax-M2.5': 'tencent/Hunyuan-MT-7B',
+  // 实测响应过慢，2026-09-17 从列表移除
+  'Qwen/Qwen3.5-35B-A3B': 'tencent/Hunyuan-MT-7B',
+  'Qwen/Qwen3.5-27B': 'tencent/Hunyuan-MT-7B',
+  'Qwen/Qwen3.5-122B-A10B': 'tencent/Hunyuan-MT-7B'
 };
 
 function resolveModel(provider, selected, custom) {
@@ -1549,27 +1555,21 @@ const SILICONFLOW_FALLBACK_MODELS = [
   'tencent/Hunyuan-MT-7B',          // ✅ 免费 · 翻译专用模型，默认
   'Qwen/Qwen2.5-7B-Instruct',       // 免费 · 通用
   'Qwen/Qwen3.5-4B',                // 免费 · 轻量长上下文
-  'Qwen/Qwen3.5-35B-A3B',           // 付费 · 0.40/3.20 最便宜 MoE
   'inclusionAI/Ling-mini-2.0',      // 付费 · 0.50/2.00 输出最便宜
-  'Qwen/Qwen3.5-27B',               // 付费 · 0.60/4.80 小模型均衡
-  'Qwen/Qwen3.5-122B-A10B',         // 付费 · 0.80/6.40 质量档 MoE
   'deepseek-ai/DeepSeek-V4-Flash',   // ✅ 付费 · 快、便宜
   'deepseek-ai/DeepSeek-V3.2'        // 付费 · 旗舰对话（替代已下架的 DeepSeek-V3）
 ];
 
 // 价格（¥/M tokens，输入→输出，以 siliconflow.cn/pricing 为准，仅供维护参考，代码不读取）：
 //   Hunyuan-MT-7B 免费 | Qwen2.5-7B-Instruct 免费 | Qwen3.5-4B 免费
-//   Qwen3.5-35B-A3B 0.40→3.20 | Ling-mini-2.0 0.50→2.00
-//   Qwen3.5-27B 0.60→4.80 | Qwen3.5-122B-A10B 0.80→6.40
+//   Ling-mini-2.0 0.50→2.00
 //   DeepSeek-V4-Flash 1.50~3.00→4.50~9.00 | DeepSeek-V3.2 4.00→6.00
+// 2026-09-17 移除（用户实测过慢）：Qwen3.5-35B-A3B / Qwen3.5-27B / Qwen3.5-122B-A10B
 const SILICONFLOW_MODEL_META = {
   'tencent/Hunyuan-MT-7B':         { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'Qwen/Qwen2.5-7B-Instruct':      { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'Qwen/Qwen3.5-4B':               { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
-  'Qwen/Qwen3.5-35B-A3B':          { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
   'inclusionAI/Ling-mini-2.0':     { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
-  'Qwen/Qwen3.5-27B':              { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
-  'Qwen/Qwen3.5-122B-A10B':        { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
   'deepseek-ai/DeepSeek-V4-Flash': { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 40 },
   'deepseek-ai/DeepSeek-V3.2':     { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 },
   '__custom__':                     { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 }
