@@ -637,10 +637,13 @@ function generateId() {
  * provider 形参: 'siliconflow' | 'bailian' | 'gemini' | 'deepseek' | 'youdaollm'
  * 返回: 选择 id 字符串（已替换为用户输入的自定义模型名），或输入 null → 返回 null 表示未配置。
  */
-// 已下架的模型 id → 替代 id。老用户 storage 里可能还存着旧 id，
+// 已下架 / 已废弃的模型 id → 替代 id。老用户 storage 里可能还存着旧 id，
 // 直接静默映射，避免每次都先撞 404/400 再走完整条降级链。
 const RETIRED_MODEL_ALIASES = {
-  'deepseek-ai/DeepSeek-V3': 'deepseek-ai/DeepSeek-V3.2'
+  'deepseek-ai/DeepSeek-V3': 'deepseek-ai/DeepSeek-V3.2',
+  // 模型广场已标 Deprecated（2026-09-17 确认）→ 换同「质量档 MoE」且更便宜的 Qwen3.5-122B
+  'Pro/MiniMaxAI/MiniMax-M2.5': 'Qwen/Qwen3.5-122B-A10B',
+  'MiniMaxAI/MiniMax-M2.5': 'Qwen/Qwen3.5-122B-A10B'
 };
 
 function resolveModel(provider, selected, custom) {
@@ -1550,7 +1553,6 @@ const SILICONFLOW_FALLBACK_MODELS = [
   'inclusionAI/Ling-mini-2.0',      // 付费 · 0.50/2.00 输出最便宜
   'Qwen/Qwen3.5-27B',               // 付费 · 0.60/4.80 小模型均衡
   'Qwen/Qwen3.5-122B-A10B',         // 付费 · 0.80/6.40 质量档 MoE
-  'Pro/MiniMaxAI/MiniMax-M2.5',     // 付费 · MiniMax 对话
   'deepseek-ai/DeepSeek-V4-Flash',   // ✅ 付费 · 快、便宜
   'deepseek-ai/DeepSeek-V3.2'        // 付费 · 旗舰对话（替代已下架的 DeepSeek-V3）
 ];
@@ -1559,7 +1561,7 @@ const SILICONFLOW_FALLBACK_MODELS = [
 //   Hunyuan-MT-7B 免费 | Qwen2.5-7B-Instruct 免费 | Qwen3.5-4B 免费
 //   Qwen3.5-35B-A3B 0.40→3.20 | Ling-mini-2.0 0.50→2.00
 //   Qwen3.5-27B 0.60→4.80 | Qwen3.5-122B-A10B 0.80→6.40
-//   MiniMax-M2.5 2.10→8.40 | DeepSeek-V4-Flash 1.50~3.00→4.50~9.00 | DeepSeek-V3.2 4.00→6.00
+//   DeepSeek-V4-Flash 1.50~3.00→4.50~9.00 | DeepSeek-V3.2 4.00→6.00
 const SILICONFLOW_MODEL_META = {
   'tencent/Hunyuan-MT-7B':         { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'Qwen/Qwen2.5-7B-Instruct':      { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
@@ -1568,7 +1570,6 @@ const SILICONFLOW_MODEL_META = {
   'inclusionAI/Ling-mini-2.0':     { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
   'Qwen/Qwen3.5-27B':              { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
   'Qwen/Qwen3.5-122B-A10B':        { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
-  'Pro/MiniMaxAI/MiniMax-M2.5':    { pricing: 'paid', maxItems: 70, maxChars: 24000, chunkDelay: 60 },
   'deepseek-ai/DeepSeek-V4-Flash': { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 40 },
   'deepseek-ai/DeepSeek-V3.2':     { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 },
   '__custom__':                     { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 }
