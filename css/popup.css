@@ -3176,6 +3176,35 @@ body[data-theme="light"] .lf-inline-modal-btn-cancel {
   height: 15px;
 }
 
+.dict-card-actions {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dict-card-close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid rgba(184, 173, 255, 0.22);
+  border-radius: 10px;
+  color: var(--lf-lavender);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.dict-card-close:hover {
+  border-color: rgba(124, 108, 255, 0.5);
+  background: rgba(124, 108, 255, 0.16);
+  color: #fff;
+}
+
 .dict-meaning {
   margin-top: 9px;
   display: flex;
@@ -3319,6 +3348,16 @@ body[data-theme="light"] .dict-card-save {
   background: rgba(255, 255, 255, 0.6);
 }
 body[data-theme="light"] .dict-card-save:hover {
+  border-color: rgba(103, 116, 255, 0.4);
+  background: rgba(124, 108, 255, 0.12);
+  color: #172033;
+}
+body[data-theme="light"] .dict-card-close {
+  color: #635bff;
+  border-color: rgba(103, 116, 255, 0.2);
+  background: rgba(255, 255, 255, 0.6);
+}
+body[data-theme="light"] .dict-card-close:hover {
   border-color: rgba(103, 116, 255, 0.4);
   background: rgba(124, 108, 255, 0.12);
   color: #172033;

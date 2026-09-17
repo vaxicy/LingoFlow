@@ -32,6 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initPanels();
   initDictionarySearch();
   buildPageNav();
+  // 恢复上次所在页 + 词卡（需在 buildPageNav 之后，页面容器才存在）
+  restorePopupView();
   initBackup();
   loadPopupLanguage();
 
@@ -224,8 +226,10 @@ function initDictionarySearch() {
     if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
   });
 
-  // 弹窗重开时恢复上次未完成的查询
-  restoreDictSearchState();
+  // 清空搜索框（含原生 ×）时同步清掉已存的词卡
+  input.addEventListener('search', () => {
+    if (!input.value.trim()) clearDictResult();
+  });
 }
 
 // ===== 查询状态持久化：弹窗关闭后查询仍在后台继续，重开弹窗可恢复 =====
@@ -250,6 +254,78 @@ function clearDictPending(text, targetLang) {
       chrome.storage.local.remove(DICT_PENDING_KEY);
     });
   } catch (_) {}
+}
+
+// ===== 视图状态持久化：重开弹窗保留在之前的页 + 词卡（浏览器关闭即失效） =====
+const POPUP_VIEW_KEY = 'lingoflow_popup_view';
+// 优先 session（关弹窗仍在、关浏览器清空）；旧版 Chrome 无 session 时回落 local
+const popupViewStore = (chrome.storage && chrome.storage.session) ? chrome.storage.session : chrome.storage.local;
+
+// 内存基线：避免「读-改-写」竞态把词卡冲掉
+let popupViewCache = null;
+
+function readPopupView(cb) {
+  try {
+    popupViewStore.get([POPUP_VIEW_KEY], (res) => {
+      if (chrome.runtime.lastError) { cb(popupViewCache); return; }
+      if (popupViewCache === null) popupViewCache = (res && res[POPUP_VIEW_KEY]) || null;
+      cb(popupViewCache);
+    });
+  } catch (_) { cb(popupViewCache); }
+}
+
+function writePopupView(patch) {
+  if (popupViewCache !== null) {
+    popupViewCache = Object.assign({}, popupViewCache, patch, { ts: Date.now() });
+    try { popupViewStore.set({ [POPUP_VIEW_KEY]: popupViewCache }); } catch (_) {}
+    return;
+  }
+  // 基线尚未建立（弹窗刚开）：先读出来合并，避免覆盖已有词卡
+  try {
+    popupViewStore.get([POPUP_VIEW_KEY], (res) => {
+      const cur = (res && res[POPUP_VIEW_KEY]) || null;
+      popupViewCache = Object.assign({}, cur || {}, patch, { ts: Date.now() });
+      try { popupViewStore.set({ [POPUP_VIEW_KEY]: popupViewCache }); } catch (_) {}
+    });
+  } catch (_) {}
+}
+
+// 记住当前所在页（切 tab 时调用）。词卡不受影响，只有新查询或点 × 才会覆盖/清除。
+function savePopupTab(tab) {
+  writePopupView({ tab: tab === 'words' ? 'words' : 'home' });
+}
+
+// 查询结束（成功或失败）后记录结果 + 输入原文，供弹窗重开还原
+function saveDictResult(text, targetLang, result) {
+  writePopupView({
+    tab: 'words',
+    dictText: text || '',
+    dictTargetLang: targetLang || '',
+    dictResult: result || null
+  });
+}
+
+// 点 × ：只清词卡，保留输入框内容与当前所在页
+function clearDictResult() {
+  writePopupView({ dictResult: null });
+}
+
+function dictCardCloseButtonHtml() {
+  const label = getMessage('clear') || 'Clear';
+  return '<button class="dict-card-close" type="button" title="' + escapeHtml(label) +
+    '" aria-label="' + escapeHtml(label) + '">' +
+    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">' +
+    '<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>';
+}
+
+function wireDictCardClose(resultEl) {
+  const btn = resultEl.querySelector('.dict-card-close');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    resultEl.hidden = true;
+    resultEl.innerHTML = '';
+    clearDictResult();
+  });
 }
 
 // 统一渲染：句子走简版卡片，单词走词卡
@@ -283,11 +359,13 @@ function runDictSearch(text, resultEl) {
       (response) => {
         clearDictPending(text, targetLang);
         if (chrome.runtime.lastError) {
+          saveDictResult(text, targetLang, null);
           resultEl.innerHTML = '<div class="dict-empty">' +
             escapeHtml(getMessage('dict_error') || 'Lookup failed') + '</div>';
           return;
         }
         const r = response && response.success && response.result ? response.result : null;
+        saveDictResult(text, targetLang, r);
         if (r) {
           renderDictResponse(r, text, resultEl);
         } else {
@@ -336,6 +414,7 @@ function runDictSearch(text, resultEl) {
         }
         return;
       }
+      saveDictResult(text, targetLang, r);
       renderDictResponse(r, text, resultEl);
     }
   );
@@ -348,24 +427,40 @@ function runDictSearch(text, resultEl) {
   }, 12000);
 }
 
-// 弹窗重开：恢复未完成的查询（继续显示「查询中」，轮询后台结果）
-function restoreDictSearchState() {
+// 弹窗重开时的视图恢复：
+// ① 有进行中的查询 → 切到单词页显示「查询中」并继续轮询；
+// ② 有已完成的词卡 → 还原输入框与词卡；
+// ③ 其余按上次所在页恢复（默认首页）。词卡一直保留，直到新查询或点 ×。
+function restorePopupView() {
   chrome.storage.local.get([DICT_PENDING_KEY], (res) => {
     const pending = res && res[DICT_PENDING_KEY];
-    if (!pending || !pending.text) return;
-    if (Date.now() - (pending.startedAt || 0) > DICT_PENDING_TTL) {
-      clearDictPending();
+    if (pending && pending.text && (Date.now() - (pending.startedAt || 0)) <= DICT_PENDING_TTL) {
+      const input = document.getElementById('popup-dict-input');
+      const resultEl = document.getElementById('popup-dict-result');
+      switchPopupTab('words', { silent: true });
+      if (input) input.value = pending.text;
+      if (resultEl) {
+        resultEl.hidden = false;
+        resultEl.className = 'dict-result';
+        resultEl.innerHTML = '<div class="dict-loading">' +
+          (getMessage('dict_searching') || 'Searching…') + '</div>';
+        pollDictLookup(pending.text, pending.targetLang, resultEl, pending.startedAt || Date.now());
+      }
       return;
     }
-    const input = document.getElementById('popup-dict-input');
-    const resultEl = document.getElementById('popup-dict-result');
-    if (!input || !resultEl) return;
-    input.value = pending.text;
-    resultEl.hidden = false;
-    resultEl.className = 'dict-result';
-    resultEl.innerHTML = '<div class="dict-loading">' +
-      (getMessage('dict_searching') || 'Searching…') + '</div>';
-    pollDictLookup(pending.text, pending.targetLang, resultEl, pending.startedAt || Date.now());
+    if (pending) clearDictPending();
+
+    readPopupView((view) => {
+      const input = document.getElementById('popup-dict-input');
+      const resultEl = document.getElementById('popup-dict-result');
+      if (view && view.dictText && input) input.value = view.dictText;
+      if (view && view.dictResult && resultEl) {
+        resultEl.hidden = false;
+        resultEl.className = 'dict-result';
+        renderDictResponse(view.dictResult, view.dictText, resultEl);
+      }
+      switchPopupTab(view && view.tab === 'words' ? 'words' : 'home', { silent: true });
+    });
   });
 }
 
@@ -388,11 +483,13 @@ function pollDictLookup(text, targetLang, resultEl, startedAt) {
         const state = response && response.state;
         if (state && state.status === 'done' && state.result) {
           clearDictPending(text, targetLang);
+          saveDictResult(text, targetLang, state.result);
           renderDictResponse(state.result, text, resultEl);
           return;
         }
         if (state && state.status === 'error') {
           clearDictPending(text, targetLang);
+          saveDictResult(text, targetLang, null);
           resultEl.innerHTML = '<div class="dict-empty">' +
             escapeHtml(getMessage('dict_not_found') || 'No result found') + '</div>';
           return;
@@ -418,7 +515,8 @@ function pollDictLookup(text, targetLang, resultEl, startedAt) {
 
 function renderQuickCard(text, translation, resultEl, isSentence) {
   let html = '<div class="dict-card"><div class="dict-card-head"><div>' +
-    '<div class="dict-card-word">' + escapeHtml(text) + '</div></div></div>' +
+    '<div class="dict-card-word">' + escapeHtml(text) + '</div></div>' +
+    '<div class="dict-card-actions">' + dictCardCloseButtonHtml() + '</div></div>' +
     '<div class="dict-meaning"><div class="dict-meaning-row">' +
     '<div class="dict-card-def">' + escapeHtml(translation) + '</div></div></div>';
   if (!isSentence) {
@@ -427,6 +525,7 @@ function renderQuickCard(text, translation, resultEl, isSentence) {
   }
   html += '</div>';
   resultEl.innerHTML = html;
+  wireDictCardClose(resultEl);
 }
 
 function renderDictCard(r, originalText, resultEl) {
@@ -441,6 +540,7 @@ function renderDictCard(r, originalText, resultEl) {
   html += '<div><div class="dict-card-word">' + escapeHtml(word) + '</div>';
   if (phonetic) html += '<div class="dict-card-phonetic">' + phonetic + '</div>';
   html += '</div>';
+  html += '<div class="dict-card-actions">';
   html += '<button class="dict-card-save" type="button" data-text="' + escapeHtml(word) +
     '" data-translation="' + escapeHtml(r.translation || '') + '" title="' +
     escapeHtml(getMessage('save_to_vocabulary') || 'Save') + '" aria-label="' +
@@ -448,6 +548,8 @@ function renderDictCard(r, originalText, resultEl) {
     '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
     '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>' +
     '<polyline points="17 21 17 13 7 13 7 21"/></svg></button>';
+  html += dictCardCloseButtonHtml();
+  html += '</div>';
   html += '</div>';
 
   if (meanings.length) {
@@ -482,6 +584,7 @@ function renderDictCard(r, originalText, resultEl) {
   html += '</div>';
 
   resultEl.innerHTML = html;
+  wireDictCardClose(resultEl);
 
   const saveBtn = resultEl.querySelector('.dict-card-save');
   if (saveBtn) {
@@ -559,14 +662,28 @@ function buildPageNav() {
 
   tabbar.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const toWords = btn.getAttribute('data-tab') === 'words';
-      home.style.visibility = toWords ? 'hidden' : 'visible';
-      words.classList.toggle('active', toWords);
-      tabbar.querySelectorAll('.tab-btn').forEach(t => t.classList.toggle('active', t === btn));
-      if (toWords) refreshWordsPage();
+      switchPopupTab(btn.getAttribute('data-tab') === 'words' ? 'words' : 'home');
     });
   });
   refreshWordsPage();
+}
+
+// 切换「首页 / 单词」页。silent=true 时不写入持久化状态（用于恢复时避免自覆盖）。
+function switchPopupTab(tab, opts) {
+  const home = document.getElementById('page-home');
+  const words = document.getElementById('page-words');
+  const tabbar = document.querySelector('.popup-tabbar');
+  if (!home || !words) return;
+  const toWords = tab === 'words';
+  home.style.visibility = toWords ? 'hidden' : 'visible';
+  words.classList.toggle('active', toWords);
+  if (tabbar) {
+    tabbar.querySelectorAll('.tab-btn').forEach(t => {
+      t.classList.toggle('active', (t.getAttribute('data-tab') === 'words') === toWords);
+    });
+  }
+  if (toWords) refreshWordsPage();
+  if (!opts || !opts.silent) savePopupTab(toWords ? 'words' : 'home');
 }
 
 function refreshWordsPage() {
