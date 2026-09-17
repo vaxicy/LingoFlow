@@ -14,6 +14,7 @@ const EXCLUDE_PATTERNS = [
   /[\\\/]scripts([\\\/]|$)/,              // scripts/ (PIL generation scripts)
   /lingoflow-[\d.]+\.zip$/,               // previous zip builds
   /[\\\/]create-icons\.html$/,            // one-off generator HTML
+  /[\\\/]diagnostic-desc\.js$/,           // dev-only console diagnostic script
   /[\\\/]I18N_COMPLETE\.md$/,             // dev-only doc
   /[\\\/]INSTALL\.md$/,                   // install doc (not needed in extension)
   /[\\\/]pack-zip\.js$/,                  // this build script
@@ -34,7 +35,7 @@ function shouldExclude(filePath) {
 
 const base = path.resolve('d:\\迅雷下载\\vibe coding\\Chrome Extensions\\LingoFlow');
 // 用户指定的默认输出文件夹（2026-09-07 确认）
-const outZip = path.resolve('d:\\迅雷下载\\vibe coding', 'lingoflow-1.2.8.zip');
+const outZip = path.resolve('d:\\迅雷下载\\vibe coding', 'lingoflow-1.2.9.zip');
 
 function collectFiles(dir, list = []) {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
