@@ -223,6 +223,43 @@ function initDictionarySearch() {
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); doSearch(); }
   });
+
+  // 弹窗重开时恢复上次未完成的查询
+  restoreDictSearchState();
+}
+
+// ===== 查询状态持久化：弹窗关闭后查询仍在后台继续，重开弹窗可恢复 =====
+const DICT_PENDING_KEY = 'lingoflow_dict_pending';
+const DICT_PENDING_TTL = 5 * 60 * 1000;
+
+function saveDictPending(text, targetLang) {
+  try {
+    chrome.storage.local.set({
+      [DICT_PENDING_KEY]: { text: text, targetLang: targetLang, startedAt: Date.now() }
+    });
+  } catch (_) {}
+}
+
+// 仅在与待办查询一致时清除，避免并发的另一次查询被误删
+function clearDictPending(text, targetLang) {
+  try {
+    chrome.storage.local.get([DICT_PENDING_KEY], (res) => {
+      const p = res && res[DICT_PENDING_KEY];
+      if (!p) return;
+      if (text != null && (p.text !== text || p.targetLang !== targetLang)) return;
+      chrome.storage.local.remove(DICT_PENDING_KEY);
+    });
+  } catch (_) {}
+}
+
+// 统一渲染：句子走简版卡片，单词走词卡
+function renderDictResponse(result, text, resultEl) {
+  const isSentence = (result && result.mode === 'sentence') || /\s/.test(String(text || '').trim());
+  if (isSentence) {
+    renderQuickCard(text, (result && result.translation) || '', resultEl, true);
+  } else {
+    renderDictCard(result, text, resultEl);
+  }
 }
 
 function runDictSearch(text, resultEl) {
@@ -236,17 +273,29 @@ function runDictSearch(text, resultEl) {
   // 离线词库为英→中，目标语言非中文时一律直接走翻译引擎
   const zhTarget = /^zh/i.test(String(targetLang || '').trim());
 
-  // 句子 或 非中文目标语言：直接走当前翻译引擎
+  // 记录本次查询：弹窗关闭后后台照常跑完，重开弹窗据此恢复
+  saveDictPending(text, targetLang);
+
+  // 句子 或 非中文目标语言：走被追踪的 lookup_dictionary（内部会直接整句翻译）
   if (isSentence || !zhTarget) {
-    chrome.runtime.sendMessage({ action: 'translate', text: text, targetLang: targetLang }, (res) => {
-      if (chrome.runtime.lastError) return;
-      if (res && res.success && res.translation) {
-        renderQuickCard(text, res.translation, resultEl, true); // 简版卡片：不显示"生成释义"提示
-      } else {
-        resultEl.innerHTML = '<div class="dict-empty">' +
-          escapeHtml(getMessage('dict_error') || 'Lookup failed') + '</div>';
+    chrome.runtime.sendMessage(
+      { action: 'lookup_dictionary', text: text, targetLang: targetLang },
+      (response) => {
+        clearDictPending(text, targetLang);
+        if (chrome.runtime.lastError) {
+          resultEl.innerHTML = '<div class="dict-empty">' +
+            escapeHtml(getMessage('dict_error') || 'Lookup failed') + '</div>';
+          return;
+        }
+        const r = response && response.success && response.result ? response.result : null;
+        if (r) {
+          renderDictResponse(r, text, resultEl);
+        } else {
+          resultEl.innerHTML = '<div class="dict-empty">' +
+            escapeHtml(getMessage('dict_not_found') || 'No result found') + '</div>';
+        }
       }
-    });
+    );
     return;
   }
 
@@ -271,6 +320,7 @@ function runDictSearch(text, resultEl) {
     (response) => {
       settled = true;
       clearTimeout(quickTimer);
+      clearDictPending(text, targetLang);
       if (chrome.runtime.lastError) {
         if (!rendered) {
           resultEl.innerHTML = '<div class="dict-empty">' +
@@ -286,7 +336,7 @@ function runDictSearch(text, resultEl) {
         }
         return;
       }
-      renderDictCard(r, text, resultEl);
+      renderDictResponse(r, text, resultEl);
     }
   );
 
@@ -296,6 +346,74 @@ function runDictSearch(text, resultEl) {
     const hint = resultEl.querySelector('.dict-generating-hint');
     if (hint) hint.textContent = getMessage('dict_timeout') || '详细释义超时，已显示简版译文';
   }, 12000);
+}
+
+// 弹窗重开：恢复未完成的查询（继续显示「查询中」，轮询后台结果）
+function restoreDictSearchState() {
+  chrome.storage.local.get([DICT_PENDING_KEY], (res) => {
+    const pending = res && res[DICT_PENDING_KEY];
+    if (!pending || !pending.text) return;
+    if (Date.now() - (pending.startedAt || 0) > DICT_PENDING_TTL) {
+      clearDictPending();
+      return;
+    }
+    const input = document.getElementById('popup-dict-input');
+    const resultEl = document.getElementById('popup-dict-result');
+    if (!input || !resultEl) return;
+    input.value = pending.text;
+    resultEl.hidden = false;
+    resultEl.className = 'dict-result';
+    resultEl.innerHTML = '<div class="dict-loading">' +
+      (getMessage('dict_searching') || 'Searching…') + '</div>';
+    pollDictLookup(pending.text, pending.targetLang, resultEl, pending.startedAt || Date.now());
+  });
+}
+
+function pollDictLookup(text, targetLang, resultEl, startedAt) {
+  let retried = false;
+  const tick = () => {
+    chrome.runtime.sendMessage(
+      { action: 'get_lookup_state', text: text, targetLang: targetLang },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          if (!retried && Date.now() - startedAt > 3000) {
+            retried = true;
+            runDictSearch(text, resultEl);
+          } else {
+            setTimeout(tick, 900);
+          }
+          return;
+        }
+
+        const state = response && response.state;
+        if (state && state.status === 'done' && state.result) {
+          clearDictPending(text, targetLang);
+          renderDictResponse(state.result, text, resultEl);
+          return;
+        }
+        if (state && state.status === 'error') {
+          clearDictPending(text, targetLang);
+          resultEl.innerHTML = '<div class="dict-empty">' +
+            escapeHtml(getMessage('dict_not_found') || 'No result found') + '</div>';
+          return;
+        }
+        // 后台没有这个任务（service worker 重启等原因）：重发一次
+        if (!state && !retried) {
+          retried = true;
+          runDictSearch(text, resultEl);
+          return;
+        }
+        if (Date.now() - startedAt > DICT_PENDING_TTL) {
+          clearDictPending(text, targetLang);
+          resultEl.innerHTML = '<div class="dict-empty">' +
+            escapeHtml(getMessage('dict_not_found') || 'No result found') + '</div>';
+          return;
+        }
+        setTimeout(tick, 900);
+      }
+    );
+  };
+  tick();
 }
 
 function renderQuickCard(text, translation, resultEl, isSentence) {

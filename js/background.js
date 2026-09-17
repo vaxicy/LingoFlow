@@ -275,8 +275,12 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       return true;
 
     case 'lookup_dictionary':
-      lookupDictionary(request.text, request.targetLang, sendResponse);
+      startDictionaryLookup(request.text, request.targetLang, sendResponse);
       return true;
+
+    case 'get_lookup_state':
+      sendResponse({ success: true, state: getDictTaskState(request.text, request.targetLang) });
+      break;
 
     case 'save_to_vocabulary':
       saveToVocabulary(request.data);
@@ -678,6 +682,97 @@ function getEngineLangCode(engine, targetLang) {
   if (t === 'zh' || t.indexOf('zh') === 0) return table.zh;
   if (t.indexOf('es') === 0) return table.es;
   return table.en;
+}
+
+// ===== 词典/句子查询任务追踪 =====
+// 目的：查询在弹窗关闭后仍在后台跑完；弹窗重开时可查询进度或直接拿结果。
+// key = `${trimmedText}\u0001${targetLang}` → { status, result, error, startedAt, finishedAt, waiters }
+const dictLookupTasks = new Map();
+const DICT_TASK_LIMIT = 50;
+const DICT_TASK_TTL = 5 * 60 * 1000;
+
+function getDictTaskKey(text, targetLang) {
+  return String(text || '').trim() + '\u0001' + String(targetLang || 'zh');
+}
+
+function dictTaskStore(text, targetLang, patch) {
+  const key = getDictTaskKey(text, targetLang);
+  const prev = dictLookupTasks.get(key);
+  const next = Object.assign({}, prev || {}, patch);
+  if (dictLookupTasks.has(key)) dictLookupTasks.delete(key);
+  dictLookupTasks.set(key, next);
+
+  const now = Date.now();
+  for (const [k, v] of dictLookupTasks) {
+    if (v.status !== 'pending' && now - (v.finishedAt || v.startedAt || 0) > DICT_TASK_TTL) {
+      dictLookupTasks.delete(k);
+    }
+  }
+  while (dictLookupTasks.size > DICT_TASK_LIMIT) {
+    dictLookupTasks.delete(dictLookupTasks.keys().next().value);
+  }
+  return next;
+}
+
+function getDictTaskState(text, targetLang) {
+  const task = dictLookupTasks.get(getDictTaskKey(text, targetLang));
+  if (!task) return null;
+  return {
+    status: task.status,
+    result: task.result || null,
+    error: task.error || null,
+    startedAt: task.startedAt || 0,
+    finishedAt: task.finishedAt || 0
+  };
+}
+
+// 发起（或复用进行中）的词典/句子查询；sendResponse 允许为空（弹窗已关闭）。
+// 无论调用方是否还在，任务都会跑完并把结果留在 dictLookupTasks 里。
+function startDictionaryLookup(text, targetLang, sendResponse) {
+  const existing = dictLookupTasks.get(getDictTaskKey(text, targetLang));
+
+  if (existing && existing.status === 'pending') {
+    if (sendResponse) (existing.waiters = existing.waiters || []).push(sendResponse);
+    return;
+  }
+  if (existing && existing.status === 'done' && existing.result) {
+    if (sendResponse) sendResponse({ success: true, result: existing.result, cached: true });
+    return;
+  }
+
+  const task = dictTaskStore(text, targetLang, {
+    status: 'pending',
+    result: null,
+    error: null,
+    startedAt: Date.now(),
+    finishedAt: 0,
+    waiters: sendResponse ? [sendResponse] : []
+  });
+
+  let settled = false;
+  const finish = (response) => {
+    if (settled) return;
+    settled = true;
+    const ok = !!(response && response.success && response.result);
+    const done = dictTaskStore(text, targetLang, {
+      status: ok ? 'done' : 'error',
+      result: (response && response.result) || null,
+      error: ok ? null : ((response && response.error) || 'lookup failed'),
+      finishedAt: Date.now()
+    });
+    const waiters = task.waiters || [];
+    task.waiters = [];
+    done.waiters = [];
+    waiters.forEach(cb => {
+      try { cb(response); } catch (_) {}
+    });
+  };
+
+  try {
+    lookupDictionary(text, targetLang, finish);
+  } catch (error) {
+    finish({ success: false, error: (error && error.message) || String(error) });
+  }
 }
 
 // Translation dispatcher — routes to the selected engine
@@ -1856,16 +1951,15 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
     const maxLen = 2000;
     const truncated = text.length > maxLen ? text.substring(0, maxLen) : text;
 
-    // Build fallback list: selected model first, then others (excluding selected)
+    // Build fallback list: selected model first, then same-tier others (excluding selected)
     // **重要**：当用户选了 Custom 自定义模型（userCustom 非空）时，不走 fallback——
     //   失败要让用户看见，不应静默换默认模型（用户以为在用自己的模型）
+    // 修复：此前 fallbackModels 未声明，非 custom 时 push 会抛 ReferenceError，
+    //       导致单句查询直接静默失败 → 干等到 18s 兜底超时才回 Google（表现为"查询很慢"）。
     const isCustomModel = !!(settings.siliconflowModelCustom && settings.siliconflowModelCustom.trim());
-    if (isCustomModel) {
-      // Custom：只尝试用户输入的 model；不再追加默认 fallback
-      // 兜底交给 translateWithGoogle
-    } else {
-      SILICONFLOW_FALLBACK_MODELS.forEach(m => { if (m !== selectedModel) fallbackModels.push(m); });
-    }
+    const fallbackModels = isCustomModel
+      ? [selectedModel]
+      : modelFailureTracker.getOrderedModels(getSiliconFlowFallbackModels(selectedModel));
 
     tryNextModel(0);
 
@@ -1932,10 +2026,12 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
               return;
             }
             console.log(`LingoFlow: SiliconFlow ${label} succeeded (${translatedText.length} chars)`);
+            modelFailureTracker.recordSuccess(model);
             setCachedTranslation('siliconflow', selectedModel, targetLang, text, translatedText);
             done(translatedText, `siliconflow/${model}`);
           } else {
             console.warn(`LingoFlow: SiliconFlow ${model} invalid response, trying next...`);
+            modelFailureTracker.recordFailure(model);
             tryNextModel(index + 1);
           }
         })
@@ -1944,6 +2040,7 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
           if (responseSent) return;
           const msg = error && error.message ? error.message : String(error);
           console.warn(`LingoFlow: SiliconFlow ${model}: ${msg}, trying next...`);
+          modelFailureTracker.recordFailure(model);
           tryNextModel(index + 1);
         });
     }
