@@ -129,6 +129,18 @@ body[data-theme="light"] .settings-nav-item.active {
   color: #3b3fb8;
 }
 
+/* ===== 解除弹窗时代的输入框宽度上限 ===== */
+/* 弹窗里 .input-secret .panel-input 被卡在 max-width:220px（给眼睛按钮留位），
+   整页宽度充足，Key 输入框应当铺满整行、眼睛按钮贴到行尾 */
+.settings-page .input-secret .panel-input {
+  max-width: none;
+}
+
+/* 弹窗里普通 .panel-input 固定 140px；整页里 Host / AppID 这类文本输入放宽 */
+.settings-page .settings-row-inline .panel-input {
+  width: 220px;
+}
+
 /* ===== 内容区：解除弹窗尺寸绑死 ===== */
 .settings-shell {
   max-height: none;
