@@ -988,9 +988,10 @@ function refreshCustomModelInputs() {
 
 // SiliconFlow models list (must match background.js)
 // Sources: SiliconFlow 官方模型中心当前在列 + 用户截图确认。
-// 默认模型：Hunyuan-MT-7B（翻译专精）；免费档另有 2 个 Qwen；
+// 免费档：Hunyuan-MT-7B（默认，翻译专精）→ Qwen2.5-7B-Instruct（通用备用）；
 // 付费档按「越便宜越靠前」排序（Ling-mini-2.0 → DeepSeek-V4-Flash → DeepSeek-V3.2）。
-// 2026-09-17：Qwen3.5-35B-A3B / Qwen3.5-27B / Qwen3.5-122B-A10B 因实测响应过慢移除。
+// 2026-09-17：Qwen3.5 系列（4B / 35B-A3B / 27B / 122B-A10B）全部因实测响应过慢移除
+// （推测是 Qwen3.5 默认开思考链，而翻译请求未传 enable_thinking:false）。
 // 末尾 '__custom__' 为自定义占位。
 const SILICONFLOW_MODELS = [
   {
@@ -1006,13 +1007,6 @@ const SILICONFLOW_MODELS = [
     badge: 'free',
     descZh: '通义千问 · 免费通用',
     descEn: 'Qwen · Free general'
-  },
-  {
-    id: 'Qwen/Qwen3.5-4B',
-    name: 'Qwen3.5-4B',
-    badge: 'free',
-    descZh: '通义千问 · 轻量长上下文',
-    descEn: 'Qwen · Lightweight long context'
   },
   {
     id: 'inclusionAI/Ling-mini-2.0',

@@ -646,7 +646,8 @@ const RETIRED_MODEL_ALIASES = {
   // 模型广场标记 Deprecated（2026-09-17 确认）
   'Pro/MiniMaxAI/MiniMax-M2.5': 'tencent/Hunyuan-MT-7B',
   'MiniMaxAI/MiniMax-M2.5': 'tencent/Hunyuan-MT-7B',
-  // 实测响应过慢，2026-09-17 从列表移除
+  // 实测响应过慢，2026-09-17 从列表移除（Qwen3.5 系列全下架）
+  'Qwen/Qwen3.5-4B': 'tencent/Hunyuan-MT-7B',
   'Qwen/Qwen3.5-35B-A3B': 'tencent/Hunyuan-MT-7B',
   'Qwen/Qwen3.5-27B': 'tencent/Hunyuan-MT-7B',
   'Qwen/Qwen3.5-122B-A10B': 'tencent/Hunyuan-MT-7B'
@@ -1553,22 +1554,20 @@ function translateOneForBatch(text, targetLang, engine, fallback) {
 // Priority: 免费档优先（翻译专精 → 通用），随后付费档按「越便宜越靠前」
 const SILICONFLOW_FALLBACK_MODELS = [
   'tencent/Hunyuan-MT-7B',          // ✅ 免费 · 翻译专用模型，默认
-  'Qwen/Qwen2.5-7B-Instruct',       // 免费 · 通用
-  'Qwen/Qwen3.5-4B',                // 免费 · 轻量长上下文
+  'Qwen/Qwen2.5-7B-Instruct',       // 免费 · 通用备用
   'inclusionAI/Ling-mini-2.0',      // 付费 · 0.50/2.00 输出最便宜
   'deepseek-ai/DeepSeek-V4-Flash',   // ✅ 付费 · 快、便宜
   'deepseek-ai/DeepSeek-V3.2'        // 付费 · 旗舰对话（替代已下架的 DeepSeek-V3）
 ];
 
 // 价格（¥/M tokens，输入→输出，以 siliconflow.cn/pricing 为准，仅供维护参考，代码不读取）：
-//   Hunyuan-MT-7B 免费 | Qwen2.5-7B-Instruct 免费 | Qwen3.5-4B 免费
+//   Hunyuan-MT-7B 免费 | Qwen2.5-7B-Instruct 免费
 //   Ling-mini-2.0 0.50→2.00
 //   DeepSeek-V4-Flash 1.50~3.00→4.50~9.00 | DeepSeek-V3.2 4.00→6.00
-// 2026-09-17 移除（用户实测过慢）：Qwen3.5-35B-A3B / Qwen3.5-27B / Qwen3.5-122B-A10B
+// 2026-09-17 移除（用户实测过慢）：Qwen3.5 系列全部 —— 4B / 35B-A3B / 27B / 122B-A10B
 const SILICONFLOW_MODEL_META = {
   'tencent/Hunyuan-MT-7B':         { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'Qwen/Qwen2.5-7B-Instruct':      { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
-  'Qwen/Qwen3.5-4B':               { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'inclusionAI/Ling-mini-2.0':     { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
   'deepseek-ai/DeepSeek-V4-Flash': { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 40 },
   'deepseek-ai/DeepSeek-V3.2':     { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 },
