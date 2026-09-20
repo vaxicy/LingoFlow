@@ -1044,7 +1044,7 @@ const SILICONFLOW_MODELS = [
   {
     id: '__custom__',
     name: '__custom__',  // sentinel: name resolved via i18n key 'model_custom_option'
-    badge: 'paid',
+    // 自定义模型不带免费/付费标：用户填的模型可能免费也可能付费，标了会误导
     descZh: '在下方输入模型名称',
     descEn: 'Type a model name below'
   }
@@ -1054,7 +1054,8 @@ const BAILIAN_MODELS = [
   { id: 'qwen3.7-plus', name: 'Qwen3.7 Plus', badge: 'free', descZh: '通用 · 免费额度', descEn: 'General · Free quota' },
   { id: 'qwen-mt-flash', name: 'Qwen-MT-Flash', badge: 'free', descZh: '翻译专用 · 推荐', descEn: 'Translation · Recommended' },
   { id: 'qwen-mt-plus', name: 'Qwen-MT-Plus', badge: 'paid', descZh: '翻译最高质量', descEn: 'Highest translation quality' },
-  { id: '__custom__', name: '__custom__', badge: 'custom', descZh: '在下方输入模型名称', descEn: 'Type a model name below' }
+  // 自定义模型不带任何标（免费/付费/手动）——用户填的模型无法预先归类
+  { id: '__custom__', name: '__custom__', descZh: '在下方输入模型名称', descEn: 'Type a model name below' }
 ];
 
 const GEMINI_MODELS = [
@@ -1750,6 +1751,8 @@ function getSiliconFlowModelDescription(model) {
 }
 
 function getModelBadgeText(type) {
+  // 无 badge 类型（如自定义模型）→ 返回空串，调用方据此不渲染角标
+  if (!type) return '';
   // 'custom' 为中性紫色「手动 / Manual」badge；'free' 绿；'paid' 红
   if (type === 'custom') return getMessage('custom_model_badge') || '手动';
   return getMessage(type === 'paid' ? 'paid' : 'free');
@@ -1819,22 +1822,24 @@ function syncSiliconFlowModelSelect(value) {
       const labelText = getMessage('model_custom_label') || 'Custom';
       label.textContent = v ? `${labelText}: ${v}` : labelText;
       desc.textContent = getMessage('model_custom_desc') || 'Type a model name below';
-      badge.textContent = getModelBadgeText('custom');
-      badge.className = 'model-select-badge model-select-badge-custom';
+      // 自定义模型不显示免费/付费标（用户填的模型可能免费也可能付费）
+      badge.textContent = '';
+      badge.hidden = true;
     });
   } else {
     label.textContent = getModelDisplayName(currentModel);
     desc.textContent = getSiliconFlowModelDescription(currentModel);
     badge.textContent = getModelBadgeText(currentModel.badge);
     badge.className = `model-select-badge model-select-badge-${currentModel.badge === 'paid' ? 'paid' : (currentModel.badge === 'custom' ? 'custom' : 'free')}`;
+    badge.hidden = !currentModel.badge;
   }
   menu.textContent = '';
 
   let lastBadgeType = null;
 
-  SILICONFLOW_MODELS.forEach((model, index) => {
-    // Add separator between free and paid models
-    if (index > 0 && lastBadgeType !== model.badge) {
+  SILICONFLOW_MODELS.forEach((model) => {
+    // 分隔线只在「免费 ⇄ 付费」之间插入；无 badge 的项（自定义）不插线、也不参与分组
+    if (model.badge && lastBadgeType !== null && model.badge !== lastBadgeType) {
       const separator = document.createElement('div');
       separator.className = 'model-select-separator';
       separator.setAttribute('role', 'separator');
@@ -1843,7 +1848,7 @@ function syncSiliconFlowModelSelect(value) {
       separator.appendChild(separatorText);
       menu.appendChild(separator);
     }
-    lastBadgeType = model.badge;
+    if (model.badge) lastBadgeType = model.badge;
 
     const option = document.createElement('button');
     option.className = 'model-select-option';
@@ -1864,6 +1869,7 @@ function syncSiliconFlowModelSelect(value) {
     const optionBadge = document.createElement('span');
     optionBadge.className = `model-select-badge model-select-badge-${model.badge === 'paid' ? 'paid' : (model.badge === 'custom' ? 'custom' : 'free')}`;
     optionBadge.textContent = getModelBadgeText(model.badge);
+    if (!model.badge) optionBadge.hidden = true; // 自定义项不显示角标
 
     const optionDesc = document.createElement('small');
     optionDesc.textContent = getSiliconFlowModelDescription(model);
@@ -1988,21 +1994,24 @@ function syncBailianModelSelect(value) {
       const labelText = getMessage('model_custom_label') || 'Custom';
       label.textContent = v ? `${labelText}: ${v}` : labelText;
       desc.textContent = getMessage('model_custom_desc') || 'Type a model name below';
-      badge.textContent = getModelBadgeText('custom');
-      badge.className = 'model-select-badge model-select-badge-custom';
+      // 自定义模型不显示任何角标（免费/付费/手动都不标）
+      badge.textContent = '';
+      badge.hidden = true;
     });
   } else {
     label.textContent = getModelDisplayName(currentModel);
     desc.textContent = getBailianModelDescription(currentModel);
     badge.textContent = getModelBadgeText(currentModel.badge);
     badge.className = `model-select-badge model-select-badge-${currentModel.badge === 'paid' ? 'paid' : (currentModel.badge === 'custom' ? 'custom' : 'free')}`;
+    badge.hidden = !currentModel.badge;
   }
   menu.textContent = '';
 
   let lastBadgeType = null;
 
-  BAILIAN_MODELS.forEach((model, index) => {
-    if (index > 0 && lastBadgeType !== model.badge) {
+  BAILIAN_MODELS.forEach((model) => {
+    // 分隔线只在「免费 ⇄ 付费」之间插入；无 badge 的项（自定义）不插线、也不参与分组
+    if (model.badge && lastBadgeType !== null && model.badge !== lastBadgeType) {
       const separator = document.createElement('div');
       separator.className = 'model-select-separator';
       separator.setAttribute('role', 'separator');
@@ -2011,7 +2020,7 @@ function syncBailianModelSelect(value) {
       separator.appendChild(separatorText);
       menu.appendChild(separator);
     }
-    lastBadgeType = model.badge;
+    if (model.badge) lastBadgeType = model.badge;
 
     const option = document.createElement('button');
     option.className = 'model-select-option';
@@ -2032,6 +2041,7 @@ function syncBailianModelSelect(value) {
     const optionBadge = document.createElement('span');
     optionBadge.className = `model-select-badge model-select-badge-${model.badge === 'paid' ? 'paid' : (model.badge === 'custom' ? 'custom' : 'free')}`;
     optionBadge.textContent = getModelBadgeText(model.badge);
+    if (!model.badge) optionBadge.hidden = true; // 自定义项不显示角标
 
     const optionDesc = document.createElement('small');
     optionDesc.textContent = getBailianModelDescription(model);
