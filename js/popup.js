@@ -1073,9 +1073,11 @@ const YOUDAO_LLM_MODELS = [
   { id: '__custom__', group: '__custom__', name: '__custom__', descZh: '在下方输入 handleOption' }  // sentinel: group/name 都走 i18n
 ];
 
+// DeepSeek 官方模型 id（2026-09-22 起）：deepseek-flash / deepseek-v4-pro
+// 旧名 deepseek-v4-flash、deepseek-chat、deepseek-reasoner 已不在官方文档中（前者仍可调用但模型已下线）
 const DEEPSEEK_MODELS = [
-  { id: 'deepseek-v4-flash', name: 'DeepSeek V4 Flash', desc: '推荐 · 极速 · 便宜' },
-  { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro', desc: '高质量 · 思考模式' },
+  { id: 'deepseek-flash', name: 'DeepSeek Flash', desc: '推荐 · 极速 · 便宜' },
+  { id: 'deepseek-v4-pro', name: 'DeepSeek V4 Pro', desc: '高质量 · 更强' },
   { id: '__custom__', name: '__custom__' }  // sentinel: 走 i18n key 'model_custom_option'
 ];
 
@@ -2255,8 +2257,8 @@ function applyPopupSettings(settings) {
   if (deepseekKeyInput) deepseekKeyInput.value = settings.deepseekApiKey || '';
   const deepseekModelSelect = document.getElementById('popup-deepseek-model');
   if (deepseekModelSelect) {
-    deepseekModelSelect.value = settings.deepseekModel || 'deepseek-v4-flash';
-    if (!deepseekModelSelect.value) deepseekModelSelect.value = 'deepseek-v4-flash';
+    deepseekModelSelect.value = settings.deepseekModel || 'deepseek-flash';
+    if (!deepseekModelSelect.value) deepseekModelSelect.value = 'deepseek-flash';
   }
 
   const baiduAppIdInput = document.getElementById('popup-baidu-app-id');
@@ -2335,7 +2337,7 @@ function getPopupSettingsFromUI() {
     geminiModel: document.getElementById('popup-gemini-model')?.value || 'gemini-3.1-flash-lite',
     geminiModelCustom: getCustomModelFromUI('geminiModelCustom') || (window.__customModelCache && window.__customModelCache.gemini) || '',
     deepseekApiKey: document.getElementById('popup-deepseek-key')?.value || '',
-    deepseekModel: document.getElementById('popup-deepseek-model')?.value || 'deepseek-v4-flash',
+    deepseekModel: document.getElementById('popup-deepseek-model')?.value || 'deepseek-flash',
     deepseekModelCustom: getCustomModelFromUI('deepseekModelCustom') || (window.__customModelCache && window.__customModelCache.deepseek) || '',
     baiduAppId: document.getElementById('popup-baidu-app-id')?.value || '',
     baiduSecretKey: document.getElementById('popup-baidu-secret-key')?.value || '',
@@ -2481,7 +2483,7 @@ function getDefaultSettings(overrides = {}) {
     geminiModel: 'gemini-3.1-flash-lite',
     geminiModelCustom: '',
     deepseekApiKey: '',
-    deepseekModel: 'deepseek-v4-flash',
+    deepseekModel: 'deepseek-flash',
     deepseekModelCustom: '',
     youdaoAppKey: '',
     youdaoAppSecret: '',

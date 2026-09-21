@@ -70,7 +70,7 @@ chrome.runtime.onInstalled.addListener(() => {
           youdaoAppKey: '',
           youdaoAppSecret: '',
           deepseekApiKey: '',
-          deepseekModel: 'deepseek-v4-flash',
+          deepseekModel: 'deepseek-flash',
           deepseekModelCustom: '',
           youdaoLLMModel: '3',
           youdaoLLMModelCustom: '',
@@ -602,7 +602,7 @@ function getDefaultSettings(overrides = {}) {
     geminiModel: 'gemini-3.1-flash-lite',
     geminiModelCustom: '',
     deepseekApiKey: '',
-    deepseekModel: 'deepseek-v4-flash',
+    deepseekModel: 'deepseek-flash',
     deepseekModelCustom: '',
     youdaoAppKey: '',
     youdaoAppSecret: '',
@@ -643,6 +643,9 @@ function generateId() {
 // tencent/Hunyuan-MT-7B（免费、翻译专用、快）。
 const RETIRED_MODEL_ALIASES = {
   'deepseek-ai/DeepSeek-V3': 'deepseek-ai/DeepSeek-V3.2',
+  // DeepSeek 官方改名（2026-09-22 起）：deepseek-v4-flash → deepseek-flash
+  // （旧 id 虽仍可调用但对应模型已下线，内部会路由到 V4.1-Flash 并按 Flash 计费）
+  'deepseek-v4-flash': 'deepseek-flash',
   // 模型广场标记 Deprecated（2026-09-17 确认）
   'Pro/MiniMaxAI/MiniMax-M2.5': 'tencent/Hunyuan-MT-7B',
   'MiniMaxAI/MiniMax-M2.5': 'tencent/Hunyuan-MT-7B',
@@ -658,7 +661,7 @@ function resolveModel(provider, selected, custom) {
     siliconflow: 'tencent/Hunyuan-MT-7B',
     bailian: 'qwen3.7-plus',
     gemini: 'gemini-3.1-flash-lite',
-    deepseek: 'deepseek-v4-flash',
+    deepseek: 'deepseek-flash',
     youdaollm: '3'
   }[provider] || null;
   const chosen = (selected || '').trim();
@@ -1267,8 +1270,15 @@ function tryNextDictionaryEngine(engines, word, systemPrompt, userPrompt, resolv
     if (e === 'gemini') {
       p = callGeminiDictionaryChat(s.geminiApiKey.trim(), resolveModel('gemini', s.geminiModel, s.geminiModelCustom), messages);
     } else if (e === 'deepseek') {
-      // 词典场景固定用指令模型（翻译模型如 deepseek-v4-flash 不适合生成 JSON 词条）
-      p = callOpenAIDictionaryChat('https://api.deepseek.com/chat/completions', s.deepseekApiKey.trim(), 'deepseek-chat', messages);
+      // 词典场景用轻量非思考模型（官方现役 id：deepseek-flash，旧名 deepseek-v4-flash 已下线）。
+      // DeepSeek 新模型思考模式默认开启，生成 JSON 词条必须显式关掉，否则吃满 max_tokens 且变慢。
+      p = callOpenAIDictionaryChat(
+        'https://api.deepseek.com/chat/completions',
+        s.deepseekApiKey.trim(),
+        'deepseek-flash',
+        messages,
+        { thinking: { type: 'disabled' } }
+      );
     } else if (e === 'siliconflow') {
       // 硅基流动：显式关闭思考链（Qwen3 默认开启会吃满 max_tokens），并用非思考指令模型
       p = callOpenAIDictionaryChat('https://api.siliconflow.cn/v1/chat/completions', s.siliconflowApiKey.trim(), 'Qwen/Qwen2.5-7B-Instruct', messages);
@@ -1287,21 +1297,22 @@ function tryNextDictionaryEngine(engines, word, systemPrompt, userPrompt, resolv
   });
 }
 
-function callOpenAIDictionaryChat(baseUrl, apiKey, model, messages) {
+function callOpenAIDictionaryChat(baseUrl, apiKey, model, messages, extraParams) {
   return new Promise((resolve, reject) => {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8000);
     fetch(baseUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify({
+      // extraParams 供个别厂商补自己的关思考参数（如 DeepSeek 的 thinking.type）
+      body: JSON.stringify(Object.assign({
         model,
         messages,
         temperature: 0.2,
         max_tokens: 1200,
         response_format: { type: 'json_object' },
         enable_thinking: false
-      }),
+      }, extraParams || {})),
       signal: controller.signal
     })
       .then(response => { clearTimeout(timeoutId); if (!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); })
@@ -3020,8 +3031,8 @@ function translateWithYoudaoLLM(text, targetLang, sendResponse) {
       params.append('from', 'auto');
       params.append('to', youdaoTarget);
       // handleOption: '0' = Youdao Ziyue Pro (14B), '3' = Youdao Ziyue Lite (1.5B, free)
-      // Only these two values are accepted by the llm-trans API. External models like deepseek-v4-flash
-      // are NOT supported as handleOption values for this endpoint.
+      // Only these two values are accepted by the llm-trans API. External model ids (e.g. DeepSeek's
+      // deepseek-flash) are NOT supported as handleOption values for this endpoint.
       const validOptions = { '0': '0', '3': '3', 'pro': '0', 'lite': '3' };
       const handleOptRaw = resolveModel('youdaollm', settings.youdaoLLMModel, settings.youdaoLLMModelCustom);
       const handleOpt = String(handleOptRaw || '3').trim().toLowerCase();
@@ -3124,13 +3135,8 @@ function translateWithDeepSeek(text, targetLang) {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => { controller.abort(); }, 30000);
 
-      fetch('https://api.deepseek.com/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
+      const buildBody = (disableThinking) => {
+        const body = {
           model: model,
           messages: [
             {
@@ -3141,24 +3147,48 @@ function translateWithDeepSeek(text, targetLang) {
           ],
           temperature: 0.3,
           stream: false
-        }),
+        };
+        // 官方新模型（deepseek-flash / deepseek-v4-pro）思考模式**默认开启**，翻译任务会白烧
+        // token 且明显变慢 → 显式关闭。个别服务端若不接受该参数（HTTP 400）会退回重试一次。
+        if (disableThinking) body.thinking = { type: 'disabled' };
+        return body;
+      };
+
+      const requestOnce = (disableThinking) => fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`
+        },
+        body: JSON.stringify(buildBody(disableThinking)),
         signal: controller.signal
-      })
-        .then(response => {
-          clearTimeout(timeoutId);
-          if (!response.ok) {
-            return response.text().then(body => {
-              console.warn('LingoFlow: DeepSeek HTTP error', {
-                status: response.status,
-                statusText: response.statusText,
-                body: body.substring(0, 500)
-              });
-              throw new Error(`HTTP ${response.status}: ${body.substring(0, 200)}`);
+      }).then(response => {
+        if (!response.ok) {
+          return response.text().then(body => {
+            console.warn('LingoFlow: DeepSeek HTTP error', {
+              status: response.status,
+              statusText: response.statusText,
+              body: body.substring(0, 500)
             });
+            const error = new Error(`HTTP ${response.status}: ${body.substring(0, 200)}`);
+            error.status = response.status;
+            return Promise.reject(error);
+          });
+        }
+        return response.json();
+      });
+
+      requestOnce(true)
+        .catch(error => {
+          // 服务端不认识 thinking 参数 → 去掉它重试一次，避免整个引擎不可用
+          if (error && error.status === 400) {
+            console.warn('LingoFlow: DeepSeek rejected thinking param, retrying without it');
+            return requestOnce(false);
           }
-          return response.json();
+          throw error;
         })
         .then(data => {
+          clearTimeout(timeoutId);
           const translatedText = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
           if (translatedText) {
             const preview = translatedText.trim().substring(0, 80);
