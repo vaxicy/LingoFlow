@@ -272,6 +272,29 @@
   margin-bottom: 0;
 }
 
+/* ---- 抗站点 CSS 覆盖 ----
+   卡片被插到站点页面里，站点自己的元素级规则（例如 `p { color:#333 }`）会「赢过」
+   继承来的颜色 —— 继承是打不过元素自身匹配的规则的。所以 <p class="lingoflow-result-paragraph">
+   在浅色站点上会按站点颜色渲染成深色，深色卡片上就看不清。
+   这里对译文正文、段落及其行内元素强制白色，并把字号字重钉死，避免被站点改大小。 */
+#lingoflow-translation-result .lingoflow-result-translation,
+#lingoflow-translation-result .lingoflow-result-translation p,
+#lingoflow-translation-result .lingoflow-result-translation span,
+#lingoflow-translation-result .lingoflow-result-translation div,
+#lingoflow-translation-result .lingoflow-result-paragraph {
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 760 !important;
+  line-height: 1.55 !important;
+  font-family: inherit !important;
+}
+
+/* 词义里的释义 <span> 自己没有颜色规则 → 同样会被站点 span 规则命中，改成继承父级浅色
+   （.lingoflow-meaning-item 已用 !important 定为浅色；词性徽章有自己的颜色，排除掉） */
+#lingoflow-translation-result .lingoflow-meaning-item > span:not(.lingoflow-pos) {
+  color: inherit !important;
+}
+
 .lingoflow-result-actions {
   display: flex;
   align-items: center;
