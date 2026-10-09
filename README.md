@@ -14,10 +14,10 @@ A lightweight Chrome extension for reading foreign-language websites.
 | Feature | Description | 说明 |
 |---------|-------------|------|
 | **Selection Translation** | Select text on any webpage — a floating toolbar instantly shows the translation | 选中网页任意文本 — 浮动工具栏即时显示翻译 |
-| **Full Page Translation** | One-click translate the entire page into your target language | 一键将整页翻译为目标语言 |
+| **Full Page Translation** | Translate the entire page into your target language | 将整页内容翻译为目标语言 |
 | **Bilingual Mode** | Show translations below each paragraph — read side by side with the original | 在每段原文下方显示翻译 — 对照阅读 |
 | **Hover Paragraph Translation** | Hover over any paragraph to preview a bilingual translation without clicking | 鼠标悬停段落即可预览双语翻译，无需点击 |
-| **Restore Original** | Instantly revert the page back to its original state | 一键恢复页面原始状态 |
+| **Restore Original** | Revert the page to its original state | 恢复页面原始状态 |
 
 ### Dictionary Lookup / 词典查询
 
