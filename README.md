@@ -1,9 +1,9 @@
 # LingoFlow 🌐 Foreign Web Reader
 
-**一款用于阅读外文网站的 Chrome 扩展。**
-A lightweight Chrome extension for reading foreign-language websites.
+**一款轻量的 Chrome 扩展，助你轻松阅读外文网站。**
+A lightweight Chrome Extension for reading foreign-language websites with ease.
 
-[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-v1.3.3-blue)](https://chromewebstore.google.com/detail/lingoflow-%F0%9F%8C%90-foreign-web/fkloicgbhpomiadliefangbfegkccmlh) [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
+[![Chrome Web Store](https://img.shields.io/badge/Chrome_Web_Store-v1.2.6-blue)](https://chromewebstore.google.com/detail/lingoflow-%F0%9F%8C%90-foreign-web/fkloicgbhpomiadliefangbfegkccmlh) [![License: CC BY-NC 4.0](https://img.shields.io/badge/License-CC_BY--NC_4.0-lightgrey.svg)](LICENSE)
 
 ---
 
@@ -14,10 +14,10 @@ A lightweight Chrome extension for reading foreign-language websites.
 | Feature | Description | 说明 |
 |---------|-------------|------|
 | **Selection Translation** | Select text on any webpage — a floating toolbar instantly shows the translation | 选中网页任意文本 — 浮动工具栏即时显示翻译 |
-| **Full Page Translation** | Translate the entire page into your target language | 将整页内容翻译为目标语言 |
+| **Full Page Translation** | One-click translate the entire page into your target language | 一键将整页翻译为目标语言 |
 | **Bilingual Mode** | Show translations below each paragraph — read side by side with the original | 在每段原文下方显示翻译 — 对照阅读 |
 | **Hover Paragraph Translation** | Hover over any paragraph to preview a bilingual translation without clicking | 鼠标悬停段落即可预览双语翻译，无需点击 |
-| **Restore Original** | Revert the page to its original state | 恢复页面原始状态 |
+| **Restore Original** | Instantly revert the page back to its original state | 一键恢复页面原始状态 |
 
 ### Dictionary Lookup / 词典查询
 
@@ -47,7 +47,6 @@ A lightweight Chrome extension for reading foreign-language websites.
 |--------|------|-------------|---------|
 | **SiliconFlow AI**（默认 / Default） | API key | Yes | 需要（有免费模型） |
 | Gemini AI | API key | Yes | 需要 |
-| DeepSeek AI | API key | Yes | 需要 |
 | Microsoft Translator (Azure) | API key | Yes | 需要 |
 | Youdao Translate | API key | Yes | 需要 |
 | Youdao LLM | API key | Yes | 需要 |
@@ -214,7 +213,7 @@ git clone https://github.com/vaxicy/LingoFlow.git
 # 创建干净的 zip 包用于上传 Chrome Web Store
 # (excludes .git, .codebuddy, scripts/, store-assets/, dev docs)
 # （排除 .git、.codebuddy、scripts/、store-assets/、开发文档）
-cd LingoFlow && zip -r ../LingoFlow-v1.3.3.zip . \
+cd LingoFlow && zip -r ../LingoFlow-v1.2.6.zip . \
   -x ".git/*" ".codebuddy/*" "scripts/*" "store-assets/*" \
   -x "create-icons.html" "README.md" "INSTALL.md" "I18N_COMPLETE.md"
 ```
@@ -250,15 +249,18 @@ You are free to **share** and **adapt** the material for non-commercial purposes
 
 ## Support / 支持
 
-If LingoFlow is useful to your reading workflow, you can support its development:
-如果 LingoFlow 对你的阅读有帮助，欢迎支持其持续开发：
+If LingoFlow helps you read foreign-language websites more comfortably, you can support its development:
+如果 LingoFlow 让你的外文阅读更舒适，欢迎支持其持续开发：
 
 - [WeChat / PayPal donation](https://vaxicy.github.io/LingoFlow/pages/support.html) / [微信 / PayPal 捐赠](https://vaxicy.github.io/LingoFlow/pages/support.html)
 - Report issues or suggest features via [GitHub Issues](https://github.com/vaxicy/LingoFlow/issues) / 通过 [GitHub Issues](https://github.com/vaxicy/LingoFlow/issues) 反馈问题或建议新功能
 
+Thank you for helping keep LingoFlow free and improving!
+感谢你帮助 LingoFlow 保持免费并不断改进！
+
 ---
 
 <p align="center">
-  Made with ❤️ for cross-language reading.<br>
-  为跨语言阅读而生。
+  Made with ❤️ for effortless cross-language reading.<br>
+  为轻松的跨语言阅读而生。❤️
 </p>
