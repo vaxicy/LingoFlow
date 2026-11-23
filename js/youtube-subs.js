@@ -375,6 +375,11 @@
     const isContinuation = !!prevLine && !/[.!?。！？]["')\]]?\s*$/.test(prevLine);
     const contextLine = isContinuation ? prevLine.slice(-160) : '';
 
+    // 新的一句（上一行已经以句末标点结束）→ 先把上一句的中文摘掉。
+    // 否则屏幕上会出现「新英文 + 旧中文」，看起来就像漏翻/错配。
+    // 只对双语模式做：仅译文模式本来就不画英文，清空会变成整块空白。
+    if (!isContinuation && state.content === 'dual') state.lastDst = '';
+
     state.lastText = text;
     state.everGotText = true;
     if (state.clearTimer) { clearTimeout(state.clearTimer); state.clearTimer = null; }
