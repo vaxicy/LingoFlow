@@ -58,20 +58,6 @@
     token: 0,
     lastText: '',
     lastDst: '',
-    // 单飞（single-flight）：同一时刻只允许一个翻译请求在途，期间到来的新文本只记下最新一条，
-    // 等回来再发。这样一句话最多 1–2 次请求，不会因为"逐词增长"把请求队列堵死。
-    inflight: false,
-    pendingText: '',
-    doneKey: '',      // 已经拿到译文的文本 key
-    firedLen: 0,      // 上次发请求时原文长度（用于抑制"只多几个字母"的重复请求）
-
-    // ===== 混合模式：DOM 负责显示（保证完整句），预取负责提前备好译文（保证不延迟）=====
-    lines: [],            // 预取到的整片字幕 [{ start, dur, en, zh, pending, tries }]
-    trCache: new Map(),   // 规范化文本 → 译文，命中即 0 延迟
-    prefetchReady: false,
-    seekHookBound: false,
-    cueToken: 0,
-    videoId: '',
     overlay: null,
     lru: new Map(),
     ccClicks: 0,
@@ -169,10 +155,6 @@
     state.token = 0;
     state.lastText = '';
     state.lastDst = '';
-    state.inflight = false;
-    state.pendingText = '';
-    state.doneKey = '';
-    state.firedLen = 0;
     state.ccClicks = 0;
     state.noBaseNotified = false;
     state.baseFailCount = 0;
@@ -187,12 +169,10 @@
     askEnsureBaseTrack();
     warmUpServiceWorker();
     startPolling();
-    startPrefetch(); // 预取整片译文当缓存；失败则纯逐词（显示不受影响）
   }
 
   function teardown() {
     state.running = false;
-    stopPrefetch();
     stopPolling();
 
     if (state.observer) {
@@ -212,10 +192,6 @@
     removeModeClass();
     state.lastText = '';
     state.lastDst = '';
-    state.inflight = false;
-    state.pendingText = '';
-    state.doneKey = '';
-    state.firedLen = 0;
     state.token += 1;
   }
 
@@ -392,16 +368,6 @@
     if (!text) { scheduleClear(); return; }
     if (text === state.lastText) return;
 
-    // YouTube 自动字幕是**逐词增长**的：先出现前半句，再不断追加。
-    // 判断这一句是不是上一句的"延长"：不是延长就是新句，重置增长基准。
-    const prevText = state.lastText;
-    if (!prevText || !text.startsWith(prevText)) {
-      state.firedLen = 0;
-      state.doneKey = '';
-      // 新的一句：先把上一句的中文摘掉，避免"新英文 + 旧中文"张冠李戴
-      state.lastDst = '';
-    }
-
     state.lastText = text;
     state.everGotText = true;
     if (state.clearTimer) { clearTimeout(state.clearTimer); state.clearTimer = null; }
@@ -410,100 +376,36 @@
     if (!shouldTranslate(text)) {
       state.token += 1;
       state.lastDst = '';
-      state.inflight = false;
-      state.pendingText = '';
-      state.doneKey = '';
-      renderLines();
-      return;
-    }
-
-    // 双语模式：原文随字幕实时增长（0 延迟）；仅译文模式不画原文
-    if (state.content === 'dual') renderLines();
-
-    // ① 预取缓存命中 → 中文与英文同一帧出现（这是"实时感"的来源）
-    const prefetched = cacheGet(text);
-    if (prefetched) {
-      state.lastDst = prefetched;
-      state.doneKey = state.targetLang + '\u0001' + text;
       renderLines();
       return;
     }
 
     const key = state.targetLang + '\u0001' + text;
-    if (key === state.doneKey) return; // 这段文本已经翻过
+    const token = ++state.token;
+
+    // 双语模式：原文立即可见（0 延迟）；仅译文模式不画原文（保持上一句译文）
+    if (state.content === 'dual') renderLines();
 
     if (state.lru.has(key)) {
-      state.doneKey = key;
       state.lastDst = state.lru.get(key);
       renderLines();
       return;
     }
 
-    // 只多了几个字母就先不发，等它长够 / 说完再发，避免无意义的重复请求
-    if (!state.inflight && state.firedLen > 0 && text.length - state.firedLen < 6) return;
-
-    // 单飞：已有请求在途 → 只记下最新文本，回来后再发这一条
-    if (state.inflight) {
-      state.pendingText = text;
-      return;
-    }
-
-    fireTranslation(text, key);
-  }
-
-  // 发一次翻译；回来时若期间文本又长了，用**最新**那条再补发一次（不排队）
-  function fireTranslation(text, key) {
-    const token = ++state.token;
-    state.inflight = true;
-    state.firedLen = text.length;
-
-    // 看门狗：万一某次请求迟迟不返回，别把后面整段视频的字幕都卡住
-    const watch = setTimeout(() => {
-      if (!state.inflight || token !== state.token) return;
-      state.inflight = false;
-      const next = state.pendingText;
-      state.pendingText = '';
-      if (next && next !== text) {
-        const nextKey = state.targetLang + '\u0001' + next;
-        if (nextKey !== state.doneKey) fireTranslation(next, nextKey);
-      }
-    }, 6000);
-
     try {
       chrome.runtime.sendMessage(
         { action: 'translate', text: text, targetLang: state.targetLang },
         (res) => {
-          clearTimeout(watch);
-          state.inflight = false;
-
-          if (!chrome.runtime.lastError && token === state.token) {
-            const dst = res && res.success && res.translation ? String(res.translation).trim() : '';
-            if (dst) {
-              remember(key, dst);
-              state.doneKey = key;
-              state.lastDst = dst;
-              renderLines();
-            }
-          }
-
-          // 期间文本又增长了 → 补发一次最新文本
-          const next = state.pendingText;
-          state.pendingText = '';
-          if (!next || next === text) return;
-
-          const nextKey = state.targetLang + '\u0001' + next;
-          if (state.lru.has(nextKey)) {
-            state.doneKey = nextKey;
-            state.lastDst = state.lru.get(nextKey);
-            renderLines();
-            return;
-          }
-          if (nextKey !== state.doneKey) fireTranslation(next, nextKey);
+          if (chrome.runtime.lastError) return;
+          if (token !== state.token) return; // 已换句，丢弃
+          const dst = res && res.success && res.translation ? String(res.translation).trim() : '';
+          if (!dst) return;
+          remember(key, dst);
+          state.lastDst = dst;
+          renderLines();
         }
       );
-    } catch (_) {
-      state.inflight = false;
-    }
+    } catch (_) {}
   }
 
   function remember(key, value) {
@@ -520,321 +422,9 @@
       if (state.lastText === '' && state.lastDst === '') return;
       state.lastText = '';
       state.lastDst = '';
-      state.inflight = false;
-      state.pendingText = '';
-      state.doneKey = '';
-      state.firedLen = 0;
       state.token += 1; // 作废在途请求
       renderLines();
     }, CLEAR_DELAY);
-  }
-
-  // ---------- 方案 B：预取整片字幕 ----------
-
-  function sendMsg(msg, cb) {
-    try {
-      chrome.runtime.sendMessage(msg, (res) => {
-        if (chrome.runtime.lastError) { cb(null); return; }
-        cb(res || null);
-      });
-    } catch (_) {
-      cb(null);
-    }
-  }
-
-  function getVideoId() {
-    try {
-      return new URLSearchParams(location.search).get('v') || '';
-    } catch (_) {
-      return '';
-    }
-  }
-
-  // 和 ensure-base 用同一套优先级：指定语言（人工→自动）→ 任意非目标语言
-  function pickTrack(tracks) {
-    const norm = (c) => String(c || '').toLowerCase().split('-')[0];
-    const want = state.sourceLang && state.sourceLang !== 'auto' ? norm(state.sourceLang) : 'en';
-    const target = norm(state.targetLang);
-    const isWant = (t) => norm(t.lang) === want;
-    const notTarget = (t) => norm(t.lang) !== target;
-
-    return tracks.find((t) => isWant(t) && t.kind !== 'asr')
-      || tracks.find(isWant)
-      || tracks.find((t) => notTarget(t) && t.kind !== 'asr')
-      || tracks.find(notTarget)
-      || null;
-  }
-
-  // 把碎片 cue 合并成"一句一行"，避免译文被切碎（时间轴仍然准确）
-  function buildLines(cues) {
-    const MAX_LEN = 90;
-    const MAX_GAP = 0.45;
-    const lines = [];
-
-    cues.forEach((c) => {
-      const text = String(c.text || '').replace(/\s+/g, ' ').trim();
-      if (!text) return;
-      const start = Number(c.start) || 0;
-      const dur = Number(c.dur) || 0;
-
-      const prev = lines[lines.length - 1];
-      if (prev) {
-        // 自动生成字幕常见"滚动式"输出：同一句会被重复吐出，或逐次变得更长。
-        // 先去掉这类重复，否则译文会重复翻译同一段。
-        if (text === prev.en || prev.en.endsWith(' ' + text)) return;
-        if (text.startsWith(prev.en)) {
-          prev.en = text;
-          prev.dur = Math.max(prev.dur, start + dur - prev.start);
-          return;
-        }
-
-        const gap = start - (prev.start + prev.dur);
-        const prevDone = /[.!?。！？]["')\]]?$/.test(prev.en);
-        if (gap <= MAX_GAP && !prevDone && prev.en.length + text.length <= MAX_LEN) {
-          prev.en = (prev.en + ' ' + text).trim();
-          prev.dur = Math.max(prev.dur, start + dur - prev.start);
-          return;
-        }
-      }
-
-      lines.push({ start: start, dur: Math.max(0.4, dur), en: text, zh: '', pending: false, tries: 0 });
-    });
-
-    // 有些格式不给时长：用"到下一句开始"补齐，避免整句只闪一下
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].dur < 0.6) {
-        const next = lines[i + 1];
-        lines[i].dur = next ? Math.max(0.6, next.start - lines[i].start) : 2.5;
-      }
-    }
-    return lines;
-  }
-
-  function findLineIndex(t) {
-    const lines = state.lines;
-    if (!lines.length) return -1;
-    let lo = 0;
-    let hi = lines.length - 1;
-    let ans = -1;
-    while (lo <= hi) {
-      const mid = (lo + hi) >> 1;
-      if (lines[mid].start <= t) { ans = mid; lo = mid + 1; } else { hi = mid - 1; }
-    }
-    if (ans < 0) return -1;
-    const line = lines[ans];
-    if (t > line.start + line.dur + 0.25) return -1; // 句与句之间的空档
-    return ans;
-  }
-
-  function currentVideo() {
-    return document.querySelector('video.html5-main-video') || document.querySelector('video');
-  }
-
-  // ---- 预取缓存 ----
-  // 混合模式的核心：**显示仍然由 DOM 驱动**（保证是 YouTube 自己拼好的完整句），
-  // 预取只是提前把译文备好，按"规范化文本"索引，命中就 0 延迟出中文。
-
-  function normalizeText(s) {
-    return String(s || '')
-      .toLowerCase()
-      .replace(/[\s\u00a0]+/g, ' ')
-      .replace(/[^\p{L}\p{N} ]/gu, '')
-      .trim();
-  }
-
-  function cacheSet(src, dst) {
-    if (!src || !dst) return;
-    const key = normalizeText(src);
-    if (key.length < 2) return;
-    state.trCache.set(key, dst);
-    while (state.trCache.size > 4000) {
-      state.trCache.delete(state.trCache.keys().next().value);
-    }
-  }
-
-  function similarText(a, b) {
-    if (!a || !b) return false;
-    if (a === b) return true;
-    const aw = a.split(' ').filter(Boolean);
-    const bw = b.split(' ').filter(Boolean);
-    if (!aw.length || !bw.length) return false;
-    if (aw[0] === bw[0] && aw[aw.length - 1] === bw[bw.length - 1]) return true;
-    const setB = new Set(bw);
-    const overlap = aw.filter((w) => setB.has(w)).length / Math.max(aw.length, bw.length);
-    return overlap >= 0.8;
-  }
-
-  // 查缓存：先按文本精确命中（规范化后），再用时间轴上的 cue 做近似匹配，
-  // 解决"DOM 文本与 cue 文本标点/断行不完全一致"导致的漏命中。
-  function cacheGet(src) {
-    const key = normalizeText(src);
-    if (!key) return '';
-
-    const hit = state.trCache.get(key);
-    if (hit) return hit;
-
-    const v = currentVideo();
-    if (!v || !state.lines.length) return '';
-    const idx = findLineIndex(v.currentTime);
-    if (idx < 0) return '';
-    const line = state.lines[idx];
-    if (!line.zh) return '';
-    return similarText(key, normalizeText(line.en)) ? line.zh : '';
-  }
-
-  // 当前播放位置的 cue 若还没翻译 → 立刻单句补一条（跳转时用；一问一答不会错位）
-  function prefetchLineAtTime(t) {
-    const idx = findLineIndex(t);
-    if (idx < 0) return;
-    const line = state.lines[idx];
-    if (!line || line.zh || line.pending) return;
-    if ((line.tries || 0) >= 3) return;
-    line.pending = true;
-    line.tries = (line.tries || 0) + 1;
-
-    sendMsg({ action: 'translate', text: line.en, targetLang: state.targetLang }, (res) => {
-      line.pending = false;
-      const dst = res && res.success && res.translation ? String(res.translation).trim() : '';
-      if (!dst) return;
-      line.zh = dst;
-      cacheSet(line.en, dst);
-      // 如果屏幕上正好是这句，立刻补上中文
-      if (state.lastText && !state.lastDst
-        && similarText(normalizeText(state.lastText), normalizeText(line.en))) {
-        state.lastDst = dst;
-        renderLines();
-      }
-    });
-  }
-
-  function onSeeked() {
-    if (!state.prefetchReady) return;
-    const v = currentVideo();
-    if (!v) return;
-    prefetchLineAtTime(v.currentTime);
-    // 跳转后 DOM 未必立刻变化，主动催一次取句
-    setTimeout(() => { if (state.running) processCurrentLine(); }, 60);
-  }
-
-  function attachSeekHook() {
-    if (state.seekHookBound) return;
-    const v = currentVideo();
-    if (!v) return;
-    state.seekHookBound = true;
-    try { v.addEventListener('seeked', onSeeked); } catch (_) {}
-  }
-
-  function detachSeekHook() {
-    const v = currentVideo();
-    if (v) { try { v.removeEventListener('seeked', onSeeked); } catch (_) {} }
-    state.seekHookBound = false;
-  }
-
-  // 边播边批量翻，只用来填缓存（不驱动显示）；优先当前进度往后
-  function translateLines() {
-    const token = ++state.cueToken;
-    const CHUNK = 20;
-    let rounds = 0;
-
-    const nextBatch = () => {
-      if (!state.prefetchReady || token !== state.cueToken) return;
-      if (++rounds > 300) return;
-
-      const v = currentVideo();
-      const from = v ? Math.max(0, findLineIndex(v.currentTime)) : 0;
-
-      const targets = [];
-      const collect = (startIdx, endIdx) => {
-        for (let i = startIdx; i < endIdx && targets.length < CHUNK; i++) {
-          const l = state.lines[i];
-          if (!l.zh && !l.pending && (l.tries || 0) < 2) targets.push(l);
-        }
-      };
-      collect(from, state.lines.length);
-      if (!targets.length) collect(0, from);
-      if (!targets.length) return;
-
-      targets.forEach((l) => { l.pending = true; });
-
-      sendMsg(
-        { action: 'translate_batch', texts: targets.map((l) => l.en), targetLang: state.targetLang },
-        (res) => {
-          if (!state.prefetchReady || token !== state.cueToken) return;
-          const list = res && res.success && Array.isArray(res.translations) ? res.translations : null;
-
-          if (!list || list.length !== targets.length) {
-            // 条数对不上 → 绝不能按下标硬套（会把别句译文贴过来），整批放弃
-            targets.forEach((l) => { l.pending = false; l.tries = (l.tries || 0) + 1; });
-            console.warn('LingoFlow: batch size mismatch (' + (list ? list.length : 'null') + '/' + targets.length + '), prefetch skipped');
-            return;
-          }
-
-          let filled = 0;
-          targets.forEach((l, i) => {
-            l.pending = false;
-            const t = list[i] ? String(list[i]).trim() : '';
-            if (t) { l.zh = t; cacheSet(l.en, t); filled += 1; } else { l.tries = (l.tries || 0) + 1; }
-          });
-
-          // 当前屏幕这句刚好被补上 → 立刻显示
-          if (filled && state.lastText && !state.lastDst) {
-            const cached = cacheGet(state.lastText);
-            if (cached) { state.lastDst = cached; renderLines(); }
-          }
-          if (!filled) return;
-          setTimeout(nextBatch, 80);
-        }
-      );
-    };
-
-    nextBatch();
-  }
-
-  function stopPrefetch() {
-    state.cueToken += 1;
-    state.prefetchReady = false;
-    state.lines = [];
-    state.trCache.clear();
-    detachSeekHook();
-  }
-
-  // 启动预取；任何一步失败都静默退回"纯逐词"模式（显示不受影响）
-  function startPrefetch() {
-    sendMsg({ action: 'lf_yt_tracklist' }, (res) => {
-      if (!state.running) return;
-      if (!res || !res.ok || !res.tracks || !res.tracks.length) {
-        console.log('[LingoFlow] prefetch: no tracklist, using live translation');
-        return;
-      }
-
-      const track = pickTrack(res.tracks);
-      if (!track || !track.url) {
-        console.log('[LingoFlow] prefetch: no usable base track');
-        return;
-      }
-
-      state.videoId = res.videoId || getVideoId();
-
-      sendMsg({ action: 'lf_yt_timedtext', url: track.url }, (r) => {
-        if (!state.running) return;
-        if (!r || !r.ok || !r.cues || !r.cues.length) {
-          console.log('[LingoFlow] prefetch: timedtext unavailable, using live translation');
-          return;
-        }
-
-        const lines = buildLines(r.cues);
-        if (lines.length < 5) {
-          console.log('[LingoFlow] prefetch: too few cues, using live translation');
-          return;
-        }
-
-        state.lines = lines;
-        state.prefetchReady = true;
-        attachSeekHook();
-        translateLines();
-        console.log('[LingoFlow] prefetch ready:', lines.length, 'lines, track:', track.lang, track.kind || 'manual');
-      });
-    });
   }
 
   // ---------- 渲染 ----------
@@ -983,11 +573,6 @@
           state.noBaseNotified = false;
           state.lastBaseCheckAt = 0;
           askEnsureBaseTrack();
-          // 换了原文语言 → 预取缓存要重建（显示仍是 DOM，不受影响）
-          if (state.prefetchReady) {
-            stopPrefetch();
-            startPrefetch();
-          }
         }
       });
     });
