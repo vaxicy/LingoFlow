@@ -1021,6 +1021,13 @@ const SILICONFLOW_MODELS = [
     descEn: 'Qwen · Free general'
   },
   {
+    id: 'Qwen/Qwen2.5-14B-Instruct',
+    name: 'Qwen2.5-14B-Instruct',
+    badge: 'paid',
+    descZh: '通义千问 14B · 便宜好用',
+    descEn: 'Qwen 14B · Cheap & solid'
+  },
+  {
     id: 'inclusionAI/Ling-mini-2.0',
     name: 'Ling-mini-2.0',
     badge: 'paid',

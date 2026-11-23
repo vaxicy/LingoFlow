@@ -1690,6 +1690,7 @@ function translateOneForBatch(text, targetLang, engine, fallback) {
 const SILICONFLOW_FALLBACK_MODELS = [
   'tencent/Hunyuan-MT-7B',          // ✅ 免费 · 翻译专用模型，默认
   'Qwen/Qwen2.5-7B-Instruct',       // 免费 · 通用备用
+  'Qwen/Qwen2.5-14B-Instruct',      // 付费 · 便宜好用（14B 通用）
   'inclusionAI/Ling-mini-2.0',      // 付费 · 0.50/2.00 输出最便宜
   'deepseek-ai/DeepSeek-V4-Flash',   // ✅ 付费 · 快、便宜
   'deepseek-ai/DeepSeek-V3.2'        // 付费 · 旗舰对话（替代已下架的 DeepSeek-V3）
@@ -1697,12 +1698,14 @@ const SILICONFLOW_FALLBACK_MODELS = [
 
 // 价格（¥/M tokens，输入→输出，以 siliconflow.cn/pricing 为准，仅供维护参考，代码不读取）：
 //   Hunyuan-MT-7B 免费 | Qwen2.5-7B-Instruct 免费
+//   Qwen2.5-14B-Instruct 付费（便宜通用）
 //   Ling-mini-2.0 0.50→2.00
 //   DeepSeek-V4-Flash 1.50~3.00→4.50~9.00 | DeepSeek-V3.2 4.00→6.00
 // 2026-09-17 移除（用户实测过慢）：Qwen3.5 系列全部 —— 4B / 35B-A3B / 27B / 122B-A10B
 const SILICONFLOW_MODEL_META = {
   'tencent/Hunyuan-MT-7B':         { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'Qwen/Qwen2.5-7B-Instruct':      { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
+  'Qwen/Qwen2.5-14B-Instruct':     { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
   'inclusionAI/Ling-mini-2.0':     { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
   'deepseek-ai/DeepSeek-V4-Flash': { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 40 },
   'deepseek-ai/DeepSeek-V3.2':     { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 },
