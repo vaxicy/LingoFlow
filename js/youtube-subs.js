@@ -65,15 +65,12 @@
     doneKey: '',      // 已经拿到译文的文本 key
     firedLen: 0,      // 上次发请求时原文长度（用于抑制"只多几个字母"的重复请求）
 
-    // ===== 方案 B：预取整片字幕 =====
-    // engine='cue' 表示已经拿到整片字幕（带时间轴），按 currentTime 查表显示；
-    // 失败则保持 'dom'（逐词读 DOM）作为兜底。
-    engine: 'dom',
-    lines: [],        // [{ start, dur, en, zh, pending, tries }]
-    cueTimer: null,
+    // ===== 混合模式：DOM 负责显示（保证完整句），预取负责提前备好译文（保证不延迟）=====
+    lines: [],            // 预取到的整片字幕 [{ start, dur, en, zh, pending, tries }]
+    trCache: new Map(),   // 规范化文本 → 译文，命中即 0 延迟
+    prefetchReady: false,
+    seekHookBound: false,
     cueToken: 0,
-    lastCueIndex: -1,
-    cueEverHit: false, // 整片模式下是否真的匹配到过字幕（用于 8s 后回退 DOM）
     videoId: '',
     overlay: null,
     lru: new Map(),
@@ -190,12 +187,12 @@
     askEnsureBaseTrack();
     warmUpServiceWorker();
     startPolling();
-    startCueMode(); // 优先尝试"预取整片"；失败则继续用 DOM 模式
+    startPrefetch(); // 预取整片译文当缓存；失败则纯逐词（显示不受影响）
   }
 
   function teardown() {
     state.running = false;
-    stopCueMode();
+    stopPrefetch();
     stopPolling();
 
     if (state.observer) {
@@ -390,7 +387,6 @@
 
   function processCurrentLine() {
     if (!state.running) return;
-    if (state.engine === 'cue') return; // 已切到"整片字幕"模式，不再逐词读 DOM
 
     const text = readLine();
     if (!text) { scheduleClear(); return; }
@@ -402,6 +398,8 @@
     if (!prevText || !text.startsWith(prevText)) {
       state.firedLen = 0;
       state.doneKey = '';
+      // 新的一句：先把上一句的中文摘掉，避免"新英文 + 旧中文"张冠李戴
+      state.lastDst = '';
     }
 
     state.lastText = text;
@@ -419,8 +417,17 @@
       return;
     }
 
-    // 双语模式：原文随字幕实时增长（0 延迟）；仅译文模式不画原文（保持上一句译文）
+    // 双语模式：原文随字幕实时增长（0 延迟）；仅译文模式不画原文
     if (state.content === 'dual') renderLines();
+
+    // ① 预取缓存命中 → 中文与英文同一帧出现（这是"实时感"的来源）
+    const prefetched = cacheGet(text);
+    if (prefetched) {
+      state.lastDst = prefetched;
+      state.doneKey = state.targetLang + '\u0001' + text;
+      renderLines();
+      return;
+    }
 
     const key = state.targetLang + '\u0001' + text;
     if (key === state.doneKey) return; // 这段文本已经翻过
@@ -623,58 +630,114 @@
     return document.querySelector('video.html5-main-video') || document.querySelector('video');
   }
 
-  function cueTick() {
-    if (state.engine !== 'cue') return;
-    const v = currentVideo();
-    if (!v) return;
+  // ---- 预取缓存 ----
+  // 混合模式的核心：**显示仍然由 DOM 驱动**（保证是 YouTube 自己拼好的完整句），
+  // 预取只是提前把译文备好，按"规范化文本"索引，命中就 0 延迟出中文。
 
-    const idx = findLineIndex(v.currentTime);
-    if (idx < 0) {
-      state.lastCueIndex = -1;
-      hideOverlay();
-      return;
-    }
-
-    state.cueEverHit = true;
-    const line = state.lines[idx];
-    const changed = idx !== state.lastCueIndex;
-    state.lastCueIndex = idx;
-
-    if (changed || state.lastText !== line.en) {
-      // 两行同时切换：原文来自当前 cue，译文也来自同一个 cue
-      state.lastText = line.en;
-      state.lastDst = line.zh || '';
-      renderLines();
-    } else if (state.lastDst !== (line.zh || '')) {
-      state.lastDst = line.zh || '';
-      renderLines();
-    }
-
-    if (!line.zh) ensureLineTranslated(line);
+  function normalizeText(s) {
+    return String(s || '')
+      .toLowerCase()
+      .replace(/[\s\u00a0]+/g, ' ')
+      .replace(/[^\p{L}\p{N} ]/gu, '')
+      .trim();
   }
 
-  // 按需补一条（跳转到未翻译区域时用），走常规单句翻译，所有引擎都支持。
-  // 单句是"一问一答"，不存在批量里的顺序错位问题，所以它才是拖进度/跳转时的兜底。
-  function ensureLineTranslated(line) {
+  function cacheSet(src, dst) {
+    if (!src || !dst) return;
+    const key = normalizeText(src);
+    if (key.length < 2) return;
+    state.trCache.set(key, dst);
+    while (state.trCache.size > 4000) {
+      state.trCache.delete(state.trCache.keys().next().value);
+    }
+  }
+
+  function similarText(a, b) {
+    if (!a || !b) return false;
+    if (a === b) return true;
+    const aw = a.split(' ').filter(Boolean);
+    const bw = b.split(' ').filter(Boolean);
+    if (!aw.length || !bw.length) return false;
+    if (aw[0] === bw[0] && aw[aw.length - 1] === bw[bw.length - 1]) return true;
+    const setB = new Set(bw);
+    const overlap = aw.filter((w) => setB.has(w)).length / Math.max(aw.length, bw.length);
+    return overlap >= 0.8;
+  }
+
+  // 查缓存：先按文本精确命中（规范化后），再用时间轴上的 cue 做近似匹配，
+  // 解决"DOM 文本与 cue 文本标点/断行不完全一致"导致的漏命中。
+  function cacheGet(src) {
+    const key = normalizeText(src);
+    if (!key) return '';
+
+    const hit = state.trCache.get(key);
+    if (hit) return hit;
+
+    const v = currentVideo();
+    if (!v || !state.lines.length) return '';
+    const idx = findLineIndex(v.currentTime);
+    if (idx < 0) return '';
+    const line = state.lines[idx];
+    if (!line.zh) return '';
+    return similarText(key, normalizeText(line.en)) ? line.zh : '';
+  }
+
+  // 当前播放位置的 cue 若还没翻译 → 立刻单句补一条（跳转时用；一问一答不会错位）
+  function prefetchLineAtTime(t) {
+    const idx = findLineIndex(t);
+    if (idx < 0) return;
+    const line = state.lines[idx];
     if (!line || line.zh || line.pending) return;
-    if ((line.tries || 0) >= 3) return; // 连续失败 3 次就不再重试，避免死循环
+    if ((line.tries || 0) >= 3) return;
     line.pending = true;
     line.tries = (line.tries || 0) + 1;
+
     sendMsg({ action: 'translate', text: line.en, targetLang: state.targetLang }, (res) => {
       line.pending = false;
       const dst = res && res.success && res.translation ? String(res.translation).trim() : '';
-      if (dst) { line.zh = dst; cueTick(); }
+      if (!dst) return;
+      line.zh = dst;
+      cacheSet(line.en, dst);
+      // 如果屏幕上正好是这句，立刻补上中文
+      if (state.lastText && !state.lastDst
+        && similarText(normalizeText(state.lastText), normalizeText(line.en))) {
+        state.lastDst = dst;
+        renderLines();
+      }
     });
   }
 
-  // 边播边批量翻：优先翻"当前播放位置往后"的，再回补前面漏掉的
+  function onSeeked() {
+    if (!state.prefetchReady) return;
+    const v = currentVideo();
+    if (!v) return;
+    prefetchLineAtTime(v.currentTime);
+    // 跳转后 DOM 未必立刻变化，主动催一次取句
+    setTimeout(() => { if (state.running) processCurrentLine(); }, 60);
+  }
+
+  function attachSeekHook() {
+    if (state.seekHookBound) return;
+    const v = currentVideo();
+    if (!v) return;
+    state.seekHookBound = true;
+    try { v.addEventListener('seeked', onSeeked); } catch (_) {}
+  }
+
+  function detachSeekHook() {
+    const v = currentVideo();
+    if (v) { try { v.removeEventListener('seeked', onSeeked); } catch (_) {} }
+    state.seekHookBound = false;
+  }
+
+  // 边播边批量翻，只用来填缓存（不驱动显示）；优先当前进度往后
   function translateLines() {
     const token = ++state.cueToken;
     const CHUNK = 20;
     let rounds = 0;
 
     const nextBatch = () => {
-      if (state.engine !== 'cue' || token !== state.cueToken) return;
+      if (!state.prefetchReady || token !== state.cueToken) return;
       if (++rounds > 300) return;
 
       const v = currentVideo();
@@ -696,14 +759,13 @@
       sendMsg(
         { action: 'translate_batch', texts: targets.map((l) => l.en), targetLang: state.targetLang },
         (res) => {
-          if (state.engine !== 'cue' || token !== state.cueToken) return;
+          if (!state.prefetchReady || token !== state.cueToken) return;
           const list = res && res.success && Array.isArray(res.translations) ? res.translations : null;
 
           if (!list || list.length !== targets.length) {
-            // 批量返回的条数对不上 → **绝不能按下标硬套**，否则会把别句的译文贴到这一句上
-            //（表现就是"拖进度后英文和中文完全不是同一句"）。全部退回按需单句翻译。
+            // 条数对不上 → 绝不能按下标硬套（会把别句译文贴过来），整批放弃
             targets.forEach((l) => { l.pending = false; l.tries = (l.tries || 0) + 1; });
-            console.warn('LingoFlow: batch size mismatch (' + (list ? list.length : 'null') + '/' + targets.length + '), using per-line translation');
+            console.warn('LingoFlow: batch size mismatch (' + (list ? list.length : 'null') + '/' + targets.length + '), prefetch skipped');
             return;
           }
 
@@ -711,10 +773,14 @@
           targets.forEach((l, i) => {
             l.pending = false;
             const t = list[i] ? String(list[i]).trim() : '';
-            if (t) { l.zh = t; filled += 1; } else { l.tries = (l.tries || 0) + 1; }
+            if (t) { l.zh = t; cacheSet(l.en, t); filled += 1; } else { l.tries = (l.tries || 0) + 1; }
           });
 
-          if (filled) cueTick();
+          // 当前屏幕这句刚好被补上 → 立刻显示
+          if (filled && state.lastText && !state.lastDst) {
+            const cached = cacheGet(state.lastText);
+            if (cached) { state.lastDst = cached; renderLines(); }
+          }
           if (!filled) return;
           setTimeout(nextBatch, 80);
         }
@@ -724,44 +790,26 @@
     nextBatch();
   }
 
-  function startCueTicker() {
-    stopCueTicker();
-    state.cueTimer = setInterval(cueTick, 200);
-    const v = currentVideo();
-    if (v) {
-      try { v.addEventListener('seeked', cueTick); } catch (_) {}
-    }
-    cueTick();
-  }
-
-  function stopCueTicker() {
-    if (state.cueTimer) { clearInterval(state.cueTimer); state.cueTimer = null; }
-    const v = currentVideo();
-    if (v) {
-      try { v.removeEventListener('seeked', cueTick); } catch (_) {}
-    }
-  }
-
-  function stopCueMode() {
-    stopCueTicker();
+  function stopPrefetch() {
     state.cueToken += 1;
-    state.engine = 'dom';
+    state.prefetchReady = false;
     state.lines = [];
-    state.lastCueIndex = -1;
+    state.trCache.clear();
+    detachSeekHook();
   }
 
-  // 启动时尝试方案 B；任何一步失败都静默回到逐词 DOM 模式
-  function startCueMode() {
+  // 启动预取；任何一步失败都静默退回"纯逐词"模式（显示不受影响）
+  function startPrefetch() {
     sendMsg({ action: 'lf_yt_tracklist' }, (res) => {
       if (!state.running) return;
       if (!res || !res.ok || !res.tracks || !res.tracks.length) {
-        console.log('[LingoFlow] cue mode: no tracklist, keeping DOM mode');
+        console.log('[LingoFlow] prefetch: no tracklist, using live translation');
         return;
       }
 
       const track = pickTrack(res.tracks);
       if (!track || !track.url) {
-        console.log('[LingoFlow] cue mode: no usable base track, keeping DOM mode');
+        console.log('[LingoFlow] prefetch: no usable base track');
         return;
       }
 
@@ -770,36 +818,21 @@
       sendMsg({ action: 'lf_yt_timedtext', url: track.url }, (r) => {
         if (!state.running) return;
         if (!r || !r.ok || !r.cues || !r.cues.length) {
-          console.log('[LingoFlow] cue mode: timedtext unavailable, keeping DOM mode');
+          console.log('[LingoFlow] prefetch: timedtext unavailable, using live translation');
           return;
         }
 
         const lines = buildLines(r.cues);
         if (lines.length < 5) {
-          console.log('[LingoFlow] cue mode: too few cues, keeping DOM mode');
+          console.log('[LingoFlow] prefetch: too few cues, using live translation');
           return;
         }
 
         state.lines = lines;
-        state.engine = 'cue';
-        state.lastCueIndex = -1;
-        state.cueEverHit = false;
-        state.lastText = '';
-        state.lastDst = '';
-        stopPolling();       // 不再需要逐词读 DOM
-        startCueTicker();
+        state.prefetchReady = true;
+        attachSeekHook();
         translateLines();
-        console.log('[LingoFlow] cue mode ready:', lines.length, 'lines, track:', track.lang, track.kind || 'manual');
-
-        // 兜底：如果播放了却一条都没匹配上（时间轴异常/轨道不是我们要的），8s 后回退 DOM 模式
-        setTimeout(() => {
-          if (state.engine !== 'cue' || !state.running || state.cueEverHit) return;
-          const v = currentVideo();
-          if (!v || v.paused || v.currentTime < 1) return;
-          console.log('[LingoFlow] cue mode: no cue matched, falling back to DOM mode');
-          stopCueMode();
-          startPolling();
-        }, 8000);
+        console.log('[LingoFlow] prefetch ready:', lines.length, 'lines, track:', track.lang, track.kind || 'manual');
       });
     });
   }
@@ -950,11 +983,10 @@
           state.noBaseNotified = false;
           state.lastBaseCheckAt = 0;
           askEnsureBaseTrack();
-          // 换了原文语言 → 整片字幕要重新挑轨并重新拉取
-          if (state.engine === 'cue') {
-            stopCueMode();
-            startPolling();
-            startCueMode();
+          // 换了原文语言 → 预取缓存要重建（显示仍是 DOM，不受影响）
+          if (state.prefetchReady) {
+            stopPrefetch();
+            startPrefetch();
           }
         }
       });
