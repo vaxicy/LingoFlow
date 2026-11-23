@@ -3,9 +3,14 @@
    我们自己在固定 bottom 上画「原文 + 译文」两行 —— 位置不依赖任何原生元素，
    因此不会随原生字幕换行/重排而上下抖动。 */
 
-/* ===== 隐藏原生字幕（保留布局与更新） ===== */
-html.lf-yt-subs-on .ytp-caption-window-container {
+/* ===== 隐藏原生字幕（保留布局与更新） =====
+   除了 opacity，还把背景/阴影一并清掉：个别皮肤的字幕底色可能画在内层元素上，
+   只改 opacity 万一被覆盖就会留下一整条黑带。 */
+html.lf-yt-subs-on .ytp-caption-window-container,
+html.lf-yt-subs-on .ytp-caption-window-container .caption-window {
   opacity: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
   pointer-events: none !important;
 }
 
@@ -21,7 +26,11 @@ html.lf-yt-subs-on .ytp-caption-window-container {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  width: min(86%, 1100px);
+  /* 关键：宽度跟着文字走（max-content），而不是固定占满 86%。
+     否则「黑底块」等带背景的样式会拉出一条横贯画面的黑带，挡住画面里的人物。
+     超长句仍会在 max-width 处换行。 */
+  width: max-content;
+  max-width: min(86%, 1100px);
   text-align: center;
   pointer-events: none; /* 绝不挡播放控件与划词 */
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
@@ -74,10 +83,11 @@ html.lf-yt-subs-on .ytp-caption-window-container {
 }
 
 /* ===== 样式预设 ===== */
+/* 黑底块：背景只包住文字（配合上面的 max-content 宽度），不再是横贯画面的黑带 */
 #lf-yt-subs[data-lf-style="box"] {
-  padding: 6px 14px;
+  padding: 5px 12px;
   border-radius: 10px;
-  background: rgba(0, 0, 0, 0.62);
+  background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
