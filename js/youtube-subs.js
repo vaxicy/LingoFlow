@@ -58,6 +58,12 @@
     token: 0,
     lastText: '',
     lastDst: '',
+    // 单飞（single-flight）：同一时刻只允许一个翻译请求在途，期间到来的新文本只记下最新一条，
+    // 等回来再发。这样一句话最多 1–2 次请求，不会因为"逐词增长"把请求队列堵死。
+    inflight: false,
+    pendingText: '',
+    doneKey: '',      // 已经拿到译文的文本 key
+    firedLen: 0,      // 上次发请求时原文长度（用于抑制"只多几个字母"的重复请求）
     overlay: null,
     lru: new Map(),
     ccClicks: 0,
@@ -155,6 +161,10 @@
     state.token = 0;
     state.lastText = '';
     state.lastDst = '';
+    state.inflight = false;
+    state.pendingText = '';
+    state.doneKey = '';
+    state.firedLen = 0;
     state.ccClicks = 0;
     state.noBaseNotified = false;
     state.baseFailCount = 0;
@@ -192,6 +202,10 @@
     removeModeClass();
     state.lastText = '';
     state.lastDst = '';
+    state.inflight = false;
+    state.pendingText = '';
+    state.doneKey = '';
+    state.firedLen = 0;
     state.token += 1;
   }
 
@@ -368,6 +382,14 @@
     if (!text) { scheduleClear(); return; }
     if (text === state.lastText) return;
 
+    // YouTube 自动字幕是**逐词增长**的：先出现前半句，再不断追加。
+    // 判断这一句是不是上一句的"延长"：不是延长就是新句，重置增长基准。
+    const prevText = state.lastText;
+    if (!prevText || !text.startsWith(prevText)) {
+      state.firedLen = 0;
+      state.doneKey = '';
+    }
+
     state.lastText = text;
     state.everGotText = true;
     if (state.clearTimer) { clearTimeout(state.clearTimer); state.clearTimer = null; }
@@ -376,36 +398,91 @@
     if (!shouldTranslate(text)) {
       state.token += 1;
       state.lastDst = '';
+      state.inflight = false;
+      state.pendingText = '';
+      state.doneKey = '';
       renderLines();
       return;
     }
 
-    const key = state.targetLang + '\u0001' + text;
-    const token = ++state.token;
-
-    // 双语模式：原文立即可见（0 延迟）；仅译文模式不画原文（保持上一句译文）
+    // 双语模式：原文随字幕实时增长（0 延迟）；仅译文模式不画原文（保持上一句译文）
     if (state.content === 'dual') renderLines();
 
+    const key = state.targetLang + '\u0001' + text;
+    if (key === state.doneKey) return; // 这段文本已经翻过
+
     if (state.lru.has(key)) {
+      state.doneKey = key;
       state.lastDst = state.lru.get(key);
       renderLines();
       return;
     }
 
+    // 只多了几个字母就先不发，等它长够 / 说完再发，避免无意义的重复请求
+    if (!state.inflight && state.firedLen > 0 && text.length - state.firedLen < 6) return;
+
+    // 单飞：已有请求在途 → 只记下最新文本，回来后再发这一条
+    if (state.inflight) {
+      state.pendingText = text;
+      return;
+    }
+
+    fireTranslation(text, key);
+  }
+
+  // 发一次翻译；回来时若期间文本又长了，用**最新**那条再补发一次（不排队）
+  function fireTranslation(text, key) {
+    const token = ++state.token;
+    state.inflight = true;
+    state.firedLen = text.length;
+
+    // 看门狗：万一某次请求迟迟不返回，别把后面整段视频的字幕都卡住
+    const watch = setTimeout(() => {
+      if (!state.inflight || token !== state.token) return;
+      state.inflight = false;
+      const next = state.pendingText;
+      state.pendingText = '';
+      if (next && next !== text) {
+        const nextKey = state.targetLang + '\u0001' + next;
+        if (nextKey !== state.doneKey) fireTranslation(next, nextKey);
+      }
+    }, 6000);
+
     try {
       chrome.runtime.sendMessage(
         { action: 'translate', text: text, targetLang: state.targetLang },
         (res) => {
-          if (chrome.runtime.lastError) return;
-          if (token !== state.token) return; // 已换句，丢弃
-          const dst = res && res.success && res.translation ? String(res.translation).trim() : '';
-          if (!dst) return;
-          remember(key, dst);
-          state.lastDst = dst;
-          renderLines();
+          clearTimeout(watch);
+          state.inflight = false;
+
+          if (!chrome.runtime.lastError && token === state.token) {
+            const dst = res && res.success && res.translation ? String(res.translation).trim() : '';
+            if (dst) {
+              remember(key, dst);
+              state.doneKey = key;
+              state.lastDst = dst;
+              renderLines();
+            }
+          }
+
+          // 期间文本又增长了 → 补发一次最新文本
+          const next = state.pendingText;
+          state.pendingText = '';
+          if (!next || next === text) return;
+
+          const nextKey = state.targetLang + '\u0001' + next;
+          if (state.lru.has(nextKey)) {
+            state.doneKey = nextKey;
+            state.lastDst = state.lru.get(nextKey);
+            renderLines();
+            return;
+          }
+          if (nextKey !== state.doneKey) fireTranslation(next, nextKey);
         }
       );
-    } catch (_) {}
+    } catch (_) {
+      state.inflight = false;
+    }
   }
 
   function remember(key, value) {
@@ -422,6 +499,10 @@
       if (state.lastText === '' && state.lastDst === '') return;
       state.lastText = '';
       state.lastDst = '';
+      state.inflight = false;
+      state.pendingText = '';
+      state.doneKey = '';
+      state.firedLen = 0;
       state.token += 1; // 作废在途请求
       renderLines();
     }, CLEAR_DELAY);
