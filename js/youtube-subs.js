@@ -40,7 +40,6 @@
     uiLang: 'zh',
 
     noBaseNotified: false,
-    noTracksNotified: false,
     baseFailCount: 0,
     lastBaseCheckAt: 0,
 
@@ -129,10 +128,7 @@
       switched: zh ? '已把 YouTube 字幕切回原语言' : 'Switched YouTube subtitles back to the original language',
       noBase: zh
         ? '该视频只有翻译字幕，无法显示原文'
-        : 'This video only has translated captions; the original line is unavailable',
-      noTracks: zh
-        ? '该视频没有可用字幕'
-        : 'No captions available for this video'
+        : 'This video only has translated captions; the original line is unavailable'
     };
   }
 
@@ -161,7 +157,6 @@
     state.lastDst = '';
     state.ccClicks = 0;
     state.noBaseNotified = false;
-    state.noTracksNotified = false;
     state.baseFailCount = 0;
     state.lastBaseCheckAt = Date.now();
     state.everGotText = false;
@@ -252,14 +247,11 @@
             return;
           }
 
-          // 完全没有字幕轨 → 提示一次（播放 8s 后再判断，避开播放器初始化时 tracklist 还是空的）
-          if (res.reason === 'no tracks') {
-            if (!state.noTracksNotified && Date.now() - (state.startAt || 0) > 8000) {
-              state.noTracksNotified = true;
-              toast(T().noTracks);
-            }
-            return;
-          }
+          // 完全没有字幕轨：**不提示**。
+          // tracklist 为空不等于没有字幕（播放器 API 未就绪、字幕走别的链路都可能返回空），
+          // 而这时屏幕上往往已经在正常显示双语字幕了 —— 弹"没有可用字幕"会自相矛盾。
+          // 真正没有字幕的视频用户自己看得出来，不需要打扰。
+          if (res.reason === 'no tracks') return;
 
           if (res.ok) {
             state.baseFailCount = 0;
