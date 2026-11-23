@@ -33,7 +33,7 @@
     enabled: false,
     content: 'dual',           // dual（双语）| translation（仅译文）| off
     offset: 'mid',             // low | mid | high
-    style: 'classic',          // classic | box | minimal（不再提供「跟随 YouTube」）
+    style: 'classic',          // classic | box（「跟随 YouTube」「极简」因看不清已移除）
     fontSize: 22,
     sourceLang: 'auto',
     targetLang: 'zh',
@@ -112,10 +112,10 @@
     state.enabled = state.settings.ytSubsEnabled === true && state.content !== 'off';
     state.offset = migrateOffset(state.settings);
 
-    // 「跟随 YouTube」已移除：镜像来的 text-shadow 常为 none，白字压在浅色画面上几乎看不见。
-    // 旧值 native / 未知值统一回落到 classic（白字 + 黑描边，任何画面都清晰）。
+    // 已移除「跟随 YouTube」（镜像来的 text-shadow 常为 none）与「极简」（无描边 → 白字压浅色
+    // 画面等于隐形）。旧值 native / minimal / 未知值一律回落到 classic（白字 + 黑描边，任何画面都清晰）。
     const style = state.settings.ytSubsStyle;
-    state.style = (style === 'box' || style === 'minimal') ? style : 'classic';
+    state.style = style === 'box' ? 'box' : 'classic';
 
     state.fontSize = Number(state.settings.ytSubsFontSize) || 22;
     state.sourceLang = state.settings.ytSubsSourceLang || 'auto';

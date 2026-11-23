@@ -2390,7 +2390,8 @@ function applyPopupSettings(settings) {
   const ytSubsStyle = document.getElementById('popup-yt-subs-style');
   if (ytSubsStyle) {
     // 「跟随 YouTube」已下线 → 旧值 native / 未知值一律回落到 classic
-    ytSubsStyle.value = ['box', 'minimal'].includes(settings.ytSubsStyle) ? settings.ytSubsStyle : 'classic';
+    // 「极简」已下线（无描边看不清）→ 旧值 / 未知值统一回落到 classic
+    ytSubsStyle.value = settings.ytSubsStyle === 'box' ? 'box' : 'classic';
   }
   const ytSubsFontSize = document.getElementById('popup-yt-subs-font-size');
   if (ytSubsFontSize) ytSubsFontSize.value = String(settings.ytSubsFontSize || 22);

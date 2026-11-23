@@ -92,18 +92,9 @@ html.lf-yt-subs-on .ytp-caption-window-container .caption-window {
   -webkit-backdrop-filter: blur(4px);
 }
 
-#lf-yt-subs[data-lf-style="minimal"] .lf-yt-src,
-#lf-yt-subs[data-lf-style="minimal"] .lf-yt-dst {
-  color: rgba(255, 255, 255, 0.94);
-  text-shadow: none;
-}
-
-#lf-yt-subs[data-lf-style="minimal"] .lf-yt-dst {
-  font-weight: 500;
-}
-
-/* 样式预设剩三种：classic（默认，白字黑描边）/ box（黑底）/ minimal（无描边）。
-   「跟随 YouTube」已移除 —— 镜像来的 text-shadow 常为 none，白字压在浅色画面上几乎看不见。 */
+/* 样式预设只剩两种：classic（默认，白字黑描边）/ box（黑底块）。
+   已移除的两个：「跟随 YouTube」—— 镜像来的 text-shadow 常为 none；
+   「极简」—— 去掉描边后白字压在浅色画面上等于隐形（都会导致看不清，故不再提供）。 */
 
 /* 广告期间不显示 */
 #movie_player.ad-showing #lf-yt-subs,
