@@ -64,6 +64,17 @@
     pendingText: '',
     doneKey: '',      // 已经拿到译文的文本 key
     firedLen: 0,      // 上次发请求时原文长度（用于抑制"只多几个字母"的重复请求）
+
+    // ===== 方案 B：预取整片字幕 =====
+    // engine='cue' 表示已经拿到整片字幕（带时间轴），按 currentTime 查表显示；
+    // 失败则保持 'dom'（逐词读 DOM）作为兜底。
+    engine: 'dom',
+    lines: [],        // [{ start, dur, en, zh, pending, failed }]
+    cueTimer: null,
+    cueToken: 0,
+    lastCueIndex: -1,
+    cueEverHit: false, // 整片模式下是否真的匹配到过字幕（用于 8s 后回退 DOM）
+    videoId: '',
     overlay: null,
     lru: new Map(),
     ccClicks: 0,
@@ -179,10 +190,12 @@
     askEnsureBaseTrack();
     warmUpServiceWorker();
     startPolling();
+    startCueMode(); // 优先尝试"预取整片"；失败则继续用 DOM 模式
   }
 
   function teardown() {
     state.running = false;
+    stopCueMode();
     stopPolling();
 
     if (state.observer) {
@@ -377,6 +390,7 @@
 
   function processCurrentLine() {
     if (!state.running) return;
+    if (state.engine === 'cue') return; // 已切到"整片字幕"模式，不再逐词读 DOM
 
     const text = readLine();
     if (!text) { scheduleClear(); return; }
@@ -506,6 +520,283 @@
       state.token += 1; // 作废在途请求
       renderLines();
     }, CLEAR_DELAY);
+  }
+
+  // ---------- 方案 B：预取整片字幕 ----------
+
+  function sendMsg(msg, cb) {
+    try {
+      chrome.runtime.sendMessage(msg, (res) => {
+        if (chrome.runtime.lastError) { cb(null); return; }
+        cb(res || null);
+      });
+    } catch (_) {
+      cb(null);
+    }
+  }
+
+  function getVideoId() {
+    try {
+      return new URLSearchParams(location.search).get('v') || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  // 和 ensure-base 用同一套优先级：指定语言（人工→自动）→ 任意非目标语言
+  function pickTrack(tracks) {
+    const norm = (c) => String(c || '').toLowerCase().split('-')[0];
+    const want = state.sourceLang && state.sourceLang !== 'auto' ? norm(state.sourceLang) : 'en';
+    const target = norm(state.targetLang);
+    const isWant = (t) => norm(t.lang) === want;
+    const notTarget = (t) => norm(t.lang) !== target;
+
+    return tracks.find((t) => isWant(t) && t.kind !== 'asr')
+      || tracks.find(isWant)
+      || tracks.find((t) => notTarget(t) && t.kind !== 'asr')
+      || tracks.find(notTarget)
+      || null;
+  }
+
+  // 把碎片 cue 合并成"一句一行"，避免译文被切碎（时间轴仍然准确）
+  function buildLines(cues) {
+    const MAX_LEN = 90;
+    const MAX_GAP = 0.45;
+    const lines = [];
+
+    cues.forEach((c) => {
+      const text = String(c.text || '').replace(/\s+/g, ' ').trim();
+      if (!text) return;
+      const start = Number(c.start) || 0;
+      const dur = Number(c.dur) || 0;
+
+      const prev = lines[lines.length - 1];
+      if (prev) {
+        // 自动生成字幕常见"滚动式"输出：同一句会被重复吐出，或逐次变得更长。
+        // 先去掉这类重复，否则译文会重复翻译同一段。
+        if (text === prev.en || prev.en.endsWith(' ' + text)) return;
+        if (text.startsWith(prev.en)) {
+          prev.en = text;
+          prev.dur = Math.max(prev.dur, start + dur - prev.start);
+          return;
+        }
+
+        const gap = start - (prev.start + prev.dur);
+        const prevDone = /[.!?。！？]["')\]]?$/.test(prev.en);
+        if (gap <= MAX_GAP && !prevDone && prev.en.length + text.length <= MAX_LEN) {
+          prev.en = (prev.en + ' ' + text).trim();
+          prev.dur = Math.max(prev.dur, start + dur - prev.start);
+          return;
+        }
+      }
+
+      lines.push({ start: start, dur: Math.max(0.4, dur), en: text, zh: '', pending: false, failed: false });
+    });
+
+    // 有些格式不给时长：用"到下一句开始"补齐，避免整句只闪一下
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].dur < 0.6) {
+        const next = lines[i + 1];
+        lines[i].dur = next ? Math.max(0.6, next.start - lines[i].start) : 2.5;
+      }
+    }
+    return lines;
+  }
+
+  function findLineIndex(t) {
+    const lines = state.lines;
+    if (!lines.length) return -1;
+    let lo = 0;
+    let hi = lines.length - 1;
+    let ans = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (lines[mid].start <= t) { ans = mid; lo = mid + 1; } else { hi = mid - 1; }
+    }
+    if (ans < 0) return -1;
+    const line = lines[ans];
+    if (t > line.start + line.dur + 0.25) return -1; // 句与句之间的空档
+    return ans;
+  }
+
+  function currentVideo() {
+    return document.querySelector('video.html5-main-video') || document.querySelector('video');
+  }
+
+  function cueTick() {
+    if (state.engine !== 'cue') return;
+    const v = currentVideo();
+    if (!v) return;
+
+    const idx = findLineIndex(v.currentTime);
+    if (idx < 0) {
+      state.lastCueIndex = -1;
+      hideOverlay();
+      return;
+    }
+
+    state.cueEverHit = true;
+    const line = state.lines[idx];
+    const changed = idx !== state.lastCueIndex;
+    state.lastCueIndex = idx;
+
+    if (changed || state.lastText !== line.en) {
+      // 两行同时切换：原文来自当前 cue，译文也来自同一个 cue
+      state.lastText = line.en;
+      state.lastDst = line.zh || '';
+      renderLines();
+    } else if (state.lastDst !== (line.zh || '')) {
+      state.lastDst = line.zh || '';
+      renderLines();
+    }
+
+    if (!line.zh) ensureLineTranslated(line);
+  }
+
+  // 按需补一条（跳转到未翻译区域时用），走常规单句翻译，所有引擎都支持
+  function ensureLineTranslated(line) {
+    if (!line || line.zh || line.pending || line.failed) return;
+    line.pending = true;
+    sendMsg({ action: 'translate', text: line.en, targetLang: state.targetLang }, (res) => {
+      line.pending = false;
+      const dst = res && res.success && res.translation ? String(res.translation).trim() : '';
+      if (dst) { line.zh = dst; cueTick(); } else { line.failed = true; }
+    });
+  }
+
+  // 边播边批量翻：优先翻"当前播放位置往后"的，再回补前面漏掉的
+  function translateLines() {
+    const token = ++state.cueToken;
+    const CHUNK = 20;
+    let rounds = 0;
+
+    const nextBatch = () => {
+      if (state.engine !== 'cue' || token !== state.cueToken) return;
+      if (++rounds > 300) return;
+
+      const v = currentVideo();
+      const from = v ? Math.max(0, findLineIndex(v.currentTime)) : 0;
+
+      const targets = [];
+      const collect = (startIdx, endIdx) => {
+        for (let i = startIdx; i < endIdx && targets.length < CHUNK; i++) {
+          const l = state.lines[i];
+          if (!l.zh && !l.pending && !l.failed) targets.push(l);
+        }
+      };
+      collect(from, state.lines.length);
+      if (!targets.length) collect(0, from);
+      if (!targets.length) return;
+
+      targets.forEach((l) => { l.pending = true; });
+
+      sendMsg(
+        { action: 'translate_batch', texts: targets.map((l) => l.en), targetLang: state.targetLang },
+        (res) => {
+          if (state.engine !== 'cue' || token !== state.cueToken) return;
+          const list = res && res.success && Array.isArray(res.translations) ? res.translations : null;
+
+          if (!list) {
+            // 批量通道不可用 → 逐条按需翻译（仍对齐，只是晚一点）
+            targets.forEach((l) => { l.pending = false; l.failed = true; });
+            return;
+          }
+
+          let filled = 0;
+          targets.forEach((l, i) => {
+            l.pending = false;
+            const t = list[i] ? String(list[i]).trim() : '';
+            if (t) { l.zh = t; filled += 1; } else { l.failed = true; }
+          });
+
+          if (filled) cueTick();
+          if (!filled) return;
+          setTimeout(nextBatch, 80);
+        }
+      );
+    };
+
+    nextBatch();
+  }
+
+  function startCueTicker() {
+    stopCueTicker();
+    state.cueTimer = setInterval(cueTick, 200);
+    const v = currentVideo();
+    if (v) {
+      try { v.addEventListener('seeked', cueTick); } catch (_) {}
+    }
+    cueTick();
+  }
+
+  function stopCueTicker() {
+    if (state.cueTimer) { clearInterval(state.cueTimer); state.cueTimer = null; }
+    const v = currentVideo();
+    if (v) {
+      try { v.removeEventListener('seeked', cueTick); } catch (_) {}
+    }
+  }
+
+  function stopCueMode() {
+    stopCueTicker();
+    state.cueToken += 1;
+    state.engine = 'dom';
+    state.lines = [];
+    state.lastCueIndex = -1;
+  }
+
+  // 启动时尝试方案 B；任何一步失败都静默回到逐词 DOM 模式
+  function startCueMode() {
+    sendMsg({ action: 'lf_yt_tracklist' }, (res) => {
+      if (!state.running) return;
+      if (!res || !res.ok || !res.tracks || !res.tracks.length) {
+        console.log('[LingoFlow] cue mode: no tracklist, keeping DOM mode');
+        return;
+      }
+
+      const track = pickTrack(res.tracks);
+      if (!track || !track.url) {
+        console.log('[LingoFlow] cue mode: no usable base track, keeping DOM mode');
+        return;
+      }
+
+      state.videoId = res.videoId || getVideoId();
+
+      sendMsg({ action: 'lf_yt_timedtext', url: track.url }, (r) => {
+        if (!state.running) return;
+        if (!r || !r.ok || !r.cues || !r.cues.length) {
+          console.log('[LingoFlow] cue mode: timedtext unavailable, keeping DOM mode');
+          return;
+        }
+
+        const lines = buildLines(r.cues);
+        if (lines.length < 5) {
+          console.log('[LingoFlow] cue mode: too few cues, keeping DOM mode');
+          return;
+        }
+
+        state.lines = lines;
+        state.engine = 'cue';
+        state.lastCueIndex = -1;
+        state.cueEverHit = false;
+        state.lastText = '';
+        state.lastDst = '';
+        stopPolling();       // 不再需要逐词读 DOM
+        startCueTicker();
+        translateLines();
+        console.log('[LingoFlow] cue mode ready:', lines.length, 'lines, track:', track.lang, track.kind || 'manual');
+
+        // 兜底：如果播放了却一条都没匹配上（时间轴异常/轨道不是我们要的），8s 后回退 DOM 模式
+        setTimeout(() => {
+          if (state.engine !== 'cue' || !state.running || state.cueEverHit) return;
+          const v = currentVideo();
+          if (!v || v.paused || v.currentTime < 1) return;
+          console.log('[LingoFlow] cue mode: no cue matched, falling back to DOM mode');
+          stopCueMode();
+          startPolling();
+        }, 8000);
+      });
+    });
   }
 
   // ---------- 渲染 ----------
@@ -654,6 +945,12 @@
           state.noBaseNotified = false;
           state.lastBaseCheckAt = 0;
           askEnsureBaseTrack();
+          // 换了原文语言 → 整片字幕要重新挑轨并重新拉取
+          if (state.engine === 'cue') {
+            stopCueMode();
+            startPolling();
+            startCueMode();
+          }
         }
       });
     });
