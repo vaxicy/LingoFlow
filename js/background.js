@@ -378,6 +378,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       translateBatch(request.texts, request.targetLang, sendResponse);
       return true;
 
+    // YouTube 字幕：低延迟翻译（专精模型 + 精简请求，失败回落常规链路）
+    case 'lf_yt_translate':
+      translateYtFast(request.text, request.targetLang, sendResponse);
+      return true;
+
     // YouTube 字幕：把被切成「YouTube 翻译轨」的字幕切回原语言
     case 'lf_yt_ensure_base':
       ensureYtBaseTrack(sender, request.targetLang, request.sourceLang, sendResponse);
@@ -1542,6 +1547,67 @@ function translateWithFallback(engine, fallback, text, targetLang, sendResponse)
     }
   };
   dispatchEngine(engine, text, targetLang, respond);
+}
+
+// ======================== YouTube 字幕：低延迟翻译 ========================
+// 字幕每 1–3 秒一句，对延迟极其敏感；常规 translate 链路里有 storage 读取、
+// 模型回落链、Google 兜底等步骤，最坏情况会多等好几秒。
+// 这里优先用翻译专精模型（免费、首 token 快）走一条精简请求：
+//   短 prompt + temperature 0 + 不开思考链 + 8s 超时 + 无 JSON 包装
+// 未配置硅基 key 或快路径失败时，静默回落常规 translateText（字幕不会因此中断）。
+const YT_FAST_MODEL = 'tencent/Hunyuan-MT-7B';
+const YT_FAST_TIMEOUT = 8000;
+
+function translateYtFast(text, targetLang, sendResponse) {
+  let replied = false;
+  const reply = (payload) => {
+    if (replied) return;
+    replied = true;
+    sendResponse(payload);
+  };
+
+  chrome.storage.local.get(['lingoflow_settings'], (result) => {
+    const settings = getDefaultSettings(result.lingoflow_settings || {});
+    const apiKey = (settings.siliconflowApiKey || '').trim();
+
+    if (!apiKey) { translateText(text, targetLang, reply); return; }
+
+    const targetName = getSiliconFlowTargetName(targetLang);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), YT_FAST_TIMEOUT);
+
+    fetch('https://api.siliconflow.cn/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: YT_FAST_MODEL,
+        messages: [
+          {
+            role: 'system',
+            content: `You translate video subtitles. Translate the user text to ${targetName}. Output only the translation, no quotes, no notes.`
+          },
+          { role: 'user', content: text }
+        ],
+        temperature: 0,
+        max_tokens: Math.min(512, Math.max(64, Math.ceil(text.length * 2))),
+        stream: false
+      }),
+      signal: controller.signal
+    })
+      .then((response) => (response.ok ? response.json() : Promise.reject(new Error('HTTP ' + response.status))))
+      .then((data) => {
+        clearTimeout(timer);
+        const choice = data && data.choices && data.choices[0];
+        const out = choice && choice.message ? String(choice.message.content || '').trim() : '';
+        if (!out) throw new Error('empty translation');
+        reply({ success: true, translation: out, model: 'siliconflow/' + YT_FAST_MODEL });
+      })
+      .catch((err) => {
+        clearTimeout(timer);
+        console.warn('LingoFlow: YT fast translate failed, falling back to normal chain', String((err && err.message) || err));
+        translateText(text, targetLang, reply);
+      });
+  });
 }
 
 function translateText(text, targetLang, sendResponse) {
