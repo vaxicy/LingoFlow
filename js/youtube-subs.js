@@ -42,6 +42,7 @@
     noBaseNotified: false,
     baseFailCount: 0,
     lastBaseCheckAt: 0,
+    revealTimer: null,
 
     // 注意：**不要**因为"一段时间读不到字幕"就判定接管失效并恢复原生字幕。
     // 教学视频经常几十秒只有画面没有旁白，那是正常情况，误判会让整个视频失去翻译。
@@ -125,7 +126,6 @@
   function T() {
     const zh = state.uiLang === 'zh';
     return {
-      switched: zh ? '已把 YouTube 字幕切回原语言' : 'Switched YouTube subtitles back to the original language',
       noBase: zh
         ? '该视频只有翻译字幕，无法显示原文'
         : 'This video only has translated captions; the original line is unavailable'
@@ -169,6 +169,16 @@
     askEnsureBaseTrack();
     warmUpServiceWorker();
     startPolling();
+
+    // 看门狗：3s 内我们还一句都画不出来，就把原生字幕还回去。
+    // 否则一旦读不到文字（切轨/皮肤差异/接口变化），屏幕上就是"一个字都没有"。
+    setTimeout(() => {
+      if (!state.running) return;
+      if (!state.overlay || state.overlay.hidden) {
+        document.documentElement.classList.remove('lf-yt-subs-on');
+        console.log('[LingoFlow] no subtitle rendered in 3s, native captions restored');
+      }
+    }, 3000);
   }
 
   function teardown() {
@@ -253,9 +263,10 @@
           // 真正没有字幕的视频用户自己看得出来，不需要打扰。
           if (res.reason === 'no tracks') return;
 
+          // 切轨成功也不弹提示（用户明确不想要）：切轨是内部行为，屏幕上有没有字幕
+          // 本身就是最好的反馈。
           if (res.ok) {
             state.baseFailCount = 0;
-            if (res.switched) toast(T().switched);
           } else {
             state.baseFailCount += 1;
           }
@@ -284,12 +295,9 @@
     ensureOverlay();
     ensureCaptionsOn();
 
-    // 定期复查字幕轨：用户可能中途手动把 YouTube 字幕切成中文翻译轨
-    const now = Date.now();
-    if (now - (state.lastBaseCheckAt || 0) > 15000) {
-      state.lastBaseCheckAt = now;
-      askEnsureBaseTrack();
-    }
+    // 只在本页启动时选一次轨。
+    // 之前每 15s 复查并纠正会反复切轨：切轨瞬间 YouTube 会清空字幕容器，
+    // 表现为"字幕突然全没了"，而且每次切换都会弹提示 —— 得不偿失。
 
     const root = document.querySelector('.ytp-caption-window-container');
     if (root && root !== state.observedRoot) bindObserver(root);
@@ -540,7 +548,23 @@
     dstEl.hidden = !showDst;
 
     ov.hidden = !(showSrc || showDst);
-    if (!ov.hidden) applyStyle();
+
+    if (!ov.hidden) {
+      applyStyle();
+      if (state.revealTimer) { clearTimeout(state.revealTimer); state.revealTimer = null; }
+      document.documentElement.classList.add('lf-yt-subs-on');
+    } else if (state.content !== 'off') {
+      // 我们长时间没内容可显示时，把原生字幕还回去 —— 宁可原生字幕回来，
+      // 也不能让屏幕上"一个字都没有"。900ms 是为了不干扰句与句之间的正常空档。
+      if (!state.revealTimer) {
+        state.revealTimer = setTimeout(() => {
+          state.revealTimer = null;
+          if (!state.overlay || state.overlay.hidden) {
+            document.documentElement.classList.remove('lf-yt-subs-on');
+          }
+        }, 900);
+      }
+    }
   }
 
   function hideOverlay() {
