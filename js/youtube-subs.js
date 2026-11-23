@@ -20,10 +20,8 @@
   const SETTINGS_KEY = 'lingoflow_settings';
   const LRU_LIMIT = 600;
   const CLEAR_DELAY = 250;      // 句子间 DOM 会短暂清空，延迟清理防闪烁
-  const TYPE_DEBOUNCE = 90;     // 字幕逐字出现，防抖后再取整句
-  // 轮询越频繁，"发现新句"越及时 → 译文越早开始请求。
-  // 500ms 时最坏要多等半秒才发请求（纯自有延迟），300ms 基本感觉不到。
-  const POLL_MS = 300;
+  const TYPE_DEBOUNCE = 110;    // 字幕逐字出现，防抖后再取整句
+  const POLL_MS = 500;
   const MAX_TEXT = 1200;
   const NO_TEXT_WARN_MS = 30000; // 纯诊断用：播放 30s 仍没读到任何字幕 → 只打日志
 
@@ -396,7 +394,7 @@
 
     try {
       chrome.runtime.sendMessage(
-        { action: 'lf_yt_translate', text: text, targetLang: state.targetLang },
+        { action: 'translate', text: text, targetLang: state.targetLang },
         (res) => {
           if (chrome.runtime.lastError) return;
           if (token !== state.token) return; // 已换句，丢弃
