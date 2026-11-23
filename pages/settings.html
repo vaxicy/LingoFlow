@@ -620,13 +620,32 @@
 
         <div class="settings-row settings-row-inline">
           <div class="settings-row-copy">
-            <strong data-i18n="yt_subs_dual">Bilingual Subtitles</strong>
-            <span data-i18n="yt_subs_dual_desc">Show the original line above the translation</span>
+            <strong data-i18n="yt_subs_display_mode">Display Mode</strong>
+            <span data-i18n="yt_subs_display_mode_desc">Show the original line, the translation, or both</span>
           </div>
-          <label class="panel-switch">
-            <input type="checkbox" id="popup-yt-subs-dual" checked>
-            <span></span>
-          </label>
+          <select class="panel-select" id="popup-yt-subs-display-mode">
+            <option value="dual" data-i18n="yt_subs_display_dual">Both</option>
+            <option value="translation" data-i18n="yt_subs_display_translation">Translation only</option>
+            <option value="source" data-i18n="yt_subs_display_source">Original only</option>
+          </select>
+        </div>
+
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
+            <strong data-i18n="yt_subs_source_lang">Original Language</strong>
+            <span data-i18n="yt_subs_source_lang_desc">Preferred caption track used for the original line</span>
+          </div>
+          <select class="panel-select" id="popup-yt-subs-source-lang">
+            <option value="auto" data-i18n="yt_subs_source_auto">Auto</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="ko">한국어</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="de">Deutsch</option>
+            <option value="pt">Português</option>
+            <option value="ru">Русский</option>
+          </select>
         </div>
 
         <div class="settings-row settings-row-inline">

@@ -1123,7 +1123,8 @@ function initSettingsPanel() {
     'popup-translation-color',
     'popup-dictionary-source',
     'popup-yt-subs-enabled',
-    'popup-yt-subs-dual',
+    'popup-yt-subs-display-mode',
+    'popup-yt-subs-source-lang',
     'popup-yt-subs-mode',
     'popup-yt-subs-font-size'
   ];
@@ -2307,8 +2308,15 @@ function applyPopupSettings(settings) {
 
   const ytSubsEnabled = document.getElementById('popup-yt-subs-enabled');
   if (ytSubsEnabled) ytSubsEnabled.checked = settings.ytSubsEnabled === true;
-  const ytSubsDual = document.getElementById('popup-yt-subs-dual');
-  if (ytSubsDual) ytSubsDual.checked = settings.ytSubsDual !== false;
+  const ytSubsDisplayMode = document.getElementById('popup-yt-subs-display-mode');
+  if (ytSubsDisplayMode) {
+    // 兼容旧数据：只有 ytSubsDual 布尔值时映射成显示方式
+    const mode = settings.ytSubsDisplayMode
+      || (settings.ytSubsDual === false ? 'translation' : 'dual');
+    ytSubsDisplayMode.value = mode;
+  }
+  const ytSubsSourceLang = document.getElementById('popup-yt-subs-source-lang');
+  if (ytSubsSourceLang) ytSubsSourceLang.value = settings.ytSubsSourceLang || 'auto';
   const ytSubsMode = document.getElementById('popup-yt-subs-mode');
   if (ytSubsMode) ytSubsMode.value = settings.ytSubsRenderMode || 'takeover';
   const ytSubsFontSize = document.getElementById('popup-yt-subs-font-size');
@@ -2377,7 +2385,10 @@ function getPopupSettingsFromUI() {
     translationColor: document.getElementById('popup-translation-color')?.value || 'inherit',
     dictionarySource: document.getElementById('popup-dictionary-source')?.value || 'offline',
     ytSubsEnabled: document.getElementById('popup-yt-subs-enabled')?.checked === true,
-    ytSubsDual: document.getElementById('popup-yt-subs-dual')?.checked !== false,
+    ytSubsDisplayMode: document.getElementById('popup-yt-subs-display-mode')?.value || 'dual',
+    ytSubsSourceLang: document.getElementById('popup-yt-subs-source-lang')?.value || 'auto',
+    // 旧字段保留：老版本读 ytSubsDual，写回时保持一致
+    ytSubsDual: (document.getElementById('popup-yt-subs-display-mode')?.value || 'dual') !== 'translation',
     ytSubsRenderMode: document.getElementById('popup-yt-subs-mode')?.value || 'takeover',
     ytSubsFontSize: parseInt(document.getElementById('popup-yt-subs-font-size')?.value, 10) || 22
   };
@@ -2517,6 +2528,8 @@ function getDefaultSettings(overrides = {}) {
     hoverParagraphTranslation: false,
     ytSubsEnabled: false,
     ytSubsDual: true,
+    ytSubsDisplayMode: 'dual',
+    ytSubsSourceLang: 'auto',
     ytSubsRenderMode: 'takeover',
     ytSubsFontSize: 22,
     toolbarPosition: 'above',

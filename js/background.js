@@ -82,6 +82,8 @@ chrome.runtime.onInstalled.addListener(() => {
           hoverParagraphTranslation: false,
           ytSubsEnabled: false,
           ytSubsDual: true,
+          ytSubsDisplayMode: 'dual',
+          ytSubsSourceLang: 'auto',
           ytSubsRenderMode: 'takeover',
           ytSubsFontSize: 22,
           dictionaryAiEnhance: true,
@@ -268,10 +270,14 @@ function createTranslationResultBox(text) {
 }
 
 // ======================== YouTube 字幕：主世界辅助 ========================
-// 用户的 YouTube 字幕可能被切成了「中文（翻译）」轨，此时 DOM 里的原文已是中文，
-// 我们再翻一遍会变成二次翻译。这里在主世界用 player API 把字幕切回原语言轨。
+// 把字幕切到「原语言轨」，这是我们拿得到原文、做双语的前提。
+//
+// 注意：不能只用 `cur.translationLanguage` 判断是否已是原文轨 —— 部分 YouTube 版本
+// 不返回该字段（或直接给一个 zh-Hans 独立轨），会导致误判成"已是原文"而不做任何事，
+// 屏幕上也因此只剩中文。所以这里改成**按语言显式挑轨**并在切换后回读校验。
+//
 // 注：scripting + <all_urls> 权限已具备，无需新增权限。
-function ensureYtBaseTrack(sender, sendResponse) {
+function ensureYtBaseTrack(sender, targetLang, wantLang, sendResponse) {
   const tabId = sender && sender.tab && sender.tab.id;
   if (!tabId || !chrome.scripting || typeof chrome.scripting.executeScript !== 'function') {
     sendResponse({ ok: false, reason: 'no tab or scripting api' });
@@ -281,26 +287,70 @@ function ensureYtBaseTrack(sender, sendResponse) {
   chrome.scripting.executeScript({
     target: { tabId: tabId },
     world: 'MAIN',
-    func: function () {
+    args: [String(targetLang || 'zh'), String(wantLang || 'auto')],
+    func: function (targetLang, wantLang) {
       try {
         const p = document.getElementById('movie_player');
         if (!p || typeof p.getOption !== 'function') return { ok: false, reason: 'no player api' };
 
         const list = p.getOption('captions', 'tracklist') || [];
-        if (!list.length) return { ok: false, reason: 'no tracks' };
+        if (!list.length) return { ok: false, reason: 'no tracks', tracks: [] };
 
-        const cur = p.getOption('captions', 'track') || {};
-        if (!cur.translationLanguage) {
-          return { ok: true, already: true, baseLang: cur.languageCode || '' };
+        const norm = (c) => String(c || '').toLowerCase();
+        const base2 = (c) => norm(c).split('-')[0];
+        const wanted = (wantLang && wantLang !== 'auto') ? base2(wantLang) : 'en';
+        const target = base2(targetLang);
+        const notTarget = (t) => base2(t.languageCode) !== target;
+        const isWanted = (t) => base2(t.languageCode) === wanted;
+
+        const picked =
+          list.find(t => isWanted(t) && t.kind !== 'asr') ||
+          list.find(t => isWanted(t)) ||
+          list.find(t => notTarget(t) && t.kind !== 'asr') ||
+          list.find(t => notTarget(t)) ||
+          null;
+
+        const summarize = list.map(t => ({
+          lang: t.languageCode || '',
+          kind: t.kind || '',
+          name: t.name || ''
+        }));
+
+        if (!picked) {
+          const cur = p.getOption('captions', 'track') || {};
+          return {
+            ok: false,
+            reason: 'no base track',
+            current: { lang: cur.languageCode || '', kind: cur.kind || '' },
+            tracks: summarize
+          };
         }
 
-        // 优先人工原语言轨，其次任意非翻译轨，最后退回第一轨
-        const base = list.find(t => !t.translationLanguage && t.kind !== 'asr')
-          || list.find(t => !t.translationLanguage)
-          || list[0];
+        const cur = p.getOption('captions', 'track') || {};
+        const already = base2(cur.languageCode) === base2(picked.languageCode) && !cur.translationLanguage;
+        if (already) {
+          return {
+            ok: true,
+            already: true,
+            picked: { lang: picked.languageCode || '', kind: picked.kind || '' },
+            tracks: summarize
+          };
+        }
 
-        p.setOption('captions', 'track', base);
-        return { ok: true, switched: true, baseLang: base.languageCode || '' };
+        try { p.setOption('captions', 'track', picked); } catch (_) {}
+        // 明确清掉翻译设置（部分版本需要单独清一次，否则仍停留在翻译轨）
+        try { p.setOption('captions', 'translationLanguage', null); } catch (_) {}
+
+        const after = p.getOption('captions', 'track') || {};
+        const ok = base2(after.languageCode) === base2(picked.languageCode) && !after.translationLanguage;
+
+        return {
+          ok: ok,
+          switched: true,
+          picked: { lang: picked.languageCode || '', kind: picked.kind || '' },
+          after: { lang: after.languageCode || '', kind: after.kind || '', hasTranslation: !!after.translationLanguage },
+          tracks: summarize
+        };
       } catch (e) {
         return { ok: false, reason: String((e && e.message) || e) };
       }
@@ -326,7 +376,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     // YouTube 字幕：把被切成「YouTube 翻译轨」的字幕切回原语言
     case 'lf_yt_ensure_base':
-      ensureYtBaseTrack(sender, sendResponse);
+      ensureYtBaseTrack(sender, request.targetLang, request.sourceLang, sendResponse);
       return true;
 
     case 'lookup_dictionary':
@@ -674,6 +724,8 @@ function getDefaultSettings(overrides = {}) {
     hoverParagraphTranslation: false,
     ytSubsEnabled: false,
     ytSubsDual: true,
+    ytSubsDisplayMode: 'dual',
+    ytSubsSourceLang: 'auto',
     ytSubsRenderMode: 'takeover',
     ytSubsFontSize: 22,
     dictionaryAiEnhance: true,

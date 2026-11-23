@@ -1240,4 +1240,37 @@
     "message": "使用上方选择的翻译引擎。原文字幕会立刻显示，译文随后补上。",
     "description": "YouTube 字幕设置下方的说明"
   }
+,
+  "yt_subs_display_mode": {
+    "message": "显示方式",
+    "description": "设置：YouTube 字幕如何显示"
+  },
+  "yt_subs_display_mode_desc": {
+    "message": "显示原文、译文，或两者同时显示",
+    "description": "选择说明"
+  },
+  "yt_subs_display_dual": {
+    "message": "双语（原文 + 译文）",
+    "description": "显示方式：原文与译文"
+  },
+  "yt_subs_display_translation": {
+    "message": "仅译文",
+    "description": "显示方式：只显示译文"
+  },
+  "yt_subs_display_source": {
+    "message": "仅原文",
+    "description": "显示方式：只显示原文"
+  },
+  "yt_subs_source_lang": {
+    "message": "原文语言",
+    "description": "设置：原文字幕首选语言"
+  },
+  "yt_subs_source_lang_desc": {
+    "message": "用于原文字幕的首选字幕轨语言",
+    "description": "选择说明"
+  },
+  "yt_subs_source_auto": {
+    "message": "自动",
+    "description": "原文语言：自动"
+  }
 }

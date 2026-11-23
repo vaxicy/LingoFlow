@@ -1240,4 +1240,37 @@
     "message": "Usa el motor de traducción elegido arriba. La línea original aparece al instante y la traducción llega después.",
     "description": "Nota bajo los ajustes de subtítulos"
   }
+,
+  "yt_subs_display_mode": {
+    "message": "Modo de visualización",
+    "description": "Ajuste: cómo se muestran los subtítulos"
+  },
+  "yt_subs_display_mode_desc": {
+    "message": "Muestra la línea original, la traducción o ambas",
+    "description": "Descripción de la selección"
+  },
+  "yt_subs_display_dual": {
+    "message": "Ambos",
+    "description": "Modo: original + traducción"
+  },
+  "yt_subs_display_translation": {
+    "message": "Solo traducción",
+    "description": "Modo: solo traducción"
+  },
+  "yt_subs_display_source": {
+    "message": "Solo original",
+    "description": "Modo: solo original"
+  },
+  "yt_subs_source_lang": {
+    "message": "Idioma original",
+    "description": "Ajuste: idioma preferido del subtítulo original"
+  },
+  "yt_subs_source_lang_desc": {
+    "message": "Pista de subtítulos preferida para la línea original",
+    "description": "Descripción de la selección"
+  },
+  "yt_subs_source_auto": {
+    "message": "Automático",
+    "description": "Idioma original: automático"
+  }
 }

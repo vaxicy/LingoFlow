@@ -1240,4 +1240,37 @@
     "message": "Uses the translation engine selected above. The original line appears instantly; the translation follows.",
     "description": "Note under the YouTube subtitle settings"
   }
+,
+  "yt_subs_display_mode": {
+    "message": "Display Mode",
+    "description": "Settings: how YouTube subtitles are displayed"
+  },
+  "yt_subs_display_mode_desc": {
+    "message": "Show the original line, the translation, or both",
+    "description": "Select description"
+  },
+  "yt_subs_display_dual": {
+    "message": "Both",
+    "description": "Display mode: original + translation"
+  },
+  "yt_subs_display_translation": {
+    "message": "Translation only",
+    "description": "Display mode: translation"
+  },
+  "yt_subs_display_source": {
+    "message": "Original only",
+    "description": "Display mode: original"
+  },
+  "yt_subs_source_lang": {
+    "message": "Original Language",
+    "description": "Settings: preferred original caption language"
+  },
+  "yt_subs_source_lang_desc": {
+    "message": "Preferred caption track used for the original line",
+    "description": "Select description"
+  },
+  "yt_subs_source_auto": {
+    "message": "Auto",
+    "description": "Original language: automatic"
+  }
 }

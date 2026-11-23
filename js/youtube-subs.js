@@ -26,11 +26,15 @@
   const state = {
     settings: null,
     enabled: false,
-    dual: true,
+    displayMode: 'dual',        // dual | translation | source
+    sourceLang: 'auto',         // 原文字幕语言偏好
     renderMode: 'takeover',     // takeover | avoid
     fontSize: 22,
     targetLang: 'zh',
     uiLang: 'zh',
+    noBaseNotified: false,
+    baseFailCount: 0,
+    lastDst: '',
     running: false,
     observer: null,
     observedRoot: null,
@@ -63,7 +67,16 @@
   function applyRuntimeConfig(s) {
     state.settings = s || {};
     state.enabled = state.settings.ytSubsEnabled === true;
-    state.dual = state.settings.ytSubsDual !== false;
+
+    // 显示方式：优先新键；旧版只有 ytSubsDual 布尔值，做一次兼容迁移
+    const mode = state.settings.ytSubsDisplayMode;
+    if (mode === 'dual' || mode === 'translation' || mode === 'source') {
+      state.displayMode = mode;
+    } else {
+      state.displayMode = state.settings.ytSubsDual === false ? 'translation' : 'dual';
+    }
+
+    state.sourceLang = state.settings.ytSubsSourceLang || 'auto';
     state.renderMode = state.settings.ytSubsRenderMode === 'avoid' ? 'avoid' : 'takeover';
     state.fontSize = Number(state.settings.ytSubsFontSize) || 22;
     state.targetLang = state.settings.targetLanguage || 'zh';
@@ -73,7 +86,10 @@
   function T() {
     const zh = state.uiLang === 'zh';
     return {
-      switched: zh ? '已把 YouTube 字幕切回原语言' : 'Switched YouTube subtitles back to the original language'
+      switched: zh ? '已把 YouTube 字幕切回原语言' : 'Switched YouTube subtitles back to the original language',
+      noBase: zh
+        ? '该视频只有翻译字幕，无法显示原文'
+        : 'This video only has translated captions; the original line is unavailable'
     };
   }
 
@@ -102,7 +118,11 @@
     state.running = true;
     state.token = 0;
     state.lastText = '';
+    state.lastDst = '';
     state.ccClicks = 0;
+    state.noBaseNotified = false;
+    state.baseFailCount = 0;
+    state.lastBaseCheckAt = Date.now();
 
     ensureOverlay();
     applyModeClass();
@@ -131,6 +151,7 @@
 
     removeModeClass();
     state.lastText = '';
+    state.lastDst = '';
     state.token += 1;
   }
 
@@ -152,14 +173,47 @@
     try { btn.click(); } catch (_) {}
   }
 
-  // 用户可能把 YouTube 字幕切成了「中文（翻译）」轨 → 我们拿到的原文已是中文。
-  // 这里请求 background 在主世界用 player API 切回原语言轨（失败不影响主流程）。
+  // 用户可能把 YouTube 字幕切成了「中文（翻译）」轨 → 我们拿到的原文已是中文，
+  // 双语就出不来。这里请求 background 在主世界用 player API 切回原语言轨。
+  // 失败不影响主流程（退化为单语），连续失败 3 次后停止重试并提示一次。
   function askEnsureBaseTrack() {
+    if (state.baseFailCount >= 3) return;
     try {
-      chrome.runtime.sendMessage({ action: 'lf_yt_ensure_base' }, (res) => {
-        if (chrome.runtime.lastError) return;
-        if (res && res.switched) toast(T().switched);
-      });
+      chrome.runtime.sendMessage(
+        {
+          action: 'lf_yt_ensure_base',
+          targetLang: state.targetLang,
+          sourceLang: state.sourceLang
+        },
+        (res) => {
+          if (chrome.runtime.lastError) return;
+          if (!res) return;
+
+          if (res.tracks) {
+            console.log('[LingoFlow] yt tracks:', res.tracks,
+              '| picked:', res.picked || null,
+              '| switched:', !!res.switched,
+              '| ok:', !!res.ok,
+              res.reason ? ('| reason: ' + res.reason) : '');
+          }
+
+          if (res.reason === 'no base track') {
+            state.baseFailCount = 3;
+            if (!state.noBaseNotified) {
+              state.noBaseNotified = true;
+              toast(T().noBase);
+            }
+            return;
+          }
+
+          if (res.ok) {
+            state.baseFailCount = 0;
+            if (res.switched) toast(T().switched);
+          } else {
+            state.baseFailCount += 1;
+          }
+        }
+      );
     } catch (_) {}
   }
 
@@ -183,6 +237,13 @@
 
     ensureOverlay();
     ensureCaptionsOn();
+
+    // 定期复查字幕轨：用户可能中途手动把 YouTube 字幕切成中文翻译轨
+    const now = Date.now();
+    if (now - (state.lastBaseCheckAt || 0) > 15000) {
+      state.lastBaseCheckAt = now;
+      askEnsureBaseTrack();
+    }
 
     const root = document.querySelector('.ytp-caption-window-container');
     if (root && root !== state.observedRoot) bindObserver(root);
@@ -320,6 +381,11 @@
     return ov;
   }
 
+  function sameText(a, b) {
+    const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase();
+    return !!a && !!b && norm(a) === norm(b);
+  }
+
   function renderLine(src, dst) {
     const ov = ensureOverlay();
     if (!ov) return;
@@ -328,19 +394,29 @@
     const dstEl = ov.querySelector('.lf-yt-dst');
     if (!srcEl || !dstEl) return;
 
+    state.lastDst = dst || '';
     ov.hidden = false;
 
-    if (state.dual) {
-      srcEl.textContent = src || '';
-      srcEl.hidden = !src;
-      dstEl.textContent = dst || '';
-      dstEl.hidden = !dst;
+    let showSrc = false;
+    let showDst = false;
+
+    if (state.displayMode === 'source') {
+      // 只看原文（不翻译也照样显示）
+      showSrc = !!src;
+    } else if (state.displayMode === 'translation') {
+      // 只看译文；译文还没回来时先拿原文顶上，避免空白
+      if (dst) showDst = true;
+      else showSrc = !!src;
     } else {
-      // 单语模式：译文优先，没有译文时先显示原文
-      srcEl.hidden = true;
-      dstEl.textContent = dst || src || '';
-      dstEl.hidden = false;
+      // 双语：原文在上、译文在下；两者内容相同时不重复显示
+      showSrc = !!src;
+      showDst = !!dst && !sameText(src, dst);
     }
+
+    srcEl.textContent = src || '';
+    srcEl.hidden = !showSrc;
+    dstEl.textContent = dst || '';
+    dstEl.hidden = !showDst;
 
     adjustAvoidOffset();
   }
@@ -408,6 +484,8 @@
       const prevEnabled = state.enabled;
       const prevMode = state.renderMode;
       const prevFont = state.fontSize;
+      const prevDisplay = state.displayMode;
+      const prevSource = state.sourceLang;
 
       loadSettings((s) => {
         applyRuntimeConfig(s);
@@ -424,9 +502,21 @@
           teardown();
           return;
         }
-        if (state.enabled && state.renderMode !== prevMode) {
+        if (!state.enabled) return;
+
+        if (state.renderMode !== prevMode) {
           document.documentElement.setAttribute('data-lf-yt-mode', state.renderMode);
-          if (state.lastText) renderLine(state.lastText, '');
+        }
+        // 显示方式变了：用已缓存的译文重画当前句，无需重新请求
+        if (state.displayMode !== prevDisplay && state.lastText) {
+          renderLine(state.lastText, state.lastDst);
+        }
+        // 原文语言偏好变了：重新选轨
+        if (state.sourceLang !== prevSource) {
+          state.baseFailCount = 0;
+          state.noBaseNotified = false;
+          state.lastBaseCheckAt = 0;
+          askEnsureBaseTrack();
         }
       });
     });
