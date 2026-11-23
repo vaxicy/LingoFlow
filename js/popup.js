@@ -1123,8 +1123,8 @@ function initSettingsPanel() {
     'popup-translation-color',
     'popup-dictionary-source',
     'popup-yt-subs-enabled',
-    'popup-yt-subs-mode',
-    'popup-yt-subs-pos',
+    'popup-yt-subs-content',
+    'popup-yt-subs-offset',
     'popup-yt-subs-source-lang',
     'popup-yt-subs-style',
     'popup-yt-subs-font-size'
@@ -1175,8 +1175,8 @@ function initSettingsPanel() {
       if (id === 'popup-auto-save-settings') {
         persistPopupSettings({ closeOnSuccess: false, auto: true });
       }
-      // YouTube 字幕：显示模式/样式变化时联动其它行的可用状态
-      if (id === 'popup-yt-subs-mode' || id === 'popup-yt-subs-style') {
+      // YouTube 字幕：字幕内容/样式变化时联动其它行的可用状态
+      if (id === 'popup-yt-subs-content' || id === 'popup-yt-subs-style') {
         syncYtSubsRowState();
       }
       markSettingsChanged();
@@ -2212,39 +2212,46 @@ function toggleCustomRows(show) {
   if (modelRow) modelRow.hidden = !show;
 }
 
-// YouTube 字幕：把历史设置迁移成单一「显示模式」
-//   旧：ytSubsLayout（接管/避让 + 显示方式）/ ytSubsDisplayMode / ytSubsDual
-function migrateYtSubsMode(settings) {
+// YouTube 字幕：把历史设置迁移成「字幕内容」
+//   旧：ytSubsContent / ytSubsMode / ytSubsLayout / ytSubsDisplayMode / ytSubsDual
+function migrateYtSubsContent(settings) {
   const s = settings || {};
-  if (s.ytSubsMode === 'merged' || s.ytSubsMode === 'translation' || s.ytSubsMode === 'off') {
-    return s.ytSubsMode;
+  if (s.ytSubsContent === 'dual' || s.ytSubsContent === 'translation' || s.ytSubsContent === 'off') {
+    return s.ytSubsContent;
   }
+  if (s.ytSubsMode === 'translation') return 'translation';
+  if (s.ytSubsMode === 'off') return 'off';
+  if (s.ytSubsMode === 'merged') return 'dual';
+
   if (s.ytSubsLayout === 'takeover-translation') return 'translation';
   if (s.ytSubsLayout === 'takeover-source') return 'off';
-  if (s.ytSubsLayout === 'takeover-dual' || s.ytSubsLayout === 'avoid') return 'merged';
+  if (s.ytSubsLayout === 'takeover-dual' || s.ytSubsLayout === 'avoid') return 'dual';
 
   const disp = s.ytSubsDisplayMode || (s.ytSubsDual === false ? 'translation' : 'dual');
   if (disp === 'translation') return 'translation';
   if (disp === 'source') return 'off';
-  return 'merged';
+  return 'dual';
 }
 
-// 按显示模式联动其它设置，避免出现「设了但没用」的组合：
-//   合并双语 → 位置可选；样式仍可选（默认「跟随 YouTube」最协调）
-//   仅译文   → 位置无效（隐藏）；样式/字号可自定义
-//   关闭     → 位置隐藏；样式/字号不可用
-// 字号只在「样式 ≠ 跟随 YouTube」时才有意义（跟随模式下字号由 YouTube 决定）
+// 旧「译文位置 上/下」→ 新「垂直位置 低/中/高」
+function migrateYtSubsOffset(settings) {
+  const s = settings || {};
+  if (s.ytSubsOffset === 'low' || s.ytSubsOffset === 'mid' || s.ytSubsOffset === 'high') {
+    return s.ytSubsOffset;
+  }
+  if (s.ytSubsTranslationPos === 'above') return 'high';
+  return 'mid';
+}
+
+// 联动规则只有一条：字号只在「样式 ≠ 跟随 YouTube」时才有意义
+// （选「跟随 YouTube」时字号由 YouTube 决定）。其余项在非关闭状态下都可调。
 function syncYtSubsRowState() {
-  const modeSel = document.getElementById('popup-yt-subs-mode');
+  const contentSel = document.getElementById('popup-yt-subs-content');
   const styleSel = document.getElementById('popup-yt-subs-style');
   const fontSel = document.getElementById('popup-yt-subs-font-size');
-  const posRow = document.getElementById('popup-yt-subs-pos-row');
-  if (!modeSel && !styleSel) return;
+  if (!contentSel && !styleSel) return;
 
-  const mode = modeSel ? modeSel.value : 'merged';
-  const off = mode === 'off';
-
-  if (posRow) posRow.hidden = mode !== 'merged';
+  const off = contentSel ? contentSel.value === 'off' : false;
 
   if (styleSel) styleSel.disabled = off;
 
@@ -2376,10 +2383,10 @@ function applyPopupSettings(settings) {
 
   const ytSubsEnabled = document.getElementById('popup-yt-subs-enabled');
   if (ytSubsEnabled) ytSubsEnabled.checked = settings.ytSubsEnabled === true;
-  const ytSubsMode = document.getElementById('popup-yt-subs-mode');
-  if (ytSubsMode) ytSubsMode.value = migrateYtSubsMode(settings);
-  const ytSubsPos = document.getElementById('popup-yt-subs-pos');
-  if (ytSubsPos) ytSubsPos.value = settings.ytSubsTranslationPos === 'above' ? 'above' : 'below';
+  const ytSubsContent = document.getElementById('popup-yt-subs-content');
+  if (ytSubsContent) ytSubsContent.value = migrateYtSubsContent(settings);
+  const ytSubsOffset = document.getElementById('popup-yt-subs-offset');
+  if (ytSubsOffset) ytSubsOffset.value = migrateYtSubsOffset(settings);
   const ytSubsSourceLang = document.getElementById('popup-yt-subs-source-lang');
   if (ytSubsSourceLang) ytSubsSourceLang.value = settings.ytSubsSourceLang || 'auto';
   const ytSubsStyle = document.getElementById('popup-yt-subs-style');
@@ -2451,14 +2458,14 @@ function getPopupSettingsFromUI() {
     translationColor: document.getElementById('popup-translation-color')?.value || 'inherit',
     dictionarySource: document.getElementById('popup-dictionary-source')?.value || 'offline',
     ytSubsEnabled: document.getElementById('popup-yt-subs-enabled')?.checked === true,
-    ytSubsMode: document.getElementById('popup-yt-subs-mode')?.value || 'merged',
-    ytSubsTranslationPos: document.getElementById('popup-yt-subs-pos')?.value || 'below',
+    ytSubsContent: document.getElementById('popup-yt-subs-content')?.value || 'dual',
+    ytSubsOffset: document.getElementById('popup-yt-subs-offset')?.value || 'mid',
     ytSubsSourceLang: document.getElementById('popup-yt-subs-source-lang')?.value || 'auto',
     ytSubsStyle: document.getElementById('popup-yt-subs-style')?.value || 'native',
     ytSubsFontSize: parseInt(document.getElementById('popup-yt-subs-font-size')?.value, 10) || 22,
     // 旧字段保留，供老版本脚本回读（新脚本只用上面的键）
-    ytSubsDisplayMode: (document.getElementById('popup-yt-subs-mode')?.value || 'merged') === 'translation' ? 'translation' : 'dual',
-    ytSubsDual: (document.getElementById('popup-yt-subs-mode')?.value || 'merged') !== 'translation'
+    ytSubsDual: (document.getElementById('popup-yt-subs-content')?.value || 'dual') === 'dual',
+    ytSubsDisplayMode: (document.getElementById('popup-yt-subs-content')?.value || 'dual') === 'translation' ? 'translation' : 'dual'
   };
 }
 
@@ -2595,8 +2602,8 @@ function getDefaultSettings(overrides = {}) {
     autoSaveSettings: true,
     hoverParagraphTranslation: false,
     ytSubsEnabled: false,
-    ytSubsMode: 'merged',
-    ytSubsTranslationPos: 'below',
+    ytSubsContent: 'dual',
+    ytSubsOffset: 'mid',
     ytSubsSourceLang: 'auto',
     ytSubsStyle: 'native',
     ytSubsFontSize: 22,

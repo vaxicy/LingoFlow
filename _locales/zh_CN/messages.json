@@ -1237,7 +1237,7 @@
     "description": "选择说明"
   },
   "yt_subs_note": {
-    "message": "使用上方选择的翻译引擎。原文字幕会立刻显示，译文随后补上。",
+    "message": "会遮盖 YouTube 自带字幕，由我们在固定位置绘制原文与译文两行，播放时不会上下跳动。",
     "description": "YouTube 字幕设置下方的说明"
   }
 ,
@@ -1329,5 +1329,46 @@
   "yt_subs_style_locked": {
     "message": "选「跟随 YouTube」时字体、字号、描边都跟随 YouTube；其他样式可用下方字号自行设置。",
     "description": "提示：合并模式样式被锁定"
+  }
+,
+  "yt_subs_content": {
+    "message": "字幕内容",
+    "description": "设置：绘制哪些内容"
+  },
+  "yt_subs_content_desc": {
+    "message": "由我们自己绘制两行（会遮盖 YouTube 自带字幕），或只显示其中一行",
+    "description": "选择说明"
+  },
+  "yt_subs_content_dual": {
+    "message": "原文 + 译文",
+    "description": "内容：两行"
+  },
+  "yt_subs_content_translation": {
+    "message": "仅译文",
+    "description": "内容：只显示译文"
+  },
+  "yt_subs_content_off": {
+    "message": "关闭",
+    "description": "内容：不介入字幕"
+  },
+  "yt_subs_offset": {
+    "message": "垂直位置",
+    "description": "设置：字幕离底部的高度"
+  },
+  "yt_subs_offset_desc": {
+    "message": "相对播放器底部的固定距离，播放时不会上下跳动",
+    "description": "选择说明"
+  },
+  "yt_subs_offset_low": {
+    "message": "低",
+    "description": "位置：低"
+  },
+  "yt_subs_offset_mid": {
+    "message": "中",
+    "description": "位置：中"
+  },
+  "yt_subs_offset_high": {
+    "message": "高",
+    "description": "位置：高"
   }
 }

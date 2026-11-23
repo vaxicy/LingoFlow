@@ -1,24 +1,27 @@
-/* LingoFlow · YouTube 字幕翻译（合并式双语字幕）
-   合并模式：原生字幕保持可见（原文行），我们只在它正下方/正上方补一行译文，
-   样式通过 CSS 变量镜像原生 → 两行看起来是一整块双语字幕。
-   仅译文模式：隐藏原生字幕，只显示我们这一层。 */
+/* LingoFlow · YouTube 字幕翻译（接管式）
+   原生字幕设为 opacity:0 隐藏（仍在 DOM 中更新，作为数据源），
+   我们自己在固定 bottom 上画「原文 + 译文」两行 —— 位置不依赖任何原生元素，
+   因此不会随原生字幕换行/重排而上下抖动。 */
 
-/* ===== 仅译文模式：隐藏原生字幕（保留布局与更新） ===== */
+/* ===== 隐藏原生字幕（保留布局与更新） ===== */
 html.lf-yt-subs-on .ytp-caption-window-container {
   opacity: 0 !important;
   pointer-events: none !important;
 }
 
-/* ===== 译文层 ===== */
+/* ===== 字幕层 ===== */
 #lf-yt-subs {
   position: absolute;
   left: 50%;
+  bottom: 11%;
   transform: translateX(-50%);
   z-index: 16; /* 原生字幕约 14，控制条约 60 */
   box-sizing: border-box;
-  display: block;
-  width: max-content;
-  max-width: min(92%, 1100px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: min(86%, 1100px);
   text-align: center;
   pointer-events: none; /* 绝不挡播放控件与划词 */
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
@@ -32,14 +35,32 @@ html.lf-yt-subs-on .ytp-caption-window-container {
   display: none !important;
 }
 
+/* 垂直位置三档（固定值，不随内容变化） */
+#lf-yt-subs[data-lf-offset="low"] { bottom: 8%; }
+#lf-yt-subs[data-lf-offset="mid"] { bottom: 11%; }
+#lf-yt-subs[data-lf-offset="high"] { bottom: 15%; }
+
 @keyframes lf-yt-subs-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }
 
-/* ===== 样式预设（仅译文模式可选；合并模式强制镜像原生） ===== */
-#lf-yt-subs[data-lf-style="classic"] {
+/* ===== 两行文字 ===== */
+#lf-yt-subs .lf-yt-src {
+  max-width: 100%;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.86em;
+  font-weight: 500;
+  text-shadow:
+    0 0 3px rgba(0, 0, 0, 0.9),
+    0 1px 4px rgba(0, 0, 0, 0.95),
+    0 0 12px rgba(0, 0, 0, 0.6);
+}
+
+#lf-yt-subs .lf-yt-dst {
+  max-width: 100%;
   color: #ffffff;
+  font-size: 1em;
   font-weight: 600;
   text-shadow:
     0 0 4px rgba(0, 0, 0, 0.95),
@@ -47,33 +68,50 @@ html.lf-yt-subs-on .ytp-caption-window-container {
     0 0 16px rgba(0, 0, 0, 0.65);
 }
 
+#lf-yt-subs .lf-yt-src[hidden],
+#lf-yt-subs .lf-yt-dst[hidden] {
+  display: none !important;
+}
+
+/* ===== 样式预设 ===== */
 #lf-yt-subs[data-lf-style="box"] {
   padding: 6px 14px;
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.62);
-  color: #ffffff;
-  font-weight: 600;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
 }
 
-#lf-yt-subs[data-lf-style="minimal"] {
+#lf-yt-subs[data-lf-style="minimal"] .lf-yt-src,
+#lf-yt-subs[data-lf-style="minimal"] .lf-yt-dst {
   color: rgba(255, 255, 255, 0.94);
-  font-weight: 500;
   text-shadow: none;
 }
 
-/* 合并模式 / 样式=跟随 YouTube：全部取自原生字幕的计算样式 */
+#lf-yt-subs[data-lf-style="minimal"] .lf-yt-dst {
+  font-weight: 500;
+}
+
+/* 样式 = 跟随 YouTube：只取排版（字体/字号/字重/颜色/描边），位置仍由锚点决定 */
 #lf-yt-subs[data-lf-style="native"] {
   font-family: var(--lf-yt-native-font, inherit);
   font-size: var(--lf-yt-native-size, var(--lf-yt-font-size, 22px));
+}
+
+#lf-yt-subs[data-lf-style="native"] .lf-yt-src,
+#lf-yt-subs[data-lf-style="native"] .lf-yt-dst {
+  font-family: var(--lf-yt-native-font, inherit);
   font-weight: var(--lf-yt-native-weight, 600);
   color: var(--lf-yt-native-color, #ffffff);
   text-shadow: var(--lf-yt-native-shadow, none);
-  background: var(--lf-yt-native-bg, transparent);
-  padding: var(--lf-yt-native-pad, 0);
-  border-radius: var(--lf-yt-native-radius, 0);
+}
+
+#lf-yt-subs[data-lf-style="native"] .lf-yt-src {
+  font-size: 0.86em;
+}
+
+#lf-yt-subs[data-lf-style="native"] .lf-yt-dst {
+  font-size: 1em;
 }
 
 /* 广告期间不显示 */
@@ -87,7 +125,7 @@ ytd-miniplayer #lf-yt-subs {
   font-size: 13px;
 }
 
-/* ===== 轻提示（例如「已把字幕切回原语言」） ===== */
+/* ===== 轻提示 ===== */
 #lf-yt-toast {
   position: absolute;
   left: 50%;

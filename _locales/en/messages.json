@@ -1237,7 +1237,7 @@
     "description": "Select description"
   },
   "yt_subs_note": {
-    "message": "Uses the translation engine selected above. The original line appears instantly; the translation follows.",
+    "message": "YouTube's own captions are covered and replaced by our two lines at a fixed position, so the subtitle never jumps while playing.",
     "description": "Note under the YouTube subtitle settings"
   }
 ,
@@ -1329,5 +1329,46 @@
   "yt_subs_style_locked": {
     "message": "Pick “Like YouTube” to inherit the font, size and outline from YouTube; other styles use the size below.",
     "description": "Hint: style is locked in merged mode"
+  }
+,
+  "yt_subs_content": {
+    "message": "Subtitle Content",
+    "description": "Settings: what to draw"
+  },
+  "yt_subs_content_desc": {
+    "message": "Draw both lines ourselves (YouTube's own captions are covered), or only one of them",
+    "description": "Select description"
+  },
+  "yt_subs_content_dual": {
+    "message": "Original + translation",
+    "description": "Content: both lines"
+  },
+  "yt_subs_content_translation": {
+    "message": "Translation only",
+    "description": "Content: translation"
+  },
+  "yt_subs_content_off": {
+    "message": "Off",
+    "description": "Content: do not touch captions"
+  },
+  "yt_subs_offset": {
+    "message": "Vertical Position",
+    "description": "Settings: subtitle vertical offset"
+  },
+  "yt_subs_offset_desc": {
+    "message": "Fixed distance from the bottom of the player, so the line never jumps",
+    "description": "Select description"
+  },
+  "yt_subs_offset_low": {
+    "message": "Low",
+    "description": "Offset: low"
+  },
+  "yt_subs_offset_mid": {
+    "message": "Middle",
+    "description": "Offset: middle"
+  },
+  "yt_subs_offset_high": {
+    "message": "High",
+    "description": "Offset: high"
   }
 }

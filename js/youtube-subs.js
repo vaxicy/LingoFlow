@@ -1,16 +1,15 @@
-// LingoFlow · YouTube 字幕翻译（合并式双语字幕）
+// LingoFlow · YouTube 字幕翻译（接管式双语字幕）
 //
 // 设计要点（为什么这样写）：
-// 1) **合并式**：YouTube 原生字幕保持可见、原样显示，作为「原文行」；
-//    我们只在它正下方（或正上方）渲染一行译文，并镜像原生样式（字体/字号/描边/背景），
-//    视觉上是一个整体的双语字幕块 —— 不再隐藏原生、也不自己复刻原文。
-// 2) 绝不修改 .ytp-caption-segment：YouTube 会重写这些节点，只读文本。
-// 3) 译文未到时**保持上一句**，不显示原文、不闪、不空（仅译文模式同理）。
+// 1) **接管式 + 固定锚点**：把 YouTube 原生字幕层设为 opacity:0（它仍继续更新，作为数据源），
+//    我们自己在固定的 bottom 上画「原文 + 译文」两行。
+//    —— 不测量任何原生元素的位置，所以字幕不会随原生块换行/重排而上下乱窜。
+// 2) 绝不修改 .ytp-caption-segment：只读文本，YouTube 会重写这些节点。
+// 3) 双语模式原文立即上屏（读 DOM，0 延迟），译文到达后补第二行；
+//    仅译文模式**绝不画英文**（译文未到则保持上一句）。
 // 4) token 校验：译文回来时若已换句则丢弃，避免串句。
-// 5) 位置每句重新测量（原生字幕换行会变高），下方空间不足时自动翻到上方。
+// 5) 兜底：若播放中连续 10s 读不到字幕（隐藏后不再更新），自动恢复原生字幕并提示一次。
 // 6) SPA 适配：yt-navigate-finish 后整体重建。
-//
-// 「仅译文」模式内部复用同一套渲染，只是隐藏原生字幕、允许自定义样式与字号。
 
 (function () {
   'use strict';
@@ -24,16 +23,17 @@
   const TYPE_DEBOUNCE = 110;    // 字幕逐字出现，防抖后再取整句
   const POLL_MS = 500;
   const MAX_TEXT = 1200;
-  const GAP = 4;                // 译文与原生字幕块的间距
+  const READ_FAIL_MS = 10000;   // 播放中这么久读不到字幕 → 判定接管失效
 
-  const MODES = ['merged', 'translation', 'off'];
+  const CONTENTS = ['dual', 'translation', 'off'];
+  const OFFSETS = ['low', 'mid', 'high'];
 
   const state = {
     settings: null,
     enabled: false,
-    mode: 'merged',            // merged（合并双语）| translation（仅译文）| off
-    pos: 'below',              // below（原生下方）| above（原生上方）
-    style: 'native',           // native | classic | box | minimal（仅 translation 模式生效）
+    content: 'dual',           // dual（双语）| translation（仅译文）| off
+    offset: 'mid',             // low | mid | high
+    style: 'native',           // native | classic | box | minimal
     fontSize: 22,
     sourceLang: 'auto',
     targetLang: 'zh',
@@ -42,6 +42,10 @@
     noBaseNotified: false,
     baseFailCount: 0,
     lastBaseCheckAt: 0,
+
+    takeoverDisabled: false,   // 读不到字幕时置 true，本页不再接管
+    everGotText: false,
+    lastTextAt: 0,
 
     running: false,
     observer: null,
@@ -73,35 +77,40 @@
     }
   }
 
-  // 历史设置迁移：layout / displayMode / renderMode / ytSubsDual → mode
-  function migrateMode(s) {
-    const saved = s && s.ytSubsMode;
-    if (MODES.indexOf(saved) >= 0) return saved;
+  // 历史设置迁移：mode / displayMode / renderMode / ytSubsDual → content
+  function migrateContent(s) {
+    const saved = s && s.ytSubsContent;
+    if (CONTENTS.indexOf(saved) >= 0) return saved;
 
-    const layout = s && s.ytSubsLayout;
-    if (layout === 'takeover-translation') return 'translation';
-    if (layout === 'takeover-source') return 'off';
-    if (layout === 'takeover-dual' || layout === 'avoid') return 'merged';
+    const mode = s && s.ytSubsMode;
+    if (mode === 'translation') return 'translation';
+    if (mode === 'off') return 'off';
+    if (mode === 'merged') return 'dual';
 
     const disp = (s && s.ytSubsDisplayMode)
       || ((s && s.ytSubsDual === false) ? 'translation' : 'dual');
     if (disp === 'translation') return 'translation';
     if (disp === 'source') return 'off';
-    return 'merged';
+    return 'dual';
+  }
+
+  function migrateOffset(s) {
+    const saved = s && s.ytSubsOffset;
+    if (OFFSETS.indexOf(saved) >= 0) return saved;
+    // 旧「译文位置 上/下」→ 高/中
+    if (s && s.ytSubsTranslationPos === 'above') return 'high';
+    return 'mid';
   }
 
   function applyRuntimeConfig(s) {
     state.settings = s || {};
 
-    state.mode = migrateMode(state.settings);
-    state.enabled = state.settings.ytSubsEnabled === true && state.mode !== 'off';
-    state.pos = state.settings.ytSubsTranslationPos === 'above' ? 'above' : 'below';
+    state.content = migrateContent(state.settings);
+    state.enabled = state.settings.ytSubsEnabled === true && state.content !== 'off';
+    state.offset = migrateOffset(state.settings);
 
     const style = state.settings.ytSubsStyle;
-    // 合并模式下必须镜像原生样式，否则两行字体/字号对不上
-    state.style = (state.mode === 'merged')
-      ? 'native'
-      : ((style === 'classic' || style === 'box' || style === 'minimal') ? style : 'native');
+    state.style = (style === 'classic' || style === 'box' || style === 'minimal') ? style : 'native';
 
     state.fontSize = Number(state.settings.ytSubsFontSize) || 22;
     state.sourceLang = state.settings.ytSubsSourceLang || 'auto';
@@ -115,7 +124,10 @@
       switched: zh ? '已把 YouTube 字幕切回原语言' : 'Switched YouTube subtitles back to the original language',
       noBase: zh
         ? '该视频只有翻译字幕，无法显示原文'
-        : 'This video only has translated captions; the original line is unavailable'
+        : 'This video only has translated captions; the original line is unavailable',
+      readFail: zh
+        ? '无法读取字幕，已恢复 YouTube 原生字幕'
+        : 'Could not read captions; restored YouTube native subtitles'
     };
   }
 
@@ -128,10 +140,10 @@
   function start() {
     if (state.running) return;
     if (!isWatchPage()) return;
+    if (state.takeoverDisabled) return;
 
     const player = document.getElementById('movie_player');
     if (!player) {
-      // 播放器还没注入，最多重试 20 次（约 12s）
       if (state.startAttempts >= 20) { state.startAttempts = 0; return; }
       state.startAttempts += 1;
       setTimeout(start, 600);
@@ -147,6 +159,8 @@
     state.noBaseNotified = false;
     state.baseFailCount = 0;
     state.lastBaseCheckAt = Date.now();
+    state.everGotText = false;
+    state.lastTextAt = Date.now();
 
     ensureOverlay();
     applyModeClass();
@@ -205,7 +219,7 @@
     try { btn.click(); } catch (_) {}
   }
 
-  // 用户可能把 YouTube 字幕切成了「中文（翻译）」轨 → 我们拿到的原文已是中文。
+  // 用户可能把 YouTube 字幕切成了「中文（翻译）」轨 → 原文已是中文。
   // 请求 background 在主世界用 player API 切回原语言轨（失败不影响主流程）。
   function askEnsureBaseTrack() {
     if (state.baseFailCount >= 3) return;
@@ -274,8 +288,21 @@
     if (root && root !== state.observedRoot) bindObserver(root);
     if (state.observedRoot) processCurrentLine();
 
-    // 原生字幕块的高度/位置会随换行变化 → 跟随重定位
-    if (state.overlay && !state.overlay.hidden) positionOverlay();
+    // 兜底：播放中长时间读不到字幕（隐藏后不再更新）→ 恢复原生，避免整块字幕消失
+    const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
+    const playing = video && !video.paused && !video.ended;
+    if (state.everGotText && playing && now - (state.lastTextAt || 0) > READ_FAIL_MS) {
+      recoverToNative();
+    }
+  }
+
+  function recoverToNative() {
+    if (state.takeoverDisabled) return;
+    state.takeoverDisabled = true;
+    removeModeClass();
+    hideOverlay();
+    console.warn('[LingoFlow] captions unreadable for ' + READ_FAIL_MS + 'ms, restoring native captions');
+    toast(T().readFail);
   }
 
   function bindObserver(root) {
@@ -332,32 +359,37 @@
   }
 
   function processCurrentLine() {
-    if (!state.running) return;
+    if (!state.running || state.takeoverDisabled) return;
 
     const text = readLine();
     if (!text) { scheduleClear(); return; }
     if (text === state.lastText) return;
 
     state.lastText = text;
+    state.everGotText = true;
+    state.lastTextAt = Date.now();
     if (state.clearTimer) { clearTimeout(state.clearTimer); state.clearTimer = null; }
 
+    // 原文已是目标语言：双语模式下只保留原文行
     if (!shouldTranslate(text)) {
-      // 原文已是目标语言：合并模式保留原生字幕即可，我们这层不需要
       state.token += 1;
-      hideOverlay();
+      state.lastDst = '';
+      renderLines();
       return;
     }
 
     const key = state.targetLang + '\u0001' + text;
     const token = ++state.token;
 
+    // 双语模式：原文立即可见（0 延迟）；仅译文模式不画原文（保持上一句译文）
+    if (state.content === 'dual') renderLines();
+
     if (state.lru.has(key)) {
-      showTranslation(state.lru.get(key));
+      state.lastDst = state.lru.get(key);
+      renderLines();
       return;
     }
 
-    // 译文未到：**保持上一句**（不清空、不显示原文）。
-    // 第一句时 overlay 还是隐藏的，等译文到达再出现。
     try {
       chrome.runtime.sendMessage(
         { action: 'translate', text: text, targetLang: state.targetLang },
@@ -367,7 +399,8 @@
           const dst = res && res.success && res.translation ? String(res.translation).trim() : '';
           if (!dst) return;
           remember(key, dst);
-          showTranslation(dst);
+          state.lastDst = dst;
+          renderLines();
         }
       );
     } catch (_) {}
@@ -384,10 +417,11 @@
     if (state.clearTimer) return;
     state.clearTimer = setTimeout(() => {
       state.clearTimer = null;
-      if (state.lastText === '') return;
+      if (state.lastText === '' && state.lastDst === '') return;
       state.lastText = '';
+      state.lastDst = '';
       state.token += 1; // 作废在途请求
-      hideOverlay();
+      renderLines();
     }, CLEAR_DELAY);
   }
 
@@ -399,8 +433,7 @@
     const player = document.getElementById('movie_player');
     if (!player) return null;
 
-    // 我们的层是 absolute 定位，依赖播放器作为定位祖先。
-    // YouTube 正常都是 relative，个别皮肤可能是 static → 兜底补上，避免飘到页面别处。
+    // 绝对定位依赖播放器作为定位祖先；个别皮肤是 static → 兜底补上
     try {
       if (window.getComputedStyle(player).position === 'static') {
         player.style.position = 'relative';
@@ -411,24 +444,36 @@
     ov.id = 'lf-yt-subs';
     ov.className = 'lf-yt-subs';
     ov.setAttribute('data-lingoflow', 'true');
+    ov.setAttribute('data-lf-offset', state.offset);
     ov.hidden = true;
+    ov.innerHTML = '<div class="lf-yt-src"></div><div class="lf-yt-dst"></div>';
     player.appendChild(ov);
 
     state.overlay = ov;
     return ov;
   }
 
-  function showTranslation(dst) {
-    if (!dst) return;
-    state.lastDst = dst;
-
+  function renderLines() {
     const ov = ensureOverlay();
     if (!ov) return;
 
-    ov.textContent = dst;
-    ov.hidden = false;
-    applyStyle();
-    positionOverlay();
+    const srcEl = ov.querySelector('.lf-yt-src');
+    const dstEl = ov.querySelector('.lf-yt-dst');
+    if (!srcEl || !dstEl) return;
+
+    ov.setAttribute('data-lf-offset', state.offset);
+
+    // 双语显示原文；仅译文绝不画原文
+    const showSrc = state.content === 'dual' && !!state.lastText;
+    const showDst = !!state.lastDst;
+
+    srcEl.textContent = showSrc ? state.lastText : '';
+    srcEl.hidden = !showSrc;
+    dstEl.textContent = showDst ? state.lastDst : '';
+    dstEl.hidden = !showDst;
+
+    ov.hidden = !(showSrc || showDst);
+    if (!ov.hidden) applyStyle();
   }
 
   function hideOverlay() {
@@ -440,10 +485,9 @@
     if (!ov) return;
 
     ov.setAttribute('data-lf-style', state.style);
-    // 清掉上一轮 native 镜像写入的变量，避免切模式后残留
+    // 清掉上一轮 native 镜像写入的变量，避免切样式后残留
     ['--lf-yt-native-font', '--lf-yt-native-size', '--lf-yt-native-weight',
-      '--lf-yt-native-color', '--lf-yt-native-shadow', '--lf-yt-native-bg',
-      '--lf-yt-native-pad', '--lf-yt-native-radius'
+      '--lf-yt-native-color', '--lf-yt-native-shadow'
     ].forEach(v => ov.style.removeProperty(v));
 
     if (state.style === 'native') {
@@ -453,7 +497,7 @@
     }
   }
 
-  // 把原生字幕的计算样式搬过来 → 两行看起来是同一套排版
+  // 只镜像**排版**（字体/字号/字重/描边/颜色），不镜像位置 —— 位置由固定锚点决定
   function mirrorNativeStyle() {
     const ov = state.overlay;
     const seg = document.querySelector('.ytp-caption-segment');
@@ -467,79 +511,19 @@
     if (cs.textShadow && cs.textShadow !== 'none') {
       ov.style.setProperty('--lf-yt-native-shadow', cs.textShadow);
     }
-
-    const win = document.querySelector('.caption-window') || seg.parentElement;
-    if (win) {
-      const cw = window.getComputedStyle(win);
-      const bg = cw.backgroundColor || '';
-      const transparent = !bg || bg === 'transparent' || /rgba\(0,\s*0,\s*0,\s*0\)/.test(bg);
-      if (!transparent) {
-        ov.style.setProperty('--lf-yt-native-bg', bg);
-        ov.style.setProperty('--lf-yt-native-pad', cw.padding);
-        ov.style.setProperty('--lf-yt-native-radius', cw.borderRadius);
-      }
-    }
-  }
-
-  // 位置：合并模式下贴住原生字幕块；仅译文模式固定在底部
-  function positionOverlay() {
-    const ov = state.overlay;
-    const player = document.getElementById('movie_player');
-    if (!ov || !player) return;
-
-    ov.style.top = '';
-    ov.style.bottom = '';
-    ov.style.maxWidth = '';
-
-    if (state.mode !== 'merged') {
-      ov.style.bottom = '8%';
-      return;
-    }
-
-    const win = document.querySelector('.caption-window');
-    if (!win) {
-      ov.style.bottom = '8%';
-      return;
-    }
-
-    const pr = player.getBoundingClientRect();
-    const wr = win.getBoundingClientRect();
-    if (!wr.height) { ov.style.bottom = '8%'; return; }
-
-    // 与原生块同宽，换行方式才一致，视觉上才像一块
-    const width = Math.round(wr.width);
-    if (width > 120) ov.style.maxWidth = width + 'px';
-
-    const aboveBottom = Math.round(pr.bottom - wr.top + GAP);
-
-    if (state.pos === 'above') {
-      ov.style.bottom = aboveBottom + 'px';
-      return;
-    }
-
-    ov.style.top = Math.round(wr.bottom - pr.top + GAP) + 'px';
-
-    // 下方空间不足（贴近控制条/画面底部）→ 自动翻到上方，避免被裁掉
-    const oh = ov.getBoundingClientRect().height || 0;
-    if (wr.bottom + GAP + oh > pr.bottom - 6) {
-      ov.style.top = '';
-      ov.style.bottom = aboveBottom + 'px';
-    }
   }
 
   function applyModeClass() {
-    // 只有「仅译文」才隐藏原生字幕；合并模式原生必须可见
-    if (state.mode === 'translation') {
+    // 接管式：隐藏原生字幕（它仍在 DOM 里更新，作为我们的数据源）
+    if (state.content !== 'off' && !state.takeoverDisabled) {
       document.documentElement.classList.add('lf-yt-subs-on');
     } else {
       document.documentElement.classList.remove('lf-yt-subs-on');
     }
-    document.documentElement.setAttribute('data-lf-yt-mode', state.mode);
   }
 
   function removeModeClass() {
     document.documentElement.classList.remove('lf-yt-subs-on');
-    document.documentElement.removeAttribute('data-lf-yt-mode');
   }
 
   function toast(msg) {
@@ -566,6 +550,7 @@
   window.addEventListener('yt-navigate-finish', () => {
     if (state.navTimer) clearTimeout(state.navTimer);
     teardown();
+    state.takeoverDisabled = false;
     state.navTimer = setTimeout(() => {
       state.navTimer = null;
       loadSettings((s) => {
@@ -582,8 +567,8 @@
 
       const prev = {
         enabled: state.enabled,
-        mode: state.mode,
-        pos: state.pos,
+        content: state.content,
+        offset: state.offset,
         style: state.style,
         fontSize: state.fontSize,
         sourceLang: state.sourceLang
@@ -592,19 +577,21 @@
       loadSettings((s) => {
         applyRuntimeConfig(s);
 
-        if (state.enabled && !prev.enabled) { start(); return; }
+        if (state.enabled && !prev.enabled) {
+          state.takeoverDisabled = false;
+          start();
+          return;
+        }
         if (!state.enabled && prev.enabled) { teardown(); return; }
         if (!state.enabled) return;
 
-        if (state.mode !== prev.mode) {
+        if (state.content !== prev.content) {
           applyModeClass();
-          // 切到仅译文时要立刻把原生字幕藏起来；切回合并要恢复
+          renderLines();
         }
-        if (state.pos !== prev.pos || state.mode !== prev.mode) {
-          if (state.lastDst) positionOverlay();
-        }
-        if (state.style !== prev.style || state.fontSize !== prev.fontSize) {
-          if (state.lastDst) { applyStyle(); positionOverlay(); }
+        if (state.offset !== prev.offset || state.style !== prev.style || state.fontSize !== prev.fontSize) {
+          applyStyle();
+          renderLines();
         }
         if (state.sourceLang !== prev.sourceLang) {
           state.baseFailCount = 0;

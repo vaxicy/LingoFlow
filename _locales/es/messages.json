@@ -1237,7 +1237,7 @@
     "description": "Descripción de la selección"
   },
   "yt_subs_note": {
-    "message": "Usa el motor de traducción elegido arriba. La línea original aparece al instante y la traducción llega después.",
+    "message": "Se cubren los subtítulos de YouTube y los sustituimos por nuestras dos líneas en una posición fija, sin saltos durante la reproducción.",
     "description": "Nota bajo los ajustes de subtítulos"
   }
 ,
@@ -1329,5 +1329,46 @@
   "yt_subs_style_locked": {
     "message": "Con «Como YouTube» se heredan fuente, tamaño y contorno de YouTube; los demás estilos usan el tamaño de abajo.",
     "description": "Aviso: estilo bloqueado"
+  }
+,
+  "yt_subs_content": {
+    "message": "Contenido del subtítulo",
+    "description": "Ajuste: qué dibujar"
+  },
+  "yt_subs_content_desc": {
+    "message": "Dibujamos ambas líneas (se cubren los subtítulos de YouTube) o solo una",
+    "description": "Descripción de la selección"
+  },
+  "yt_subs_content_dual": {
+    "message": "Original + traducción",
+    "description": "Contenido: ambas líneas"
+  },
+  "yt_subs_content_translation": {
+    "message": "Solo traducción",
+    "description": "Contenido: traducción"
+  },
+  "yt_subs_content_off": {
+    "message": "Desactivado",
+    "description": "Contenido: no modificar subtítulos"
+  },
+  "yt_subs_offset": {
+    "message": "Posición vertical",
+    "description": "Ajuste: altura del subtítulo"
+  },
+  "yt_subs_offset_desc": {
+    "message": "Distancia fija desde la parte inferior del reproductor, sin saltos",
+    "description": "Descripción de la selección"
+  },
+  "yt_subs_offset_low": {
+    "message": "Baja",
+    "description": "Posición: baja"
+  },
+  "yt_subs_offset_mid": {
+    "message": "Media",
+    "description": "Posición: media"
+  },
+  "yt_subs_offset_high": {
+    "message": "Alta",
+    "description": "Posición: alta"
   }
 }

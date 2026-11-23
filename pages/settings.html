@@ -620,24 +620,25 @@
 
         <div class="settings-row settings-row-inline">
           <div class="settings-row-copy">
-            <strong data-i18n="yt_subs_display_mode">Display Mode</strong>
-            <span data-i18n="yt_subs_display_mode_desc">Merge the translation into YouTube's own subtitles, or show the translation only</span>
+            <strong data-i18n="yt_subs_content">Subtitle Content</strong>
+            <span data-i18n="yt_subs_content_desc">Draw both lines ourselves (YouTube's own captions are covered), or only one of them</span>
           </div>
-          <select class="panel-select" id="popup-yt-subs-mode">
-            <option value="merged" data-i18n="yt_subs_mode_merged">Merged bilingual</option>
-            <option value="translation" data-i18n="yt_subs_mode_translation">Translation only</option>
-            <option value="off" data-i18n="yt_subs_mode_off">Off (native only)</option>
+          <select class="panel-select" id="popup-yt-subs-content">
+            <option value="dual" data-i18n="yt_subs_content_dual">Original + translation</option>
+            <option value="translation" data-i18n="yt_subs_content_translation">Translation only</option>
+            <option value="off" data-i18n="yt_subs_content_off">Off</option>
           </select>
         </div>
 
-        <div class="settings-row settings-row-inline" id="popup-yt-subs-pos-row">
+        <div class="settings-row settings-row-inline">
           <div class="settings-row-copy">
-            <strong data-i18n="yt_subs_pos">Translation Position</strong>
-            <span data-i18n="yt_subs_pos_desc">Where the translation line sits relative to YouTube's captions</span>
+            <strong data-i18n="yt_subs_offset">Vertical Position</strong>
+            <span data-i18n="yt_subs_offset_desc">Fixed distance from the bottom of the player, so the line never jumps</span>
           </div>
-          <select class="panel-select" id="popup-yt-subs-pos">
-            <option value="below" data-i18n="yt_subs_pos_below">Below original</option>
-            <option value="above" data-i18n="yt_subs_pos_above">Above original</option>
+          <select class="panel-select" id="popup-yt-subs-offset">
+            <option value="low" data-i18n="yt_subs_offset_low">Low</option>
+            <option value="mid" data-i18n="yt_subs_offset_mid">Middle</option>
+            <option value="high" data-i18n="yt_subs_offset_high">High</option>
           </select>
         </div>
 
@@ -690,7 +691,7 @@
         </div>
 
         <div class="settings-row settings-row-note">
-          <span class="settings-note-text" data-i18n="yt_subs_note">Merged mode keeps YouTube's own captions and adds one translation line right below (or above) them, with the same font, size and outline.</span>
+          <span class="settings-note-text" data-i18n="yt_subs_note">YouTube's own captions are covered and replaced by our two lines at a fixed position, so the subtitle never jumps while playing.</span>
         </div>
 
         <div class="settings-section-title" id="sec-ui" data-i18n="ui_settings">Interface</div>
