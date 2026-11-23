@@ -372,7 +372,8 @@ def screenshot_04_library():
     y = draw_brand(draw, img, 74, 64)
     draw_text_block(draw, 74, y, "LEARN & REVIEW",
                     "Vocabulary, History & a Full Settings Page",
-                    "Save words and sentences, review your history, and tune every engine on a dedicated settings page.",
+                    "Save words and sentences and tune every engine on a dedicated settings page. "
+                    "History, vocabulary and API keys stay in your browser — turn history off any time.",
                     max_w=560)
     # 2x2 library cards
     cards = [
@@ -523,10 +524,10 @@ def screenshot_00_youtube():
 
 
 if __name__ == "__main__":
+    # 商店最多 5 张：原 screenshot_05_support（隐私）已合并进 04 的 lead 文案
     screenshot_00_youtube()
     screenshot_01_bilingual()
     screenshot_02_selection()
     screenshot_03_engines()
     screenshot_04_library()
-    screenshot_05_support()
     print(f"Generated English screenshots in {OUT}")

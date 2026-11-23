@@ -188,41 +188,67 @@
     .small-promo {
       width: 440px;
       height: 280px;
-      padding: 26px;
+      padding: 22px 24px 20px;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
     }
 
     .small-promo .brand {
-      font-size: 25px;
+      gap: 11px;
+      font-size: 22px;
     }
 
     .small-promo .brand img {
-      width: 50px;
-      height: 50px;
-      border-radius: 14px;
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      filter: drop-shadow(0 8px 18px rgba(82, 109, 255, 0.2));
     }
 
-    .small-promo .kicker {
-      margin-bottom: 7px;
-      font-size: 14px;
+    .small-copy {
+      margin-top: 14px;
     }
 
     .small-promo h1 {
-      max-width: 340px;
-      font-size: 36px;
+      max-width: 360px;
+      font-size: 29px;
+      line-height: 1.16;
+      font-weight: 900;
     }
 
     .small-promo p {
-      max-width: 330px;
-      margin-top: 12px;
-      font-size: 16px;
+      max-width: 360px;
+      margin-top: 8px;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #64748b;
     }
 
-    .small-promo .pill {
-      padding: 8px 11px;
-      font-size: 13px;
+    /* 底部一条「双语字幕」示意，让 440×280 也讲得清产品是什么 */
+    .mini-player {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      gap: 3px;
+      margin-top: auto;
+      height: 72px;
+      padding: 0 14px 13px;
+      border-radius: 14px;
+      background: linear-gradient(180deg, #141d33 0%, #0b1220 100%);
+      box-shadow: 0 14px 30px rgba(17, 24, 39, 0.26);
+      text-align: center;
+    }
+
+    .mini-src {
+      color: rgba(226, 232, 245, 0.86);
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .mini-dst {
+      color: #ffffff;
+      font-size: 15px;
+      font-weight: 850;
     }
   </style>
 </head>
@@ -255,15 +281,13 @@
 
   <section class="promo small-promo" id="small-promo">
     <div class="brand"><img src="../../icons/icon-128.png" alt="">LingoFlow</div>
-    <div>
-      <div class="kicker">外文网页阅读助手</div>
+    <div class="small-copy">
       <h1>外文网页 · 视频<br>母语阅读</h1>
-      <p>中英西互译、双语对照、划词翻译，还有 YouTube 双语字幕。</p>
+      <p>双语对照 · 划词翻译 · YouTube 双语字幕</p>
     </div>
-    <div class="pill-row">
-      <span class="pill">双语</span>
-      <span class="pill">划词</span>
-      <span class="pill">YouTube</span>
+    <div class="mini-player">
+      <div class="mini-src">or even thousands of times.</div>
+      <div class="mini-dst">或者成千上万次。</div>
     </div>
   </section>
 </body>

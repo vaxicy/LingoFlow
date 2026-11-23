@@ -7,7 +7,7 @@ const shots = [
   ['screenshot-02-selection', '02-selection-translation.png'],
   ['screenshot-03-engines', '03-translation-engines.png'],
   ['screenshot-04-library', '04-vocabulary-history.png'],
-  ['screenshot-05-support', '05-privacy-support.png'],
+  // 商店最多 5 张：原「隐私支持」已合并进 04（本地存储/历史可关闭/一键恢复写进了 lead）
 ];
 
 (async () => {
