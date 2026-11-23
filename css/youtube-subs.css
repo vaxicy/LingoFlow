@@ -102,27 +102,8 @@ html.lf-yt-subs-on .ytp-caption-window-container .caption-window {
   font-weight: 500;
 }
 
-/* 样式 = 跟随 YouTube：只取排版（字体/字号/字重/颜色/描边），位置仍由锚点决定 */
-#lf-yt-subs[data-lf-style="native"] {
-  font-family: var(--lf-yt-native-font, inherit);
-  font-size: var(--lf-yt-native-size, var(--lf-yt-font-size, 22px));
-}
-
-#lf-yt-subs[data-lf-style="native"] .lf-yt-src,
-#lf-yt-subs[data-lf-style="native"] .lf-yt-dst {
-  font-family: var(--lf-yt-native-font, inherit);
-  font-weight: var(--lf-yt-native-weight, 600);
-  color: var(--lf-yt-native-color, #ffffff);
-  text-shadow: var(--lf-yt-native-shadow, none);
-}
-
-#lf-yt-subs[data-lf-style="native"] .lf-yt-src {
-  font-size: 0.86em;
-}
-
-#lf-yt-subs[data-lf-style="native"] .lf-yt-dst {
-  font-size: 1em;
-}
+/* 样式预设剩三种：classic（默认，白字黑描边）/ box（黑底）/ minimal（无描边）。
+   「跟随 YouTube」已移除 —— 镜像来的 text-shadow 常为 none，白字压在浅色画面上几乎看不见。 */
 
 /* 广告期间不显示 */
 #movie_player.ad-showing #lf-yt-subs,

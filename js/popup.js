@@ -2243,8 +2243,8 @@ function migrateYtSubsOffset(settings) {
   return 'mid';
 }
 
-// 联动规则只有一条：字号只在「样式 ≠ 跟随 YouTube」时才有意义
-// （选「跟随 YouTube」时字号由 YouTube 决定）。其余项在非关闭状态下都可调。
+// 联动规则：只有「关闭」时把样式/字号置灰；其余情况都可调
+// （「跟随 YouTube」已移除，字号不再有"由 YouTube 决定"的情况）
 function syncYtSubsRowState() {
   const contentSel = document.getElementById('popup-yt-subs-content');
   const styleSel = document.getElementById('popup-yt-subs-style');
@@ -2254,9 +2254,7 @@ function syncYtSubsRowState() {
   const off = contentSel ? contentSel.value === 'off' : false;
 
   if (styleSel) styleSel.disabled = off;
-
-  const nativeStyle = styleSel ? styleSel.value === 'native' : true;
-  if (fontSel) fontSel.disabled = off || nativeStyle;
+  if (fontSel) fontSel.disabled = off;
 
   // 这两项是自定义下拉的镜像控件，必须同步 disabled 与视觉
   ['popup-yt-subs-style', 'popup-yt-subs-font-size'].forEach((id) => {
@@ -2390,7 +2388,10 @@ function applyPopupSettings(settings) {
   const ytSubsSourceLang = document.getElementById('popup-yt-subs-source-lang');
   if (ytSubsSourceLang) ytSubsSourceLang.value = settings.ytSubsSourceLang || 'auto';
   const ytSubsStyle = document.getElementById('popup-yt-subs-style');
-  if (ytSubsStyle) ytSubsStyle.value = ['classic', 'box', 'minimal'].includes(settings.ytSubsStyle) ? settings.ytSubsStyle : 'native';
+  if (ytSubsStyle) {
+    // 「跟随 YouTube」已下线 → 旧值 native / 未知值一律回落到 classic
+    ytSubsStyle.value = ['box', 'minimal'].includes(settings.ytSubsStyle) ? settings.ytSubsStyle : 'classic';
+  }
   const ytSubsFontSize = document.getElementById('popup-yt-subs-font-size');
   if (ytSubsFontSize) ytSubsFontSize.value = String(settings.ytSubsFontSize || 22);
   syncYtSubsRowState();
@@ -2461,7 +2462,7 @@ function getPopupSettingsFromUI() {
     ytSubsContent: document.getElementById('popup-yt-subs-content')?.value || 'dual',
     ytSubsOffset: document.getElementById('popup-yt-subs-offset')?.value || 'mid',
     ytSubsSourceLang: document.getElementById('popup-yt-subs-source-lang')?.value || 'auto',
-    ytSubsStyle: document.getElementById('popup-yt-subs-style')?.value || 'native',
+    ytSubsStyle: document.getElementById('popup-yt-subs-style')?.value || 'classic',
     ytSubsFontSize: parseInt(document.getElementById('popup-yt-subs-font-size')?.value, 10) || 22,
     // 旧字段保留，供老版本脚本回读（新脚本只用上面的键）
     ytSubsDual: (document.getElementById('popup-yt-subs-content')?.value || 'dual') === 'dual',
@@ -2605,7 +2606,7 @@ function getDefaultSettings(overrides = {}) {
     ytSubsContent: 'dual',
     ytSubsOffset: 'mid',
     ytSubsSourceLang: 'auto',
-    ytSubsStyle: 'native',
+    ytSubsStyle: 'classic',
     ytSubsFontSize: 22,
     // 兼容旧键（不再写入 UI，但保留默认值避免老数据被清空）
     ytSubsDual: true,

@@ -33,7 +33,7 @@
     enabled: false,
     content: 'dual',           // dual（双语）| translation（仅译文）| off
     offset: 'mid',             // low | mid | high
-    style: 'native',           // native | classic | box | minimal
+    style: 'classic',          // classic | box | minimal（不再提供「跟随 YouTube」）
     fontSize: 22,
     sourceLang: 'auto',
     targetLang: 'zh',
@@ -112,8 +112,10 @@
     state.enabled = state.settings.ytSubsEnabled === true && state.content !== 'off';
     state.offset = migrateOffset(state.settings);
 
+    // 「跟随 YouTube」已移除：镜像来的 text-shadow 常为 none，白字压在浅色画面上几乎看不见。
+    // 旧值 native / 未知值统一回落到 classic（白字 + 黑描边，任何画面都清晰）。
     const style = state.settings.ytSubsStyle;
-    state.style = (style === 'classic' || style === 'box' || style === 'minimal') ? style : 'native';
+    state.style = (style === 'box' || style === 'minimal') ? style : 'classic';
 
     state.fontSize = Number(state.settings.ytSubsFontSize) || 22;
     state.sourceLang = state.settings.ytSubsSourceLang || 'auto';
@@ -493,32 +495,7 @@
     if (!ov) return;
 
     ov.setAttribute('data-lf-style', state.style);
-    // 清掉上一轮 native 镜像写入的变量，避免切样式后残留
-    ['--lf-yt-native-font', '--lf-yt-native-size', '--lf-yt-native-weight',
-      '--lf-yt-native-color', '--lf-yt-native-shadow'
-    ].forEach(v => ov.style.removeProperty(v));
-
-    if (state.style === 'native') {
-      mirrorNativeStyle();
-    } else {
-      ov.style.setProperty('--lf-yt-font-size', state.fontSize + 'px');
-    }
-  }
-
-  // 只镜像**排版**（字体/字号/字重/描边/颜色），不镜像位置 —— 位置由固定锚点决定
-  function mirrorNativeStyle() {
-    const ov = state.overlay;
-    const seg = document.querySelector('.ytp-caption-segment');
-    if (!ov || !seg) return;
-
-    const cs = window.getComputedStyle(seg);
-    ov.style.setProperty('--lf-yt-native-font', cs.fontFamily);
-    ov.style.setProperty('--lf-yt-native-size', cs.fontSize);
-    ov.style.setProperty('--lf-yt-native-weight', cs.fontWeight);
-    ov.style.setProperty('--lf-yt-native-color', cs.color);
-    if (cs.textShadow && cs.textShadow !== 'none') {
-      ov.style.setProperty('--lf-yt-native-shadow', cs.textShadow);
-    }
+    ov.style.setProperty('--lf-yt-font-size', state.fontSize + 'px');
   }
 
   function applyModeClass() {

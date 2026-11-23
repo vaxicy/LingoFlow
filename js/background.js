@@ -84,7 +84,7 @@ chrome.runtime.onInstalled.addListener(() => {
           ytSubsContent: 'dual',
           ytSubsOffset: 'mid',
           ytSubsSourceLang: 'auto',
-          ytSubsStyle: 'native',
+          ytSubsStyle: 'classic',
           ytSubsFontSize: 22,
           // 兼容旧键（老版本读这些，保留默认值避免清空历史数据）
           ytSubsDual: true,
@@ -735,7 +735,7 @@ function getDefaultSettings(overrides = {}) {
     ytSubsContent: 'dual',
     ytSubsOffset: 'mid',
     ytSubsSourceLang: 'auto',
-    ytSubsStyle: 'native',
+    ytSubsStyle: 'classic',
     ytSubsFontSize: 22,
     // 兼容旧键（保留默认值，避免老版本脚本读到 undefined）
     ytSubsDual: true,
