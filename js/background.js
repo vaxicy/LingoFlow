@@ -80,6 +80,10 @@ chrome.runtime.onInstalled.addListener(() => {
           theme: 'light',
           autoSaveSettings: true,
           hoverParagraphTranslation: false,
+          ytSubsEnabled: false,
+          ytSubsDual: true,
+          ytSubsRenderMode: 'takeover',
+          ytSubsFontSize: 22,
           dictionaryAiEnhance: true,
           dictionarySource: 'offline',
           existingBilingualStrategy: 'skip',
@@ -263,6 +267,52 @@ function createTranslationResultBox(text) {
   }
 }
 
+// ======================== YouTube 字幕：主世界辅助 ========================
+// 用户的 YouTube 字幕可能被切成了「中文（翻译）」轨，此时 DOM 里的原文已是中文，
+// 我们再翻一遍会变成二次翻译。这里在主世界用 player API 把字幕切回原语言轨。
+// 注：scripting + <all_urls> 权限已具备，无需新增权限。
+function ensureYtBaseTrack(sender, sendResponse) {
+  const tabId = sender && sender.tab && sender.tab.id;
+  if (!tabId || !chrome.scripting || typeof chrome.scripting.executeScript !== 'function') {
+    sendResponse({ ok: false, reason: 'no tab or scripting api' });
+    return;
+  }
+
+  chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    world: 'MAIN',
+    func: function () {
+      try {
+        const p = document.getElementById('movie_player');
+        if (!p || typeof p.getOption !== 'function') return { ok: false, reason: 'no player api' };
+
+        const list = p.getOption('captions', 'tracklist') || [];
+        if (!list.length) return { ok: false, reason: 'no tracks' };
+
+        const cur = p.getOption('captions', 'track') || {};
+        if (!cur.translationLanguage) {
+          return { ok: true, already: true, baseLang: cur.languageCode || '' };
+        }
+
+        // 优先人工原语言轨，其次任意非翻译轨，最后退回第一轨
+        const base = list.find(t => !t.translationLanguage && t.kind !== 'asr')
+          || list.find(t => !t.translationLanguage)
+          || list[0];
+
+        p.setOption('captions', 'track', base);
+        return { ok: true, switched: true, baseLang: base.languageCode || '' };
+      } catch (e) {
+        return { ok: false, reason: String((e && e.message) || e) };
+      }
+    }
+  }).then((results) => {
+    const r = results && results[0] && results[0].result;
+    sendResponse(r || { ok: false, reason: 'empty result' });
+  }).catch((err) => {
+    sendResponse({ ok: false, reason: String((err && err.message) || err) });
+  });
+}
+
 // Listen for messages from content script or popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
@@ -272,6 +322,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     case 'translate_batch':
       translateBatch(request.texts, request.targetLang, sendResponse);
+      return true;
+
+    // YouTube 字幕：把被切成「YouTube 翻译轨」的字幕切回原语言
+    case 'lf_yt_ensure_base':
+      ensureYtBaseTrack(sender, sendResponse);
       return true;
 
     case 'lookup_dictionary':
@@ -617,6 +672,10 @@ function getDefaultSettings(overrides = {}) {
     selectionTranslation: true,
     autoSaveSettings: true,
     hoverParagraphTranslation: false,
+    ytSubsEnabled: false,
+    ytSubsDual: true,
+    ytSubsRenderMode: 'takeover',
+    ytSubsFontSize: 22,
     dictionaryAiEnhance: true,
     dictionarySource: 'offline',
     incognitoMode: false,

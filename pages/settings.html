@@ -23,6 +23,7 @@
       <a class="settings-nav-item active" href="#sec-engines" data-i18n="translation_engine">Translation Engine</a>
       <a class="settings-nav-item" href="#sec-api" data-i18n="preferences_settings">Preferences</a>
       <a class="settings-nav-item" href="#sec-features" data-i18n="feature_settings">Features</a>
+      <a class="settings-nav-item" href="#sec-youtube" data-i18n="yt_subs_settings">YouTube Subtitles</a>
       <a class="settings-nav-item" href="#sec-ui" data-i18n="ui_settings">Interface</a>
       <a class="settings-nav-item" href="#sec-data" data-i18n="data_settings">Data &amp; History</a>
       <a class="settings-nav-item" href="#sec-backup" data-i18n="backup_settings">Backup &amp; Restore</a>
@@ -602,6 +603,61 @@
             <option value="skip" data-i18n="skip_existing_bilingual">Skip</option>
             <option value="translate_english" data-i18n="translate_english_only">English only</option>
           </select>
+        </div>
+
+        <div class="settings-section-title" id="sec-youtube" data-i18n="yt_subs_settings">YouTube Subtitles</div>
+
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
+            <strong data-i18n="yt_subs_enabled">YouTube Subtitle Translation</strong>
+            <span data-i18n="yt_subs_enabled_desc">Show bilingual subtitles on YouTube videos</span>
+          </div>
+          <label class="panel-switch">
+            <input type="checkbox" id="popup-yt-subs-enabled">
+            <span></span>
+          </label>
+        </div>
+
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
+            <strong data-i18n="yt_subs_dual">Bilingual Subtitles</strong>
+            <span data-i18n="yt_subs_dual_desc">Show the original line above the translation</span>
+          </div>
+          <label class="panel-switch">
+            <input type="checkbox" id="popup-yt-subs-dual" checked>
+            <span></span>
+          </label>
+        </div>
+
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
+            <strong data-i18n="yt_subs_mode">Subtitle Rendering</strong>
+            <span data-i18n="yt_subs_mode_desc">Takeover hides YouTube's own captions so lines never overlap</span>
+          </div>
+          <select class="panel-select" id="popup-yt-subs-mode">
+            <option value="takeover" data-i18n="yt_subs_mode_takeover">Takeover</option>
+            <option value="avoid" data-i18n="yt_subs_mode_avoid">Avoid overlap</option>
+          </select>
+        </div>
+
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
+            <strong data-i18n="yt_subs_font_size">Subtitle Size</strong>
+            <span data-i18n="yt_subs_font_size_desc">Font size of the subtitle overlay</span>
+          </div>
+          <select class="panel-select" id="popup-yt-subs-font-size">
+            <option value="16">16px</option>
+            <option value="18">18px</option>
+            <option value="20">20px</option>
+            <option value="22" selected>22px</option>
+            <option value="24">24px</option>
+            <option value="28">28px</option>
+            <option value="32">32px</option>
+          </select>
+        </div>
+
+        <div class="settings-row settings-row-note">
+          <span class="settings-note-text" data-i18n="yt_subs_note">Uses the translation engine selected above. The original line appears instantly; the translation follows.</span>
         </div>
 
         <div class="settings-section-title" id="sec-ui" data-i18n="ui_settings">Interface</div>

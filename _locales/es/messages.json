@@ -1191,4 +1191,53 @@
     "message": "Usa tu motor de IA (Gemini/DeepSeek/SiliconFlow/Bailian/Personalizado) para definir palabras cuando los diccionarios gratuitos no tengan la entrada",
     "description": "Descripción del ajuste"
   }
+,
+  "yt_subs_settings": {
+    "message": "Subtítulos de YouTube",
+    "description": "Sección de ajustes: traducción de subtítulos de YouTube"
+  },
+  "yt_subs_enabled": {
+    "message": "Traducción de subtítulos de YouTube",
+    "description": "Interruptor: traducir subtítulos"
+  },
+  "yt_subs_enabled_desc": {
+    "message": "Muestra subtítulos bilingües en los videos de YouTube",
+    "description": "Descripción del interruptor"
+  },
+  "yt_subs_dual": {
+    "message": "Subtítulos bilingües",
+    "description": "Interruptor: mostrar original y traducción"
+  },
+  "yt_subs_dual_desc": {
+    "message": "Muestra la línea original sobre la traducción",
+    "description": "Descripción del interruptor"
+  },
+  "yt_subs_mode": {
+    "message": "Representación de subtítulos",
+    "description": "Selección: cómo se dibujan los subtítulos"
+  },
+  "yt_subs_mode_desc": {
+    "message": "El modo de toma de control oculta los subtítulos de YouTube para que las líneas nunca se superpongan",
+    "description": "Descripción de la selección"
+  },
+  "yt_subs_mode_takeover": {
+    "message": "Toma de control",
+    "description": "Modo: reemplazar los subtítulos de YouTube"
+  },
+  "yt_subs_mode_avoid": {
+    "message": "Evitar superposición",
+    "description": "Modo: conservar los subtítulos y situarse encima"
+  },
+  "yt_subs_font_size": {
+    "message": "Tamaño del subtítulo",
+    "description": "Selección: tamaño de fuente"
+  },
+  "yt_subs_font_size_desc": {
+    "message": "Tamaño de fuente de la capa de subtítulos",
+    "description": "Descripción de la selección"
+  },
+  "yt_subs_note": {
+    "message": "Usa el motor de traducción elegido arriba. La línea original aparece al instante y la traducción llega después.",
+    "description": "Nota bajo los ajustes de subtítulos"
+  }
 }

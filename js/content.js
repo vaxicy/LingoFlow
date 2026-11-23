@@ -216,6 +216,17 @@ function mapTargetLang(targetLang) {
     return typeof value === 'function' ? value(...args) : value;
   }
 
+  // YouTube 视频页由专用字幕翻译接管，整页翻译/双语模式在这里让位
+  function isYouTubeWatchPage() {
+    return location.hostname === 'www.youtube.com' && location.pathname === '/watch';
+  }
+
+  function getYouTubeSubsHintText() {
+    return isChineseUi()
+      ? 'YouTube 视频页请使用设置里的「YouTube 字幕翻译」'
+      : 'On YouTube videos, use the “YouTube Subtitles” option in Settings instead';
+  }
+
   // Helper: Check if translation result is a fallback/error text (not a real translation)
   function isFallbackText(text) {
     if (!text) return true;
@@ -1580,11 +1591,23 @@ function mapTargetLang(targetLang) {
           break;
 
         case 'translate_page':
+          // YouTube 视频页由专用字幕翻译接管：整页翻译会去翻推荐栏/标题，
+          // 还会和播放器布局、字幕层互相干扰，这里直接拦掉并提示。
+          if (isYouTubeWatchPage()) {
+            UI.showNotification(getYouTubeSubsHintText());
+            sendResponse({ received: true, blocked: true, reason: 'youtube-watch' });
+            break;
+          }
           PageTranslator.enableTranslationMode();
           sendResponse({ received: true });
           break;
 
         case 'bilingual_mode':
+          if (isYouTubeWatchPage()) {
+            UI.showNotification(getYouTubeSubsHintText());
+            sendResponse({ received: true, blocked: true, reason: 'youtube-watch' });
+            break;
+          }
           PageTranslator.toggleBilingualMode();
           sendResponse({ received: true });
           break;

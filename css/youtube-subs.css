@@ -1,0 +1,109 @@
+/* LingoFlow · YouTube 字幕翻译
+   接管式：原生字幕层设为 opacity:0（保留在 DOM 里继续更新，作为数据源），
+   屏幕上只留我们这一层，因此不会出现「两行字幕打架」。 */
+
+/* ===== 接管模式：隐藏原生字幕（保留布局与更新） ===== */
+html.lf-yt-subs-on[data-lf-yt-mode="takeover"] .ytp-caption-window-container {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* ===== 我们的字幕层 ===== */
+#lf-yt-subs {
+  position: absolute;
+  left: 50%;
+  bottom: 11%;
+  transform: translateX(-50%);
+  z-index: 16; /* 原生字幕约 14，控制条约 60 */
+  width: min(86%, 1100px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+  pointer-events: none; /* 绝不挡播放控件与划词 */
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-size: var(--lf-yt-font-size, 22px);
+  line-height: 1.38;
+  animation: lf-yt-subs-in 0.14s ease-out;
+}
+
+#lf-yt-subs[hidden] {
+  display: none !important;
+}
+
+@keyframes lf-yt-subs-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+#lf-yt-subs .lf-yt-src {
+  max-width: 100%;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.82em;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+  text-shadow:
+    0 0 3px rgba(0, 0, 0, 0.9),
+    0 1px 4px rgba(0, 0, 0, 0.95),
+    0 0 12px rgba(0, 0, 0, 0.6);
+}
+
+#lf-yt-subs .lf-yt-dst {
+  max-width: 100%;
+  color: #ffffff;
+  font-size: 1em;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  text-shadow:
+    0 0 4px rgba(0, 0, 0, 0.95),
+    0 2px 8px rgba(0, 0, 0, 0.95),
+    0 0 16px rgba(0, 0, 0, 0.65);
+}
+
+#lf-yt-subs .lf-yt-src[hidden],
+#lf-yt-subs .lf-yt-dst[hidden] {
+  display: none !important;
+}
+
+/* 广告期间不显示字幕 */
+#movie_player.ad-showing #lf-yt-subs,
+#movie_player.ad-showing #lf-yt-toast {
+  display: none !important;
+}
+
+/* 迷你播放器缩小一档 */
+ytd-miniplayer #lf-yt-subs {
+  font-size: 13px;
+  bottom: 8%;
+}
+
+/* ===== 轻提示（例如「已把字幕切回原语言」） ===== */
+#lf-yt-toast {
+  position: absolute;
+  left: 50%;
+  top: 14%;
+  transform: translateX(-50%);
+  z-index: 17;
+  max-width: min(80%, 640px);
+  padding: 8px 14px;
+  border: 1px solid rgba(184, 173, 255, 0.28);
+  border-radius: 12px;
+  background: rgba(20, 24, 44, 0.94);
+  color: #f2f4ff;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 10px 28px rgba(2, 6, 23, 0.4);
+  animation: lf-yt-subs-in 0.16s ease-out;
+}
+
+#lf-yt-toast[hidden] {
+  display: none !important;
+}

@@ -1191,4 +1191,53 @@
     "message": "Use your AI engine (Gemini/DeepSeek/SiliconFlow/Bailian/Custom) to define words when free dictionaries lack an entry",
     "description": "Settings toggle description"
   }
+,
+  "yt_subs_settings": {
+    "message": "YouTube Subtitles",
+    "description": "Settings section: YouTube subtitle translation"
+  },
+  "yt_subs_enabled": {
+    "message": "YouTube Subtitle Translation",
+    "description": "Toggle: translate YouTube captions"
+  },
+  "yt_subs_enabled_desc": {
+    "message": "Show bilingual subtitles on YouTube videos",
+    "description": "Toggle description"
+  },
+  "yt_subs_dual": {
+    "message": "Bilingual Subtitles",
+    "description": "Toggle: show original + translation"
+  },
+  "yt_subs_dual_desc": {
+    "message": "Show the original line above the translation",
+    "description": "Toggle description"
+  },
+  "yt_subs_mode": {
+    "message": "Subtitle Rendering",
+    "description": "Select: how subtitles are rendered"
+  },
+  "yt_subs_mode_desc": {
+    "message": "Takeover hides YouTube's own captions so lines never overlap",
+    "description": "Select description"
+  },
+  "yt_subs_mode_takeover": {
+    "message": "Takeover",
+    "description": "Render mode: replace YouTube captions"
+  },
+  "yt_subs_mode_avoid": {
+    "message": "Avoid overlap",
+    "description": "Render mode: keep YouTube captions and sit above them"
+  },
+  "yt_subs_font_size": {
+    "message": "Subtitle Size",
+    "description": "Select: subtitle font size"
+  },
+  "yt_subs_font_size_desc": {
+    "message": "Font size of the subtitle overlay",
+    "description": "Select description"
+  },
+  "yt_subs_note": {
+    "message": "Uses the translation engine selected above. The original line appears instantly; the translation follows.",
+    "description": "Note under the YouTube subtitle settings"
+  }
 }

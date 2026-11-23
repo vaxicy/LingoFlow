@@ -1191,4 +1191,53 @@
     "message": "当免费词典缺失词条时，使用你的 AI 引擎（Gemini/DeepSeek/SiliconFlow/Bailian/自定义）生成释义",
     "description": "设置项描述"
   }
+,
+  "yt_subs_settings": {
+    "message": "YouTube 字幕",
+    "description": "设置分区：YouTube 字幕翻译"
+  },
+  "yt_subs_enabled": {
+    "message": "YouTube 字幕翻译",
+    "description": "开关：翻译 YouTube 字幕"
+  },
+  "yt_subs_enabled_desc": {
+    "message": "在 YouTube 视频上显示双语字幕",
+    "description": "开关说明"
+  },
+  "yt_subs_dual": {
+    "message": "双语字幕",
+    "description": "开关：同时显示原文与译文"
+  },
+  "yt_subs_dual_desc": {
+    "message": "在译文上方显示原文字幕",
+    "description": "开关说明"
+  },
+  "yt_subs_mode": {
+    "message": "字幕渲染方式",
+    "description": "选择：字幕如何渲染"
+  },
+  "yt_subs_mode_desc": {
+    "message": "接管模式会隐藏 YouTube 自带字幕，确保不会出现两行重叠",
+    "description": "选择说明"
+  },
+  "yt_subs_mode_takeover": {
+    "message": "接管（隐藏原生字幕）",
+    "description": "渲染方式：替换 YouTube 字幕"
+  },
+  "yt_subs_mode_avoid": {
+    "message": "避让（原生显示原文）",
+    "description": "渲染方式：保留 YouTube 字幕并在其上方显示"
+  },
+  "yt_subs_font_size": {
+    "message": "字幕字号",
+    "description": "选择：字幕字体大小"
+  },
+  "yt_subs_font_size_desc": {
+    "message": "字幕层的字体大小",
+    "description": "选择说明"
+  },
+  "yt_subs_note": {
+    "message": "使用上方选择的翻译引擎。原文字幕会立刻显示，译文随后补上。",
+    "description": "YouTube 字幕设置下方的说明"
+  }
 }
