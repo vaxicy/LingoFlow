@@ -1639,6 +1639,8 @@ function initPanelCustomSelects() {
     select.insertAdjacentElement('afterend', customSelect);
 
     trigger.addEventListener('click', () => {
+      // 底层 select 被禁用时（例如「跟随 YouTube」下的字号），自定义下拉也不能展开
+      if (select.disabled) return;
       setPanelCustomSelectOpen(customSelect, !customSelect.classList.contains('open'));
     });
 
@@ -1675,6 +1677,18 @@ function refreshPanelCustomSelect(select) {
   const label = customSelect.querySelector('.panel-custom-select-label');
   const menu = customSelect.querySelector('.panel-custom-select-menu');
   if (!trigger || !label || !menu) return;
+
+  // 自定义下拉是原生 select 的镜像，disabled 状态要同步过去
+  // （注意：只给 trigger 降透明度，不要给整行加 opacity —— 那会创建层叠上下文，
+  //   把展开的菜单压在下一行下面，看起来就像被遮挡/截断）
+  const disabled = !!select.disabled;
+  customSelect.classList.toggle('is-disabled', disabled);
+  trigger.setAttribute('aria-disabled', String(disabled));
+  if (disabled) {
+    customSelect.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
+    menu.hidden = true;
+  }
 
   const selectedOption = select.selectedOptions && select.selectedOptions[0];
   label.textContent = selectedOption ? selectedOption.textContent.trim() : '';
@@ -2216,33 +2230,35 @@ function migrateYtSubsMode(settings) {
 }
 
 // 按显示模式联动其它设置，避免出现「设了但没用」的组合：
-//   合并双语 → 位置可选；样式锁定「跟随 YouTube」；字号跟随原生
-//   仅译文   → 无位置；样式/字号可自定义
-//   关闭     → 位置隐藏；样式/字号置灰
+//   合并双语 → 位置可选；样式仍可选（默认「跟随 YouTube」最协调）
+//   仅译文   → 位置无效（隐藏）；样式/字号可自定义
+//   关闭     → 位置隐藏；样式/字号不可用
+// 字号只在「样式 ≠ 跟随 YouTube」时才有意义（跟随模式下字号由 YouTube 决定）
 function syncYtSubsRowState() {
   const modeSel = document.getElementById('popup-yt-subs-mode');
   const styleSel = document.getElementById('popup-yt-subs-style');
   const fontSel = document.getElementById('popup-yt-subs-font-size');
   const posRow = document.getElementById('popup-yt-subs-pos-row');
-  const styleRow = document.getElementById('popup-yt-subs-style-row');
-  const fontRow = document.getElementById('popup-yt-subs-font-size-row');
   if (!modeSel && !styleSel) return;
 
   const mode = modeSel ? modeSel.value : 'merged';
-  const merged = mode === 'merged';
   const off = mode === 'off';
 
-  if (posRow) posRow.hidden = !merged;
+  if (posRow) posRow.hidden = mode !== 'merged';
 
-  if (styleSel) {
-    if (merged) styleSel.value = 'native';
-    styleSel.disabled = merged;
-  }
-  if (styleRow) styleRow.classList.toggle('is-locked', merged);
+  if (styleSel) styleSel.disabled = off;
 
-  const locked = merged || off;
-  if (fontSel) fontSel.disabled = locked;
-  if (fontRow) fontRow.classList.toggle('is-disabled', locked);
+  const nativeStyle = styleSel ? styleSel.value === 'native' : true;
+  if (fontSel) fontSel.disabled = off || nativeStyle;
+
+  // 这两项是自定义下拉的镜像控件，必须同步 disabled 与视觉
+  ['popup-yt-subs-style', 'popup-yt-subs-font-size'].forEach((id) => {
+    const sel = document.getElementById(id);
+    if (sel && sel.dataset && sel.dataset.customSelectReady === 'true'
+      && typeof refreshPanelCustomSelect === 'function') {
+      refreshPanelCustomSelect(sel);
+    }
+  });
 }
 
 function applyPopupSettings(settings) {

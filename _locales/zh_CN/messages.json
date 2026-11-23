@@ -1327,7 +1327,7 @@
     "description": "样式：纯白字无描边"
   },
   "yt_subs_style_locked": {
-    "message": "合并模式下样式始终跟随 YouTube，两行才一致",
+    "message": "选「跟随 YouTube」时字体、字号、描边都跟随 YouTube；其他样式可用下方字号自行设置。",
     "description": "提示：合并模式样式被锁定"
   }
 }

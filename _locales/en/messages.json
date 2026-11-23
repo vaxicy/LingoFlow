@@ -1327,7 +1327,7 @@
     "description": "Style: plain white text"
   },
   "yt_subs_style_locked": {
-    "message": "In merged mode the style always follows YouTube so both lines match",
+    "message": "Pick “Like YouTube” to inherit the font, size and outline from YouTube; other styles use the size below.",
     "description": "Hint: style is locked in merged mode"
   }
 }

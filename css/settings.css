@@ -223,14 +223,34 @@ body.settings-page[data-theme="light"] .settings-panel-footer .settings-save-sta
   border-color: rgba(103, 116, 255, 0.16);
 }
 
-/* ===== 联动置灰（某个设置被另一项锁定） ===== */
-.settings-page .settings-row.is-disabled,
-.settings-page .settings-row.is-locked {
-  opacity: 0.55;
+/* ===== 下拉菜单：确保不被后面的行盖住 / 裁切 ===== */
+/* 关键：不要给 .settings-row 加 opacity（<1 会创建层叠上下文，
+   把展开的菜单困在这一行里，后面的行就会盖在菜单上 —— 看起来像"被遮挡/截断"）。
+   这里只把下拉容器抬高层级，并保证行与容器都不裁剪。 */
+.settings-page .settings-row {
+  overflow: visible;
 }
 
-.settings-page .settings-row.is-locked select,
-.settings-page .settings-row.is-disabled select {
+.settings-page .panel-custom-select,
+.settings-page .engine-select,
+.settings-page .model-select {
+  position: relative;
+  z-index: 60;
+}
+
+.settings-page .panel-custom-select.open {
+  z-index: 70;
+}
+
+.settings-page .panel-custom-select-menu,
+.settings-page .engine-select-menu,
+.settings-page .model-select-menu {
+  z-index: 70;
+}
+
+/* 禁用态：只降低触发器的透明度（不作用于整行/整个菜单容器） */
+.settings-page .panel-custom-select.is-disabled .panel-custom-select-trigger {
+  opacity: 0.5;
   cursor: not-allowed;
 }
 

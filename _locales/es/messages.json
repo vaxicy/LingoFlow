@@ -1327,7 +1327,7 @@
     "description": "Estilo: texto blanco sin contorno"
   },
   "yt_subs_style_locked": {
-    "message": "En el modo combinado el estilo siempre sigue a YouTube para que ambas líneas coincidan",
+    "message": "Con «Como YouTube» se heredan fuente, tamaño y contorno de YouTube; los demás estilos usan el tamaño de abajo.",
     "description": "Aviso: estilo bloqueado"
   }
 }
