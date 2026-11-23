@@ -1273,4 +1273,61 @@
     "message": "自动",
     "description": "原文语言：自动"
   }
+,
+  "yt_subs_mode_merged": {
+    "message": "合并双语",
+    "description": "显示模式：保留原生字幕，在其下方补一行译文"
+  },
+  "yt_subs_mode_translation": {
+    "message": "仅译文",
+    "description": "显示模式：隐藏原生字幕，只显示译文"
+  },
+  "yt_subs_mode_off": {
+    "message": "关闭（只用原生字幕）",
+    "description": "显示模式：完全不介入字幕"
+  },
+  "yt_subs_pos": {
+    "message": "译文位置",
+    "description": "设置：译文行放在哪里"
+  },
+  "yt_subs_pos_desc": {
+    "message": "译文行相对于 YouTube 字幕的位置",
+    "description": "选择说明"
+  },
+  "yt_subs_pos_below": {
+    "message": "原文字幕下方",
+    "description": "位置：译文在原生字幕下方"
+  },
+  "yt_subs_pos_above": {
+    "message": "原文字幕上方",
+    "description": "位置：译文在原生字幕上方"
+  },
+  "yt_subs_style": {
+    "message": "字幕样式",
+    "description": "设置：译文行的视觉样式"
+  },
+  "yt_subs_style_desc": {
+    "message": "译文行的视觉样式",
+    "description": "选择说明"
+  },
+  "yt_subs_style_native": {
+    "message": "跟随 YouTube",
+    "description": "样式：镜像原生字幕"
+  },
+  "yt_subs_style_classic": {
+    "message": "经典描边",
+    "description": "样式：白字黑描边"
+  },
+  "yt_subs_style_box": {
+    "message": "黑底块",
+    "description": "样式：半透明黑底"
+  },
+  "yt_subs_style_minimal": {
+    "message": "极简",
+    "description": "样式：纯白字无描边"
+  },
+  "yt_subs_style_locked": {
+    "message": "合并模式下样式始终跟随 YouTube，两行才一致",
+    "description": "提示：合并模式样式被锁定"
+  }
 }

@@ -81,11 +81,15 @@ chrome.runtime.onInstalled.addListener(() => {
           autoSaveSettings: true,
           hoverParagraphTranslation: false,
           ytSubsEnabled: false,
+          ytSubsMode: 'merged',
+          ytSubsTranslationPos: 'below',
+          ytSubsSourceLang: 'auto',
+          ytSubsStyle: 'native',
+          ytSubsFontSize: 22,
+          // 兼容旧键（老版本读这些，保留默认值避免清空历史数据）
           ytSubsDual: true,
           ytSubsDisplayMode: 'dual',
-          ytSubsSourceLang: 'auto',
           ytSubsRenderMode: 'takeover',
-          ytSubsFontSize: 22,
           dictionaryAiEnhance: true,
           dictionarySource: 'offline',
           existingBilingualStrategy: 'skip',
@@ -378,6 +382,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     case 'lf_yt_ensure_base':
       ensureYtBaseTrack(sender, request.targetLang, request.sourceLang, sendResponse);
       return true;
+
+    // 预热：MV3 service worker 休眠后首条消息会慢 100–300ms，字幕场景需要提前唤醒
+    case 'lf_ping':
+      sendResponse({ ok: true });
+      break;
 
     case 'lookup_dictionary':
       startDictionaryLookup(request.text, request.targetLang, sendResponse);
@@ -723,11 +732,15 @@ function getDefaultSettings(overrides = {}) {
     autoSaveSettings: true,
     hoverParagraphTranslation: false,
     ytSubsEnabled: false,
+    ytSubsMode: 'merged',
+    ytSubsTranslationPos: 'below',
+    ytSubsSourceLang: 'auto',
+    ytSubsStyle: 'native',
+    ytSubsFontSize: 22,
+    // 兼容旧键（保留默认值，避免老版本脚本读到 undefined）
     ytSubsDual: true,
     ytSubsDisplayMode: 'dual',
-    ytSubsSourceLang: 'auto',
     ytSubsRenderMode: 'takeover',
-    ytSubsFontSize: 22,
     dictionaryAiEnhance: true,
     dictionarySource: 'offline',
     incognitoMode: false,

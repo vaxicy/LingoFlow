@@ -223,6 +223,17 @@ body.settings-page[data-theme="light"] .settings-panel-footer .settings-save-sta
   border-color: rgba(103, 116, 255, 0.16);
 }
 
+/* ===== 联动置灰（某个设置被另一项锁定） ===== */
+.settings-page .settings-row.is-disabled,
+.settings-page .settings-row.is-locked {
+  opacity: 0.55;
+}
+
+.settings-page .settings-row.is-locked select,
+.settings-page .settings-row.is-disabled select {
+  cursor: not-allowed;
+}
+
 /* ===== 窄屏：导航变成横向滚动条 ===== */
 @media (max-width: 900px) {
   .settings-page-header {

@@ -1273,4 +1273,61 @@
     "message": "Auto",
     "description": "Original language: automatic"
   }
+,
+  "yt_subs_mode_merged": {
+    "message": "Merged bilingual",
+    "description": "Display mode: keep native captions, add translation line"
+  },
+  "yt_subs_mode_translation": {
+    "message": "Translation only",
+    "description": "Display mode: hide native captions, show translation"
+  },
+  "yt_subs_mode_off": {
+    "message": "Off (native only)",
+    "description": "Display mode: do not touch captions"
+  },
+  "yt_subs_pos": {
+    "message": "Translation Position",
+    "description": "Settings: where the translation line sits"
+  },
+  "yt_subs_pos_desc": {
+    "message": "Where the translation line sits relative to YouTube's captions",
+    "description": "Select description"
+  },
+  "yt_subs_pos_below": {
+    "message": "Below original",
+    "description": "Position: translation under native captions"
+  },
+  "yt_subs_pos_above": {
+    "message": "Above original",
+    "description": "Position: translation over native captions"
+  },
+  "yt_subs_style": {
+    "message": "Subtitle Style",
+    "description": "Settings: visual style of the translation line"
+  },
+  "yt_subs_style_desc": {
+    "message": "Visual style of the translation line",
+    "description": "Select description"
+  },
+  "yt_subs_style_native": {
+    "message": "Like YouTube",
+    "description": "Style: mirror native captions"
+  },
+  "yt_subs_style_classic": {
+    "message": "Outline",
+    "description": "Style: white text with black outline"
+  },
+  "yt_subs_style_box": {
+    "message": "Dark box",
+    "description": "Style: translucent dark background"
+  },
+  "yt_subs_style_minimal": {
+    "message": "Minimal",
+    "description": "Style: plain white text"
+  },
+  "yt_subs_style_locked": {
+    "message": "In merged mode the style always follows YouTube so both lines match",
+    "description": "Hint: style is locked in merged mode"
+  }
 }

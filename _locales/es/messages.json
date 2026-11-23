@@ -1273,4 +1273,61 @@
     "message": "Automático",
     "description": "Idioma original: automático"
   }
+,
+  "yt_subs_mode_merged": {
+    "message": "Bilingüe combinado",
+    "description": "Modo: conserva los subtítulos nativos y añade la traducción"
+  },
+  "yt_subs_mode_translation": {
+    "message": "Solo traducción",
+    "description": "Modo: oculta los subtítulos nativos"
+  },
+  "yt_subs_mode_off": {
+    "message": "Desactivado (solo nativos)",
+    "description": "Modo: no modificar los subtítulos"
+  },
+  "yt_subs_pos": {
+    "message": "Posición de la traducción",
+    "description": "Ajuste: dónde se coloca la traducción"
+  },
+  "yt_subs_pos_desc": {
+    "message": "Posición de la traducción respecto a los subtítulos de YouTube",
+    "description": "Descripción de la selección"
+  },
+  "yt_subs_pos_below": {
+    "message": "Debajo del original",
+    "description": "Posición: debajo"
+  },
+  "yt_subs_pos_above": {
+    "message": "Encima del original",
+    "description": "Posición: encima"
+  },
+  "yt_subs_style": {
+    "message": "Estilo del subtítulo",
+    "description": "Ajuste: estilo visual de la traducción"
+  },
+  "yt_subs_style_desc": {
+    "message": "Estilo visual de la línea de traducción",
+    "description": "Descripción de la selección"
+  },
+  "yt_subs_style_native": {
+    "message": "Como YouTube",
+    "description": "Estilo: imita los subtítulos nativos"
+  },
+  "yt_subs_style_classic": {
+    "message": "Contorno",
+    "description": "Estilo: texto blanco con contorno negro"
+  },
+  "yt_subs_style_box": {
+    "message": "Caja oscura",
+    "description": "Estilo: fondo negro translúcido"
+  },
+  "yt_subs_style_minimal": {
+    "message": "Mínimo",
+    "description": "Estilo: texto blanco sin contorno"
+  },
+  "yt_subs_style_locked": {
+    "message": "En el modo combinado el estilo siempre sigue a YouTube para que ambas líneas coincidan",
+    "description": "Aviso: estilo bloqueado"
+  }
 }
