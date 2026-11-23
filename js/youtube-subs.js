@@ -23,7 +23,7 @@
   const TYPE_DEBOUNCE = 110;    // 字幕逐字出现，防抖后再取整句
   const POLL_MS = 500;
   const MAX_TEXT = 1200;
-  const READ_FAIL_MS = 10000;   // 播放中这么久读不到字幕 → 判定接管失效
+  const NO_TEXT_WARN_MS = 30000; // 纯诊断用：播放 30s 仍没读到任何字幕 → 只打日志
 
   const CONTENTS = ['dual', 'translation', 'off'];
   const OFFSETS = ['low', 'mid', 'high'];
@@ -40,12 +40,15 @@
     uiLang: 'zh',
 
     noBaseNotified: false,
+    noTracksNotified: false,
     baseFailCount: 0,
     lastBaseCheckAt: 0,
 
-    takeoverDisabled: false,   // 读不到字幕时置 true，本页不再接管
+    // 注意：**不要**因为"一段时间读不到字幕"就判定接管失效并恢复原生字幕。
+    // 教学视频经常几十秒只有画面没有旁白，那是正常情况，误判会让整个视频失去翻译。
     everGotText: false,
-    lastTextAt: 0,
+    noTextWarned: false,
+    startAt: 0,
 
     running: false,
     observer: null,
@@ -125,9 +128,9 @@
       noBase: zh
         ? '该视频只有翻译字幕，无法显示原文'
         : 'This video only has translated captions; the original line is unavailable',
-      readFail: zh
-        ? '无法读取字幕，已恢复 YouTube 原生字幕'
-        : 'Could not read captions; restored YouTube native subtitles'
+      noTracks: zh
+        ? '该视频没有可用字幕'
+        : 'No captions available for this video'
     };
   }
 
@@ -140,7 +143,6 @@
   function start() {
     if (state.running) return;
     if (!isWatchPage()) return;
-    if (state.takeoverDisabled) return;
 
     const player = document.getElementById('movie_player');
     if (!player) {
@@ -157,10 +159,12 @@
     state.lastDst = '';
     state.ccClicks = 0;
     state.noBaseNotified = false;
+    state.noTracksNotified = false;
     state.baseFailCount = 0;
     state.lastBaseCheckAt = Date.now();
     state.everGotText = false;
-    state.lastTextAt = Date.now();
+    state.noTextWarned = false;
+    state.startAt = Date.now();
 
     ensureOverlay();
     applyModeClass();
@@ -246,6 +250,15 @@
             return;
           }
 
+          // 完全没有字幕轨 → 提示一次（播放 8s 后再判断，避开播放器初始化时 tracklist 还是空的）
+          if (res.reason === 'no tracks') {
+            if (!state.noTracksNotified && Date.now() - (state.startAt || 0) > 8000) {
+              state.noTracksNotified = true;
+              toast(T().noTracks);
+            }
+            return;
+          }
+
           if (res.ok) {
             state.baseFailCount = 0;
             if (res.switched) toast(T().switched);
@@ -288,21 +301,17 @@
     if (root && root !== state.observedRoot) bindObserver(root);
     if (state.observedRoot) processCurrentLine();
 
-    // 兜底：播放中长时间读不到字幕（隐藏后不再更新）→ 恢复原生，避免整块字幕消失
+    // 纯诊断：播放 30s 仍没读到任何字幕时打一条日志。
+    // **不做**任何自动降级 —— 教学视频常有几十秒只有画面没有旁白，
+    // 用"多久没新字幕"当失败信号会误判（曾导致整个视频失去翻译）。
     const video = document.querySelector('video.html5-main-video') || document.querySelector('video');
     const playing = video && !video.paused && !video.ended;
-    if (state.everGotText && playing && now - (state.lastTextAt || 0) > READ_FAIL_MS) {
-      recoverToNative();
+    if (!state.everGotText && playing && !state.noTextWarned
+      && now - (state.startAt || now) > NO_TEXT_WARN_MS) {
+      state.noTextWarned = true;
+      console.log('[LingoFlow] no caption text after ' + (NO_TEXT_WARN_MS / 1000) +
+        's — the video may have no captions, or is silent for a long stretch');
     }
-  }
-
-  function recoverToNative() {
-    if (state.takeoverDisabled) return;
-    state.takeoverDisabled = true;
-    removeModeClass();
-    hideOverlay();
-    console.warn('[LingoFlow] captions unreadable for ' + READ_FAIL_MS + 'ms, restoring native captions');
-    toast(T().readFail);
   }
 
   function bindObserver(root) {
@@ -359,7 +368,7 @@
   }
 
   function processCurrentLine() {
-    if (!state.running || state.takeoverDisabled) return;
+    if (!state.running) return;
 
     const text = readLine();
     if (!text) { scheduleClear(); return; }
@@ -367,7 +376,6 @@
 
     state.lastText = text;
     state.everGotText = true;
-    state.lastTextAt = Date.now();
     if (state.clearTimer) { clearTimeout(state.clearTimer); state.clearTimer = null; }
 
     // 原文已是目标语言：双语模式下只保留原文行
@@ -515,7 +523,7 @@
 
   function applyModeClass() {
     // 接管式：隐藏原生字幕（它仍在 DOM 里更新，作为我们的数据源）
-    if (state.content !== 'off' && !state.takeoverDisabled) {
+    if (state.content !== 'off') {
       document.documentElement.classList.add('lf-yt-subs-on');
     } else {
       document.documentElement.classList.remove('lf-yt-subs-on');
@@ -550,7 +558,6 @@
   window.addEventListener('yt-navigate-finish', () => {
     if (state.navTimer) clearTimeout(state.navTimer);
     teardown();
-    state.takeoverDisabled = false;
     state.navTimer = setTimeout(() => {
       state.navTimer = null;
       loadSettings((s) => {
@@ -578,7 +585,6 @@
         applyRuntimeConfig(s);
 
         if (state.enabled && !prev.enabled) {
-          state.takeoverDisabled = false;
           start();
           return;
         }
