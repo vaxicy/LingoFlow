@@ -368,6 +368,13 @@
     if (!text) { scheduleClear(); return; }
     if (text === state.lastText) return;
 
+    // YouTube 的字幕行常常是"句子中段"：上一行没有以句末标点结束，
+    // 说明这一行是上一行的延续 → 把上一行作为语境一起发给模型，
+    // 让它知道"主语在前面"，不要硬造主语、也不要把上文翻出来。
+    const prevLine = state.lastText;
+    const isContinuation = !!prevLine && !/[.!?。！？]["')\]]?\s*$/.test(prevLine);
+    const contextLine = isContinuation ? prevLine.slice(-160) : '';
+
     state.lastText = text;
     state.everGotText = true;
     if (state.clearTimer) { clearTimeout(state.clearTimer); state.clearTimer = null; }
@@ -380,7 +387,8 @@
       return;
     }
 
-    const key = state.targetLang + '\u0001' + text;
+    // 缓存 key 带上"是否承接上文"，避免有上下文/无上下文命中同一条
+    const key = state.targetLang + '\u0001' + (isContinuation ? 'c' : 's') + '\u0001' + text;
     const token = ++state.token;
 
     // 双语模式：原文立即可见（0 延迟）；仅译文模式不画原文（保持上一句译文）
@@ -394,7 +402,7 @@
 
     try {
       chrome.runtime.sendMessage(
-        { action: 'translate', text: text, targetLang: state.targetLang },
+        { action: 'lf_yt_translate', text: text, targetLang: state.targetLang, context: contextLine },
         (res) => {
           if (chrome.runtime.lastError) return;
           if (token !== state.token) return; // 已换句，丢弃
