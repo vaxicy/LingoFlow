@@ -410,6 +410,7 @@
           remember(key, dst);
           state.lastDst = dst;
           renderLines();
+          patchUntranslated(text, key); // 有英文残留就局部补翻
         }
       );
     } catch (_) {}
@@ -420,6 +421,63 @@
     while (state.lru.size > LRU_LIMIT) {
       state.lru.delete(state.lru.keys().next().value);
     }
+  }
+
+  // ---------- 漏词补翻 ----------
+  // 模型偶尔会把短语原样保留（例如 "You have until early summer" →
+  // "您有直到 early summer 的时间"）。这里把残留的英文片段单独翻一次再替换回去，
+  // 只处理"原文里确实存在、且不是人名/缩写/术语"的片段，避免误伤 WiFi / API / Mr 等。
+  const LATIN_RUN_RE = /[A-Za-z][A-Za-z'’-]*(?:\s+[A-Za-z][A-Za-z'’-]*)*/g;
+
+  function findUntranslatedRuns(dst, src) {
+    if (!/^zh/i.test(state.targetLang)) return [];
+    if (!/[A-Za-z]{2,}/.test(dst)) return [];
+
+    const srcText = String(src || '');
+    const srcLower = srcText.toLowerCase();
+    const picked = [];
+
+    (String(dst).match(LATIN_RUN_RE) || []).forEach((raw) => {
+      const run = raw.trim();
+      if (!run) return;
+      if (/[A-Z]/.test(run.slice(1))) return;            // WiFi / iPhone：保留
+      if (/^[A-Z]{2,}$/.test(run)) return;               // API / HD：保留
+      const words = run.split(/\s+/);
+      if (words.length < 2 && run.length < 4) return;    // 单个短词多半是术语
+      if (srcLower.indexOf(run.toLowerCase()) < 0) return; // 原文没出现 → 不是漏词
+
+      const re = new RegExp('\\b' + run.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b');
+      const hit = srcText.match(re);
+      // 单个词且源文里首字母大写 → 人名/专名，保留；多词片段（哪怕句首大写）照常补翻
+      if (hit && words.length === 1 && /^[A-Z]/.test(hit[0])) return;
+
+      if (picked.indexOf(run) < 0) picked.push(run);
+    });
+
+    return picked;
+  }
+
+  function patchUntranslated(srcText, key) {
+    const runs = findUntranslatedRuns(state.lastDst, srcText);
+    if (!runs.length) return;
+
+    runs.forEach((run) => {
+      try {
+        chrome.runtime.sendMessage(
+          { action: 'translate', text: run, targetLang: state.targetLang },
+          (res) => {
+            if (chrome.runtime.lastError) return;
+            const piece = res && res.success && res.translation ? String(res.translation).trim() : '';
+            if (!piece || /^[A-Za-z\s]+$/.test(piece)) return;   // 还是英文就不替换
+            if (!state.lastDst || state.lastDst.indexOf(run) < 0) return;
+
+            state.lastDst = state.lastDst.split(run).join(piece);
+            if (state.lru.has(key)) state.lru.set(key, state.lastDst);
+            renderLines();
+          }
+        );
+      } catch (_) {}
+    });
   }
 
   function scheduleClear() {
