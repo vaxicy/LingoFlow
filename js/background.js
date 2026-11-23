@@ -378,11 +378,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       translateBatch(request.texts, request.targetLang, sendResponse);
       return true;
 
-    // YouTube 字幕：带上下文的单行翻译（解决"句子中段被单独翻"的问题）
-    case 'lf_yt_translate':
-      translateYtWithContext(request.text, request.targetLang, request.context || '', sendResponse);
-      return true;
-
     // YouTube 字幕：把被切成「YouTube 翻译轨」的字幕切回原语言
     case 'lf_yt_ensure_base':
       ensureYtBaseTrack(sender, request.targetLang, request.sourceLang, sendResponse);
@@ -1547,96 +1542,6 @@ function translateWithFallback(engine, fallback, text, targetLang, sendResponse)
     }
   };
   dispatchEngine(engine, text, targetLang, respond);
-}
-
-// ======================== YouTube 字幕：带上下文的翻译 ========================
-// YouTube 的字幕行常常是**句子中段**（上一行才是句首），单独翻译会缺主语、语义悬空。
-// 这里在请求里带上"上一行"作为语境，只翻当前这一行：
-//   - LLM 类引擎（硅基 / DeepSeek）→ 用字幕专用 prompt，明确"只翻本行、不要补全"
-//   - 传统 MT 接口不懂指令 → 前面加省略号"… "提示这是半句，再把结果里的省略号去掉
-const YT_CTX_ENGINES = ['siliconflow', 'deepseek'];
-const YT_CTX_TIMEOUT = 8000;
-
-function translateYtWithContext(text, targetLang, context, sendResponse) {
-  let replied = false;
-  const reply = (payload) => { if (replied) return; replied = true; sendResponse(payload); };
-  const plain = () => translateText(text, targetLang, reply);
-
-  chrome.storage.local.get(['lingoflow_settings'], (result) => {
-    const settings = getDefaultSettings(result.lingoflow_settings || {});
-    const engine = settings.translationEngine || 'siliconflow';
-
-    // 传统翻译接口：用省略号暗示"这是半句"
-    if (YT_CTX_ENGINES.indexOf(engine) < 0) {
-      if (!context) { plain(); return; }
-      translateText('… ' + text, targetLang, (res) => {
-        const dst = res && res.success && res.translation ? String(res.translation).trim() : '';
-        if (!dst) { plain(); return; }
-        reply({ success: true, translation: dst.replace(/^[…\s.]+/, '').trim(), model: res.model });
-      });
-      return;
-    }
-
-    const isSf = engine === 'siliconflow';
-    const apiKey = (isSf ? settings.siliconflowApiKey : settings.deepseekApiKey || '').trim();
-    if (!apiKey) { plain(); return; }
-
-    const url = isSf
-      ? 'https://api.siliconflow.cn/v1/chat/completions'
-      : 'https://api.deepseek.com/chat/completions';
-    const model = isSf
-      ? resolveModel('siliconflow', settings.siliconflowModel, settings.siliconflowModelCustom)
-      : resolveModel('deepseek', settings.deepseekModel, settings.deepseekModelCustom);
-    if (!model) { plain(); return; }
-
-    const targetName = getSiliconFlowTargetName(targetLang);
-    const system = [
-      `You translate video subtitles into ${targetName}.`,
-      'The user message is ONE caption line and may start in the middle of a sentence.',
-      'Translate only that line: do not complete it, do not merge it with the context, do not explain or quote.',
-      context
-        ? `Previous line, for context only — never translate or repeat it: "${context}"`
-        : '',
-      'If the line starts mid-sentence, keep the Chinese natural and do NOT invent a subject.',
-      'Output only the translation.'
-    ].filter(Boolean).join('\n');
-
-    const body = {
-      model: model,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: text }
-      ],
-      temperature: 0,
-      max_tokens: Math.min(400, Math.max(64, Math.ceil(text.length * 2))),
-      stream: false
-    };
-    // DeepSeek 新模型默认开思考链，字幕必须关掉
-    if (!isSf) body.thinking = { type: 'disabled' };
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), YT_CTX_TIMEOUT);
-
-    fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-      body: JSON.stringify(body),
-      signal: controller.signal
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
-      .then((data) => {
-        clearTimeout(timer);
-        const choice = data && data.choices && data.choices[0];
-        const out = choice && choice.message ? String(choice.message.content || '').trim() : '';
-        if (!out) throw new Error('empty translation');
-        reply({ success: true, translation: out, model: engine + '/' + model });
-      })
-      .catch((err) => {
-        clearTimeout(timer);
-        console.warn('LingoFlow: subtitle context translate failed, using plain path', String((err && err.message) || err));
-        plain();
-      });
-  });
 }
 
 function translateText(text, targetLang, sendResponse) {
