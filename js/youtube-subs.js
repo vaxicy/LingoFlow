@@ -69,7 +69,7 @@
     // engine='cue' 表示已经拿到整片字幕（带时间轴），按 currentTime 查表显示；
     // 失败则保持 'dom'（逐词读 DOM）作为兜底。
     engine: 'dom',
-    lines: [],        // [{ start, dur, en, zh, pending, failed }]
+    lines: [],        // [{ start, dur, en, zh, pending, tries }]
     cueTimer: null,
     cueToken: 0,
     lastCueIndex: -1,
@@ -590,7 +590,7 @@
         }
       }
 
-      lines.push({ start: start, dur: Math.max(0.4, dur), en: text, zh: '', pending: false, failed: false });
+      lines.push({ start: start, dur: Math.max(0.4, dur), en: text, zh: '', pending: false, tries: 0 });
     });
 
     // 有些格式不给时长：用"到下一句开始"补齐，避免整句只闪一下
@@ -653,14 +653,17 @@
     if (!line.zh) ensureLineTranslated(line);
   }
 
-  // 按需补一条（跳转到未翻译区域时用），走常规单句翻译，所有引擎都支持
+  // 按需补一条（跳转到未翻译区域时用），走常规单句翻译，所有引擎都支持。
+  // 单句是"一问一答"，不存在批量里的顺序错位问题，所以它才是拖进度/跳转时的兜底。
   function ensureLineTranslated(line) {
-    if (!line || line.zh || line.pending || line.failed) return;
+    if (!line || line.zh || line.pending) return;
+    if ((line.tries || 0) >= 3) return; // 连续失败 3 次就不再重试，避免死循环
     line.pending = true;
+    line.tries = (line.tries || 0) + 1;
     sendMsg({ action: 'translate', text: line.en, targetLang: state.targetLang }, (res) => {
       line.pending = false;
       const dst = res && res.success && res.translation ? String(res.translation).trim() : '';
-      if (dst) { line.zh = dst; cueTick(); } else { line.failed = true; }
+      if (dst) { line.zh = dst; cueTick(); }
     });
   }
 
@@ -681,7 +684,7 @@
       const collect = (startIdx, endIdx) => {
         for (let i = startIdx; i < endIdx && targets.length < CHUNK; i++) {
           const l = state.lines[i];
-          if (!l.zh && !l.pending && !l.failed) targets.push(l);
+          if (!l.zh && !l.pending && (l.tries || 0) < 2) targets.push(l);
         }
       };
       collect(from, state.lines.length);
@@ -696,9 +699,11 @@
           if (state.engine !== 'cue' || token !== state.cueToken) return;
           const list = res && res.success && Array.isArray(res.translations) ? res.translations : null;
 
-          if (!list) {
-            // 批量通道不可用 → 逐条按需翻译（仍对齐，只是晚一点）
-            targets.forEach((l) => { l.pending = false; l.failed = true; });
+          if (!list || list.length !== targets.length) {
+            // 批量返回的条数对不上 → **绝不能按下标硬套**，否则会把别句的译文贴到这一句上
+            //（表现就是"拖进度后英文和中文完全不是同一句"）。全部退回按需单句翻译。
+            targets.forEach((l) => { l.pending = false; l.tries = (l.tries || 0) + 1; });
+            console.warn('LingoFlow: batch size mismatch (' + (list ? list.length : 'null') + '/' + targets.length + '), using per-line translation');
             return;
           }
 
@@ -706,7 +711,7 @@
           targets.forEach((l, i) => {
             l.pending = false;
             const t = list[i] ? String(list[i]).trim() : '';
-            if (t) { l.zh = t; filled += 1; } else { l.failed = true; }
+            if (t) { l.zh = t; filled += 1; } else { l.tries = (l.tries || 0) + 1; }
           });
 
           if (filled) cueTick();
