@@ -2,6 +2,7 @@ const path = require('path');
 const { chromium } = require('playwright');
 
 const shots = [
+  ['screenshot-00-youtube', '00-youtube-subtitles.png'],
   ['screenshot-01-bilingual', '01-bilingual-mode.png'],
   ['screenshot-02-selection', '02-selection-translation.png'],
   ['screenshot-03-engines', '03-translation-engines.png'],

@@ -371,8 +371,8 @@ def screenshot_04_library():
     img, draw = base()
     y = draw_brand(draw, img, 74, 64)
     draw_text_block(draw, 74, y, "LEARN & REVIEW",
-                    "Vocabulary, History & Settings in One Popup",
-                    "Save translated words and sentences, review your history, and switch themes — all from the same popup.",
+                    "Vocabulary, History & a Full Settings Page",
+                    "Save words and sentences, review your history, and tune every engine on a dedicated settings page.",
                     max_w=560)
     # 2x2 library cards
     cards = [
@@ -459,7 +459,71 @@ def screenshot_05_support():
     img.save(OUT / "05-privacy-support.png")
 
 
+def screenshot_00_youtube():
+    """Hero shot for the big update: YouTube bilingual subtitles."""
+    img, draw = base()
+    y = draw_brand(draw, img)
+    draw_text_block(
+        draw, 74, y + 42,
+        "YOUTUBE BILINGUAL SUBTITLES",
+        "English videos, read in your language",
+        "YouTube's own captions are taken over and translated line by line. "
+        "Original and translation stay in one fixed spot, so nothing jumps "
+        "while the video plays.",
+        max_w=520,
+    )
+
+    # ---- player card ----
+    cx, cy, cw, ch = 672, 172, 560, 432
+    shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(shadow)
+    rounded_rect(sd, (cx + 8, cy + 16, cx + cw + 8, cy + ch + 16), (38, 51, 120, 40), radius=26)
+    img = Image.alpha_composite(img.convert("RGBA"), shadow.filter(ImageFilter.GaussianBlur(18))).convert("RGB")
+    draw = ImageDraw.Draw(img)
+
+    rounded_rect(draw, (cx, cy, cx + cw, cy + ch), "#0b1220", radius=24)
+
+    # soft glow to suggest a video frame
+    glow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    gd = ImageDraw.Draw(glow)
+    gd.ellipse((cx + 250, cy - 70, cx + 620, cy + 220), fill=(98, 168, 255, 46))
+    gd.ellipse((cx - 90, cy + 120, cx + 220, cy + 380), fill=(116, 104, 255, 38))
+    img = Image.alpha_composite(img.convert("RGBA"), glow).convert("RGB")
+    draw = ImageDraw.Draw(img)
+    rounded_rect(draw, (cx, cy, cx + cw, cy + ch), None, outline=(150, 168, 255, 90), width=2, radius=24)
+
+    # subtitle block (centered inside the "video")
+    mid = cx + cw // 2
+    f_src = font(23)
+    f_dst = font(34, bold=True, chinese=True)
+    src = "or even thousands of times."
+    dst = "或者成千上万次。"
+    draw.text((mid, cy + 268), src, fill=(226, 232, 245), font=f_src, anchor="ma")
+    draw.text((mid, cy + 304), dst, fill=(255, 255, 255), font=f_dst, anchor="ma")
+
+    # progress bar
+    bar_y = cy + ch - 38
+    draw.rounded_rectangle((cx + 26, bar_y, cx + cw - 26, bar_y + 5), radius=3, fill=(255, 255, 255, 60))
+    draw.rounded_rectangle((cx + 26, bar_y, cx + 238, bar_y + 5), radius=3, fill="#ef4444")
+    draw.ellipse((cx + 228, bar_y - 4, cx + 238, bar_y + 9), fill="#ef4444")
+    draw.text((cx + 26, bar_y + 14), "3:09 / 27:28", fill=(203, 213, 225), font=font(15))
+
+    # feature chips under the card
+    chips = ["Original + translation", "Fixed position", "Adjustable size"]
+    px, py = cx, cy + ch + 34
+    for label in chips:
+        pw = int(draw.textlength(label, font=F["tiny"])) + 26
+        if px + pw > cx + cw:
+            break
+        rounded_rect(draw, (px, py, px + pw, py + 34), (255, 255, 255), outline=COLORS["line"], radius=17, width=1)
+        draw.text((px + 13, py + 9), label, fill="#5b54e8", font=F["tiny"])
+        px += pw + 12
+
+    img.save(OUT / "00-youtube-subtitles.png")
+
+
 if __name__ == "__main__":
+    screenshot_00_youtube()
     screenshot_01_bilingual()
     screenshot_02_selection()
     screenshot_03_engines()
