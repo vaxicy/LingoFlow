@@ -1692,6 +1692,7 @@ function translateOneForBatch(text, targetLang, engine, fallback) {
 // Priority: 免费档优先（翻译专精 → 通用），随后付费档按「越便宜越靠前」
 const SILICONFLOW_FALLBACK_MODELS = [
   'tencent/Hunyuan-MT-7B',          // ✅ 免费 · 翻译专用模型，默认
+  'Qwen/Qwen3-8B',                  // 免费 · 8B 通用（已强制关思考链）
   'Qwen/Qwen2.5-7B-Instruct',       // 免费 · 通用备用
   'Qwen/Qwen2.5-14B-Instruct',      // 付费 · 便宜好用（14B 通用）
   'deepseek-ai/DeepSeek-V4-Flash',   // ✅ 付费 · 快、便宜
@@ -1706,6 +1707,7 @@ const SILICONFLOW_FALLBACK_MODELS = [
 // 2026-11-25 移除（官方已废弃）：inclusionAI/Ling-mini-2.0（模型中心标 Deprecated）
 const SILICONFLOW_MODEL_META = {
   'tencent/Hunyuan-MT-7B':         { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
+  'Qwen/Qwen3-8B':                 { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'Qwen/Qwen2.5-7B-Instruct':      { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'Qwen/Qwen2.5-14B-Instruct':     { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
   'deepseek-ai/DeepSeek-V4-Flash': { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 40 },
@@ -2019,7 +2021,9 @@ function translateSiliconFlowChunk(chunk, targetLang, apiKey, model, attempt, is
     ],
     temperature: 0.1,
     top_p: 0.9,
-    max_tokens: Math.min(Math.max(JSON.stringify(payload).length * 2, 512), 8192)
+    max_tokens: Math.min(Math.max(JSON.stringify(payload).length * 2, 512), 8192),
+    // 同单句：Qwen3 系列必须显式关思考，否则整批容易超时
+    enable_thinking: false
   };
 
   console.log('LingoFlow: SiliconFlow batch chunk translating', chunk.length, 'items with', model);
@@ -2146,7 +2150,10 @@ function translateWithSiliconFlow(text, targetLang, sendResponse) {
         ],
         temperature: 0.2,
         top_p: 0.9,
-        max_tokens: Math.min(truncated.length * 4, 2000)
+        max_tokens: Math.min(truncated.length * 4, 2000),
+        // Qwen3 系列（Qwen3-8B 等）默认开思考链，翻译会被拖到 2–5s。
+        // 硅基用 enable_thinking:false 走非思考模式（Qwen3.5 全线下架就是踩了这个坑）。
+        enable_thinking: false
       };
 
       const label = isPrimary ? `[primary] ${model}` : `[${index}/${fallbackModels.length-1}] ${model}`;

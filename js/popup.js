@@ -1000,7 +1000,7 @@ function refreshCustomModelInputs() {
 
 // SiliconFlow models list (must match background.js)
 // Sources: SiliconFlow 官方模型中心当前在列 + 用户截图确认。
-// 免费档：Hunyuan-MT-7B（默认，翻译专精）→ Qwen2.5-7B-Instruct（通用备用）；
+// 免费档：Hunyuan-MT-7B（默认，翻译专精）→ Qwen3-8B（8B 通用，已关思考链）→ Qwen2.5-7B（老款备胎）；
 // 付费档按「越便宜越靠前」排序（Qwen2.5-14B → DeepSeek-V4-Flash → DeepSeek-V3.2）。
 // 2026-11-25：inclusionAI/Ling-mini-2.0 已被官方标记 Deprecated（模型中心显示灰色），移除；
 //   同系列现役是 Ling-flash-2.0，需要的话再加。
@@ -1014,6 +1014,13 @@ const SILICONFLOW_MODELS = [
     badge: 'free',
     descZh: '翻译专用 · 默认推荐',
     descEn: 'Translation · Default'
+  },
+  {
+    id: 'Qwen/Qwen3-8B',
+    name: 'Qwen3-8B',
+    badge: 'free',
+    descZh: '通义千问 3 代 8B · 免费 · 比 2.5 强',
+    descEn: 'Qwen3 8B · Free · Better than 2.5'
   },
   {
     id: 'Qwen/Qwen2.5-7B-Instruct',
