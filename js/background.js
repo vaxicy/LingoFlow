@@ -1695,6 +1695,7 @@ const SILICONFLOW_FALLBACK_MODELS = [
   'Qwen/Qwen3-8B',                  // 免费 · 8B 通用（已强制关思考链）
   'Qwen/Qwen2.5-7B-Instruct',       // 免费 · 通用备用
   'Qwen/Qwen2.5-14B-Instruct',      // 付费 · 便宜好用（14B 通用）
+  'Qwen/Qwen3-14B',                 // 付费 · ¥0.5/¥2，已强制关思考链
   'deepseek-ai/DeepSeek-V4-Flash',   // ✅ 付费 · 快、便宜
   'deepseek-ai/DeepSeek-V3.2'        // 付费 · 旗舰对话（替代已下架的 DeepSeek-V3）
 ];
@@ -1710,6 +1711,7 @@ const SILICONFLOW_MODEL_META = {
   'Qwen/Qwen3-8B':                 { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'Qwen/Qwen2.5-7B-Instruct':      { pricing: 'free', maxItems: 70, maxChars: 20000, chunkDelay: 50 },
   'Qwen/Qwen2.5-14B-Instruct':     { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
+  'Qwen/Qwen3-14B':                { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 50 },
   'deepseek-ai/DeepSeek-V4-Flash': { pricing: 'paid', maxItems: 80, maxChars: 24000, chunkDelay: 40 },
   'deepseek-ai/DeepSeek-V3.2':     { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 },
   '__custom__':                     { pricing: 'paid', maxItems: 70, maxChars: 20000, chunkDelay: 60 }
