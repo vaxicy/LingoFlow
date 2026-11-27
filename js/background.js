@@ -81,6 +81,7 @@ chrome.runtime.onInstalled.addListener(() => {
           autoSaveSettings: true,
           hoverParagraphTranslation: false,
           ytSubsEnabled: false,
+          ytSubsPreload: 'on',
           ytSubsContent: 'dual',
           ytSubsOffset: 'mid',
           ytSubsSourceLang: 'auto',
@@ -367,6 +368,136 @@ function ensureYtBaseTrack(sender, targetLang, wantLang, sendResponse) {
   });
 }
 
+// ======================== YouTube 字幕：预翻译（整片预取） ========================
+// 目标：开播前把后面的字幕翻好，播放时按时间轴查表 → 倍速/拖动都不会掉字幕。
+// 这里只负责"读轨道"和"拉整片字幕"，翻译复用现成的 translate_batch / translate。
+
+function ytTracklist(sender, sendResponse) {
+  const tabId = sender && sender.tab && sender.tab.id;
+  if (!tabId || !chrome.scripting) {
+    sendResponse({ ok: false, reason: 'no tab or scripting api' });
+    return;
+  }
+
+  chrome.scripting.executeScript({
+    target: { tabId: tabId },
+    world: 'MAIN',
+    func: function () {
+      try {
+        const p = document.getElementById('movie_player');
+        let list = [];
+        if (p && typeof p.getOption === 'function') {
+          list = p.getOption('captions', 'tracklist') || [];
+        }
+        if (!list.length && window.ytInitialPlayerResponse) {
+          const r = window.ytInitialPlayerResponse;
+          const t = r.captions && r.captions.playerCaptionsTracklistRenderer;
+          list = (t && t.captionTracks) || [];
+        }
+        return {
+          ok: list.length > 0,
+          videoId: (p && p.getVideoData && p.getVideoData().video_id) || '',
+          tracks: list.map(function (t) {
+            const name = t.name
+              ? (t.name.simpleText || (t.name.runs && t.name.runs[0] && t.name.runs[0].text) || '')
+              : '';
+            return { lang: t.languageCode || '', kind: t.kind || '', name: name, url: t.baseUrl || '' };
+          })
+        };
+      } catch (e) {
+        return { ok: false, reason: String((e && e.message) || e) };
+      }
+    }
+  }).then((results) => {
+    const r = results && results[0] && results[0].result;
+    sendResponse(r || { ok: false, reason: 'empty result' });
+  }).catch((err) => {
+    sendResponse({ ok: false, reason: String((err && err.message) || err) });
+  });
+}
+
+function parseJson3Cues(txt) {
+  const data = JSON.parse(txt);
+  const out = [];
+  (data.events || []).forEach((ev) => {
+    if (!ev.segs) return;
+    const text = ev.segs.map((s) => s.utf8 || '').join('').replace(/\s+/g, ' ').trim();
+    if (!text) return;
+    out.push({ start: (ev.tStartMs || 0) / 1000, dur: (ev.dDurationMs || 0) / 1000, text: text });
+  });
+  return out;
+}
+
+function ytDecodeEntities(s) {
+  return String(s || '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ');
+}
+
+function parseTimedTextXml(txt) {
+  const out = [];
+  const re = /<text[^>]*start="([\d.]+)"[^>]*dur="([\d.]+)"[^>]*>([\s\S]*?)<\/text>/g;
+  let m;
+  while ((m = re.exec(txt))) {
+    const text = ytDecodeEntities(m[3].replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+    out.push({ start: parseFloat(m[1]) || 0, dur: parseFloat(m[2]) || 0, text: text });
+  }
+  return out;
+}
+
+function parseVttCues(txt) {
+  const out = [];
+  const blocks = String(txt || '').replace(/\r/g, '').split('\n\n');
+  blocks.forEach((block) => {
+    const lines = block.split('\n').filter(Boolean);
+    if (!lines.length) return;
+    const timeLine = lines.find((l) => l.indexOf('-->') > 0);
+    if (!timeLine) return;
+    const toSec = (v) => {
+      const parts = v.trim().split(':').map(parseFloat);
+      if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+      if (parts.length === 2) return parts[0] * 60 + parts[1];
+      return parts[0] || 0;
+    };
+    const [a, b] = timeLine.split('-->');
+    const text = lines.slice(lines.indexOf(timeLine) + 1).join(' ').replace(/<[^>]+>/g, '').trim();
+    if (!text) return;
+    const start = toSec(a);
+    out.push({ start: start, dur: Math.max(0.4, toSec(b) - start), text: text });
+  });
+  return out;
+}
+
+function ytTimedText(url, sendResponse) {
+  if (!/^https:\/\/[\w.-]*youtube\.com\//.test(String(url || ''))) {
+    sendResponse({ ok: false, reason: 'bad url' });
+    return;
+  }
+
+  const base = String(url).replace(/[&?]fmt=[^&]*/g, '');
+  const sep = base.indexOf('?') >= 0 ? '&' : '?';
+  const candidates = [base + sep + 'fmt=json3', base + sep + 'fmt=srv1', base + sep + 'fmt=vtt'];
+
+  const tryNext = (i) => {
+    if (i >= candidates.length) { sendResponse({ ok: false, reason: 'all formats failed' }); return; }
+    const target = candidates[i];
+    fetch(target, { credentials: 'omit' })
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status))))
+      .then((txt) => {
+        let cues = [];
+        if (target.indexOf('fmt=json3') >= 0) cues = parseJson3Cues(txt);
+        else if (target.indexOf('fmt=vtt') >= 0) cues = parseVttCues(txt);
+        else cues = parseTimedTextXml(txt);
+        if (!cues.length) throw new Error('no cues');
+        sendResponse({ ok: true, cues: cues });
+      })
+      .catch(() => tryNext(i + 1));
+  };
+
+  tryNext(0);
+}
+
 // Listen for messages from content script or popup
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   switch (request.action) {
@@ -376,6 +507,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     case 'translate_batch':
       translateBatch(request.texts, request.targetLang, sendResponse);
+      return true;
+
+    // YouTube 字幕（预翻译）：读轨道 / 拉整片字幕
+    case 'lf_yt_tracklist':
+      ytTracklist(sender, sendResponse);
+      return true;
+
+    case 'lf_yt_timedtext':
+      ytTimedText(request.url, sendResponse);
       return true;
 
     // YouTube 字幕：把被切成「YouTube 翻译轨」的字幕切回原语言
@@ -732,6 +872,8 @@ function getDefaultSettings(overrides = {}) {
     autoSaveSettings: true,
     hoverParagraphTranslation: false,
     ytSubsEnabled: false,
+    // 预翻译（整片预取）：on=开播前把字幕翻好（默认）；off=实时逐词
+    ytSubsPreload: 'on',
     ytSubsContent: 'dual',
     ytSubsOffset: 'mid',
     ytSubsSourceLang: 'auto',

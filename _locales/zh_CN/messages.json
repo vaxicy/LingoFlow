@@ -1190,8 +1190,7 @@
   "dictionary_ai_enhance_desc": {
     "message": "当免费词典缺失词条时，使用你的 AI 引擎（Gemini/DeepSeek/SiliconFlow/Bailian/自定义）生成释义",
     "description": "设置项描述"
-  }
-,
+  },
   "yt_subs_settings": {
     "message": "YouTube 字幕",
     "description": "设置分区：YouTube 字幕翻译"
@@ -1239,8 +1238,7 @@
   "yt_subs_note": {
     "message": "会遮盖 YouTube 自带字幕，由我们在固定位置绘制原文与译文两行，播放时不会上下跳动。",
     "description": "YouTube 字幕设置下方的说明"
-  }
-,
+  },
   "yt_subs_display_mode": {
     "message": "显示方式",
     "description": "设置：YouTube 字幕如何显示"
@@ -1272,8 +1270,7 @@
   "yt_subs_source_auto": {
     "message": "自动",
     "description": "原文语言：自动"
-  }
-,
+  },
   "yt_subs_mode_merged": {
     "message": "合并双语",
     "description": "显示模式：保留原生字幕，在其下方补一行译文"
@@ -1329,8 +1326,7 @@
   "yt_subs_style_locked": {
     "message": "选「跟随 YouTube」时字体、字号、描边都跟随 YouTube；其他样式可用下方字号自行设置。",
     "description": "提示：合并模式样式被锁定"
-  }
-,
+  },
   "yt_subs_content": {
     "message": "字幕内容",
     "description": "设置：绘制哪些内容"
@@ -1370,5 +1366,17 @@
   "yt_subs_offset_high": {
     "message": "高",
     "description": "位置：高"
+  },
+  "yt_subs_preload": {
+    "message": "字幕模式"
+  },
+  "yt_subs_preload_desc": {
+    "message": "开播前把整片字幕翻好，倍速播放也不会延迟；或逐句实时翻译"
+  },
+  "yt_subs_preload_on": {
+    "message": "预翻译（更流畅）"
+  },
+  "yt_subs_preload_off": {
+    "message": "逐句实时"
   }
 }

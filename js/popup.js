@@ -1139,6 +1139,7 @@ function initSettingsPanel() {
     'popup-translation-color',
     'popup-dictionary-source',
     'popup-yt-subs-enabled',
+    'popup-yt-subs-preload',
     'popup-yt-subs-content',
     'popup-yt-subs-offset',
     'popup-yt-subs-source-lang',
@@ -2397,6 +2398,8 @@ function applyPopupSettings(settings) {
 
   const ytSubsEnabled = document.getElementById('popup-yt-subs-enabled');
   if (ytSubsEnabled) ytSubsEnabled.checked = settings.ytSubsEnabled === true;
+  const ytSubsPreload = document.getElementById('popup-yt-subs-preload');
+  if (ytSubsPreload) ytSubsPreload.value = settings.ytSubsPreload === 'off' ? 'off' : 'on';
   const ytSubsContent = document.getElementById('popup-yt-subs-content');
   if (ytSubsContent) ytSubsContent.value = migrateYtSubsContent(settings);
   const ytSubsOffset = document.getElementById('popup-yt-subs-offset');
@@ -2476,6 +2479,7 @@ function getPopupSettingsFromUI() {
     translationColor: document.getElementById('popup-translation-color')?.value || 'inherit',
     dictionarySource: document.getElementById('popup-dictionary-source')?.value || 'offline',
     ytSubsEnabled: document.getElementById('popup-yt-subs-enabled')?.checked === true,
+    ytSubsPreload: document.getElementById('popup-yt-subs-preload')?.value || 'on',
     ytSubsContent: document.getElementById('popup-yt-subs-content')?.value || 'dual',
     ytSubsOffset: document.getElementById('popup-yt-subs-offset')?.value || 'mid',
     ytSubsSourceLang: document.getElementById('popup-yt-subs-source-lang')?.value || 'auto',
@@ -2620,6 +2624,7 @@ function getDefaultSettings(overrides = {}) {
     autoSaveSettings: true,
     hoverParagraphTranslation: false,
     ytSubsEnabled: false,
+    ytSubsPreload: 'on',
     ytSubsContent: 'dual',
     ytSubsOffset: 'mid',
     ytSubsSourceLang: 'auto',

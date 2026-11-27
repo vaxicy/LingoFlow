@@ -1190,8 +1190,7 @@
   "dictionary_ai_enhance_desc": {
     "message": "Usa tu motor de IA (Gemini/DeepSeek/SiliconFlow/Bailian/Personalizado) para definir palabras cuando los diccionarios gratuitos no tengan la entrada",
     "description": "Descripción del ajuste"
-  }
-,
+  },
   "yt_subs_settings": {
     "message": "Subtítulos de YouTube",
     "description": "Sección de ajustes: traducción de subtítulos de YouTube"
@@ -1239,8 +1238,7 @@
   "yt_subs_note": {
     "message": "Se cubren los subtítulos de YouTube y los sustituimos por nuestras dos líneas en una posición fija, sin saltos durante la reproducción.",
     "description": "Nota bajo los ajustes de subtítulos"
-  }
-,
+  },
   "yt_subs_display_mode": {
     "message": "Modo de visualización",
     "description": "Ajuste: cómo se muestran los subtítulos"
@@ -1272,8 +1270,7 @@
   "yt_subs_source_auto": {
     "message": "Automático",
     "description": "Idioma original: automático"
-  }
-,
+  },
   "yt_subs_mode_merged": {
     "message": "Bilingüe combinado",
     "description": "Modo: conserva los subtítulos nativos y añade la traducción"
@@ -1329,8 +1326,7 @@
   "yt_subs_style_locked": {
     "message": "Con «Como YouTube» se heredan fuente, tamaño y contorno de YouTube; los demás estilos usan el tamaño de abajo.",
     "description": "Aviso: estilo bloqueado"
-  }
-,
+  },
   "yt_subs_content": {
     "message": "Contenido del subtítulo",
     "description": "Ajuste: qué dibujar"
@@ -1370,5 +1366,17 @@
   "yt_subs_offset_high": {
     "message": "Alta",
     "description": "Posición: alta"
+  },
+  "yt_subs_preload": {
+    "message": "Momento de los subtítulos"
+  },
+  "yt_subs_preload_desc": {
+    "message": "Traduce todo el vídeo por adelantado para que la velocidad de reproducción no provoque retrasos, o traduce línea a línea"
+  },
+  "yt_subs_preload_on": {
+    "message": "Pretraducir (fluido)"
+  },
+  "yt_subs_preload_off": {
+    "message": "Línea a línea (en vivo)"
   }
 }

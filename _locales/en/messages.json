@@ -1190,8 +1190,7 @@
   "dictionary_ai_enhance_desc": {
     "message": "Use your AI engine (Gemini/DeepSeek/SiliconFlow/Bailian/Custom) to define words when free dictionaries lack an entry",
     "description": "Settings toggle description"
-  }
-,
+  },
   "yt_subs_settings": {
     "message": "YouTube Subtitles",
     "description": "Settings section: YouTube subtitle translation"
@@ -1239,8 +1238,7 @@
   "yt_subs_note": {
     "message": "YouTube's own captions are covered and replaced by our two lines at a fixed position, so the subtitle never jumps while playing.",
     "description": "Note under the YouTube subtitle settings"
-  }
-,
+  },
   "yt_subs_display_mode": {
     "message": "Display Mode",
     "description": "Settings: how YouTube subtitles are displayed"
@@ -1272,8 +1270,7 @@
   "yt_subs_source_auto": {
     "message": "Auto",
     "description": "Original language: automatic"
-  }
-,
+  },
   "yt_subs_mode_merged": {
     "message": "Merged bilingual",
     "description": "Display mode: keep native captions, add translation line"
@@ -1329,8 +1326,7 @@
   "yt_subs_style_locked": {
     "message": "Pick “Like YouTube” to inherit the font, size and outline from YouTube; other styles use the size below.",
     "description": "Hint: style is locked in merged mode"
-  }
-,
+  },
   "yt_subs_content": {
     "message": "Subtitle Content",
     "description": "Settings: what to draw"
@@ -1370,5 +1366,17 @@
   "yt_subs_offset_high": {
     "message": "High",
     "description": "Offset: high"
+  },
+  "yt_subs_preload": {
+    "message": "Subtitle Timing"
+  },
+  "yt_subs_preload_desc": {
+    "message": "Pre-translate the whole video ahead of time so playback speed never causes lag, or translate line by line"
+  },
+  "yt_subs_preload_on": {
+    "message": "Pre-translate (smooth)"
+  },
+  "yt_subs_preload_off": {
+    "message": "Line by line (live)"
   }
 }

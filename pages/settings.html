@@ -620,6 +620,17 @@
 
         <div class="settings-row settings-row-inline">
           <div class="settings-row-copy">
+            <strong data-i18n="yt_subs_preload">Subtitle Timing</strong>
+            <span data-i18n="yt_subs_preload_desc">Pre-translate the whole video ahead of time so playback speed never causes lag, or translate line by line</span>
+          </div>
+          <select class="panel-select" id="popup-yt-subs-preload">
+            <option value="on" data-i18n="yt_subs_preload_on">Pre-translate (smooth)</option>
+            <option value="off" data-i18n="yt_subs_preload_off">Line by line (live)</option>
+          </select>
+        </div>
+
+        <div class="settings-row settings-row-inline">
+          <div class="settings-row-copy">
             <strong data-i18n="yt_subs_content">Subtitle Content</strong>
             <span data-i18n="yt_subs_content_desc">Draw both lines ourselves (YouTube's own captions are covered), or only one of them</span>
           </div>

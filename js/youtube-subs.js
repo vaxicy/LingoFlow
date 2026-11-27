@@ -39,6 +39,18 @@
     targetLang: 'zh',
     uiLang: 'zh',
 
+    // ===== 预翻译（整片预取）=====
+    // preload: 'on' 表示允许预翻译；pipeline: 'prefetch' 表示已切到"时间轴驱动"渲染。
+    // 任何一步失败都保持 pipeline='live'（逐词读 DOM），功能不会因此而不可用。
+    preload: 'on',
+    pipeline: 'live',
+    segments: [],        // [{ start, end, en, zh, pending, tries }]
+    segTimer: null,
+    segToken: 0,
+    lastSegIndex: -1,
+    videoKey: '',
+    cacheTimer: null,
+
     noBaseNotified: false,
     baseFailCount: 0,
     lastBaseCheckAt: 0,
@@ -111,6 +123,8 @@
     state.content = migrateContent(state.settings);
     state.enabled = state.settings.ytSubsEnabled === true && state.content !== 'off';
     state.offset = migrateOffset(state.settings);
+    // 预翻译（整片预取）：默认开；关掉则退回实时逐词
+    state.preload = state.settings.ytSubsPreload === 'off' ? 'off' : 'on';
 
     // 已移除「跟随 YouTube」（镜像来的 text-shadow 常为 none）与「极简」（无描边 → 白字压浅色
     // 画面等于隐形）。旧值 native / minimal / 未知值一律回落到 classic（白字 + 黑描边，任何画面都清晰）。
@@ -169,6 +183,7 @@
     askEnsureBaseTrack();
     warmUpServiceWorker();
     startPolling();
+    startPrefetch(); // 预翻译：成功则切到"时间轴驱动"，失败就继续用逐词模式
 
     // 看门狗：3s 内我们还一句都画不出来，就把原生字幕还回去。
     // 否则一旦读不到文字（切轨/皮肤差异/接口变化），屏幕上就是"一个字都没有"。
@@ -183,6 +198,7 @@
 
   function teardown() {
     state.running = false;
+    stopPrefetch();
     stopPolling();
 
     if (state.observer) {
@@ -371,6 +387,7 @@
 
   function processCurrentLine() {
     if (!state.running) return;
+    if (state.pipeline === 'prefetch') return; // 已切到时间轴驱动，不再逐词读 DOM
 
     const text = readLine();
     if (!text) { scheduleClear(); return; }
@@ -498,6 +515,314 @@
       state.token += 1; // 作废在途请求
       renderLines();
     }, CLEAR_DELAY);
+  }
+
+  // ---------- 预翻译（整片预取 + 时间轴驱动） ----------
+  // 目标：开播前把后面几十句翻好，播放时按 currentTime 查表 →
+  // 倍速、拖动、暂停都不会出现"中文后到/消失"。
+
+  function sendMsg(msg, cb) {
+    try {
+      chrome.runtime.sendMessage(msg, (res) => {
+        if (chrome.runtime.lastError) { cb(null); return; }
+        cb(res || null);
+      });
+    } catch (_) { cb(null); }
+  }
+
+  function getVideoId() {
+    try { return new URLSearchParams(location.search).get('v') || ''; } catch (_) { return ''; }
+  }
+
+  function currentVideo() {
+    return document.querySelector('video.html5-main-video') || document.querySelector('video');
+  }
+
+  // 与 ensure-base 同样的优先级：指定语言（人工→自动）→ 任意非目标语言
+  function pickTrack(tracks) {
+    const base = (c) => String(c || '').toLowerCase().split('-')[0];
+    const want = (state.sourceLang && state.sourceLang !== 'auto') ? base(state.sourceLang) : 'en';
+    const target = base(state.targetLang);
+    const isWant = (t) => base(t.lang) === want;
+    const notTarget = (t) => base(t.lang) !== target;
+    return tracks.find((t) => isWant(t) && t.kind !== 'asr')
+      || tracks.find(isWant)
+      || tracks.find((t) => notTarget(t) && t.kind !== 'asr')
+      || tracks.find(notTarget)
+      || null;
+  }
+
+  const SEG_GAP = 0.45;   // 相邻 cue 间隔小于它才合并
+  const SEG_MAX = 90;     // 合并后单行最长字符数
+
+  // 把碎片的 cue 合并成"一句一段"，并去掉滚动式字幕的重复
+  function buildSegments(cues) {
+    const segs = [];
+    cues.forEach((c) => {
+      const text = String(c.text || '').replace(/\s+/g, ' ').trim();
+      if (!text) return;
+      const start = Number(c.start) || 0;
+      const dur = Number(c.dur) || 0;
+
+      const prev = segs[segs.length - 1];
+      if (prev) {
+        if (text === prev.en || prev.en.endsWith(' ' + text)) return;
+        if (text.startsWith(prev.en)) {
+          prev.en = text;
+          prev.end = Math.max(prev.end, start + dur);
+          return;
+        }
+        const gap = start - prev.end;
+        const prevDone = /[.!?。！？]["')\]]?$/.test(prev.en);
+        if (gap <= SEG_GAP && !prevDone && prev.en.length + text.length <= SEG_MAX) {
+          prev.en = (prev.en + ' ' + text).trim();
+          prev.end = Math.max(prev.end, start + dur);
+          return;
+        }
+      }
+      segs.push({ start: start, end: Math.max(start + 0.4, start + dur), en: text, zh: '', pending: false, tries: 0 });
+    });
+
+    // 时长缺失时用"到下一段开始"补齐，避免整段只闪一下
+    for (let i = 0; i < segs.length; i++) {
+      if (segs[i].end - segs[i].start < 0.6) {
+        const next = segs[i + 1];
+        segs[i].end = next ? Math.max(segs[i].start + 0.6, next.start) : segs[i].start + 2.5;
+      }
+    }
+    return segs;
+  }
+
+  function findSegIndex(t) {
+    const segs = state.segments;
+    if (!segs.length) return -1;
+    let lo = 0;
+    let hi = segs.length - 1;
+    let ans = -1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (segs[mid].start <= t) { ans = mid; lo = mid + 1; } else { hi = mid - 1; }
+    }
+    if (ans < 0) return -1;
+    if (t > segs[ans].end + 0.25) return -1; // 段与段之间的空档
+    return ans;
+  }
+
+  // ---- 会话缓存：同一视频重看不必再翻 ----
+  const CACHE_KEY = 'lf_yt_segs_v1';
+  const CACHE_LIMIT = 4;
+
+  function loadCache(key, cb) {
+    try {
+      if (!chrome.storage || !chrome.storage.session) { cb(null); return; }
+      chrome.storage.session.get([CACHE_KEY], (res) => {
+        const all = (res && res[CACHE_KEY]) || {};
+        const hit = all[key];
+        if (hit && Array.isArray(hit.segs) && hit.segs.length) { cb(hit.segs); return; }
+        cb(null);
+      });
+    } catch (_) { cb(null); }
+  }
+
+  function saveCache() {
+    if (!state.videoKey || !state.segments.length) return;
+    if (state.cacheTimer) return;
+    state.cacheTimer = setTimeout(() => {
+      state.cacheTimer = null;
+      try {
+        if (!chrome.storage || !chrome.storage.session) return;
+        chrome.storage.session.get([CACHE_KEY], (res) => {
+          const all = (res && res[CACHE_KEY]) || {};
+          all[state.videoKey] = { at: Date.now(), segs: state.segments.map((s) => ({ s: s.start, e: s.end, en: s.en, zh: s.zh || '' })) };
+          const keys = Object.keys(all).sort((a, b) => (all[b].at || 0) - (all[a].at || 0));
+          keys.slice(CACHE_LIMIT).forEach((k) => { delete all[k]; });
+          try { chrome.storage.session.set({ [CACHE_KEY]: all }); } catch (_) {}
+        });
+      } catch (_) {}
+    }, 1500);
+  }
+
+  function segTick() {
+    if (state.pipeline !== 'prefetch') return;
+    const v = currentVideo();
+    if (!v) return;
+
+    const idx = findSegIndex(v.currentTime);
+    if (idx < 0) {
+      state.lastSegIndex = -1;
+      state.lastText = '';
+      state.lastDst = '';
+      renderLines();
+      return;
+    }
+
+    const seg = state.segments[idx];
+    const changed = idx !== state.lastSegIndex;
+    state.lastSegIndex = idx;
+
+    if (changed || state.lastText !== seg.en || state.lastDst !== (seg.zh || '')) {
+      state.lastText = seg.en;
+      state.lastDst = seg.zh || '';
+      renderLines();
+    }
+
+    if (!seg.zh) ensureSeg(seg);
+  }
+
+  // 当前段还没译文 → 立刻单条翻（一问一答，不会错位）
+  function ensureSeg(seg) {
+    if (!seg || seg.zh || seg.pending) return;
+    if ((seg.tries || 0) >= 3) return;
+    seg.pending = true;
+    seg.tries = (seg.tries || 0) + 1;
+    sendMsg({ action: 'translate', text: seg.en, targetLang: state.targetLang }, (res) => {
+      seg.pending = false;
+      const dst = res && res.success && res.translation ? String(res.translation).trim() : '';
+      if (!dst) return;
+      seg.zh = dst;
+      saveCache();
+      segTick();
+    });
+  }
+
+  // 预取队列：以当前播放位置为中心，先往后翻，再回补前面
+  function prefetchQueue() {
+    const token = ++state.segToken;
+    const CHUNK = 20;
+    let rounds = 0;
+
+    const next = () => {
+      if (state.pipeline !== 'prefetch' || token !== state.segToken) return;
+      if (++rounds > 400) return;
+
+      const v = currentVideo();
+      const from = v ? Math.max(0, findSegIndex(v.currentTime)) : 0;
+      const targets = [];
+      const collect = (a, b) => {
+        for (let i = a; i < b && targets.length < CHUNK; i++) {
+          const s = state.segments[i];
+          if (!s.zh && !s.pending && (s.tries || 0) < 2) targets.push(s);
+        }
+      };
+      collect(from, state.segments.length);
+      if (!targets.length) collect(0, from);
+      if (!targets.length) return;
+
+      targets.forEach((s) => { s.pending = true; });
+
+      sendMsg({ action: 'translate_batch', texts: targets.map((s) => s.en), targetLang: state.targetLang }, (res) => {
+        if (state.pipeline !== 'prefetch' || token !== state.segToken) return;
+        const list = res && res.success && Array.isArray(res.translations) ? res.translations : null;
+
+        // 条数对不上就整批放弃，绝不按下标硬套（否则译文会串到别的句子上）
+        if (!list || list.length !== targets.length) {
+          targets.forEach((s) => { s.pending = false; s.tries = (s.tries || 0) + 1; });
+          console.warn('LingoFlow: prefetch batch size mismatch, using per-segment translation');
+          return;
+        }
+
+        let filled = 0;
+        targets.forEach((s, i) => {
+          s.pending = false;
+          const t = list[i] ? String(list[i]).trim() : '';
+          if (t) { s.zh = t; filled += 1; } else { s.tries = (s.tries || 0) + 1; }
+        });
+
+        if (filled) { saveCache(); segTick(); }
+        if (!filled) return;
+        setTimeout(next, 60);
+      });
+    };
+
+    next();
+  }
+
+  function startSegTicker() {
+    stopSegTicker();
+    state.segTimer = setInterval(segTick, 200);
+    const v = currentVideo();
+    if (v) {
+      try { v.addEventListener('seeked', onSegSeek); } catch (_) {}
+    }
+    segTick();
+  }
+
+  function stopSegTicker() {
+    if (state.segTimer) { clearInterval(state.segTimer); state.segTimer = null; }
+    const v = currentVideo();
+    if (v) { try { v.removeEventListener('seeked', onSegSeek); } catch (_) {} }
+  }
+
+  function onSegSeek() {
+    if (state.pipeline !== 'prefetch') return;
+    segTick();
+    // 拖到没预翻的位置：以新位置为起点重排预取
+    if (state.segToken) { state.segToken += 1; prefetchQueue(); }
+  }
+
+  function activatePrefetch(segs) {
+    state.segments = segs;
+    state.pipeline = 'prefetch';
+    state.lastSegIndex = -1;
+    state.lastText = '';
+    state.lastDst = '';
+    stopPolling();       // 不再逐词读 DOM
+    startSegTicker();
+    prefetchQueue();
+    console.log('[LingoFlow] preload ready:', segs.length, 'segments');
+  }
+
+  function stopPrefetch() {
+    stopSegTicker();
+    state.segToken += 1;
+    state.pipeline = 'live';
+    state.segments = [];
+    state.lastSegIndex = -1;
+  }
+
+  function startPrefetch() {
+    if (state.preload === 'off') return;
+
+    const key = (getVideoId() || 'unknown') + '|' + state.sourceLang + '|' + state.targetLang;
+    state.videoKey = key;
+
+    loadCache(key, (cached) => {
+      if (!state.running) return;
+      if (cached && cached.length) {
+        activatePrefetch(cached.map((s) => ({
+          start: s.s, end: s.e, en: s.en, zh: s.zh || '', pending: false, tries: 0
+        })));
+        return;
+      }
+
+      sendMsg({ action: 'lf_yt_tracklist' }, (res) => {
+        if (!state.running) return;
+        if (!res || !res.ok || !res.tracks || !res.tracks.length) {
+          console.log('[LingoFlow] preload: no tracklist, keep live mode');
+          return;
+        }
+
+        const track = pickTrack(res.tracks);
+        if (!track || !track.url) {
+          console.log('[LingoFlow] preload: no usable base track, keep live mode');
+          return;
+        }
+
+        sendMsg({ action: 'lf_yt_timedtext', url: track.url }, (r) => {
+          if (!state.running) return;
+          if (!r || !r.ok || !r.cues || !r.cues.length) {
+            console.log('[LingoFlow] preload: timedtext unavailable, keep live mode');
+            return;
+          }
+          const segs = buildSegments(r.cues);
+          if (segs.length < 5) {
+            console.log('[LingoFlow] preload: too few segments, keep live mode');
+            return;
+          }
+          activatePrefetch(segs);
+        });
+      });
+    });
   }
 
   // ---------- 渲染 ----------
@@ -636,7 +961,8 @@
         offset: state.offset,
         style: state.style,
         fontSize: state.fontSize,
-        sourceLang: state.sourceLang
+        sourceLang: state.sourceLang,
+        preload: state.preload
       };
 
       loadSettings((s) => {
@@ -662,6 +988,15 @@
           state.noBaseNotified = false;
           state.lastBaseCheckAt = 0;
           askEnsureBaseTrack();
+        }
+
+        // 预翻译开关或原文语言变了 → 重建整片字幕（显示模式不受影响）
+        const needRebuild = (state.preload !== prev.preload)
+          || (state.sourceLang !== prev.sourceLang && state.preload === 'on');
+        if (needRebuild) {
+          stopPrefetch();
+          startPolling();
+          startPrefetch();
         }
       });
     });
