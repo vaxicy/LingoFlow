@@ -553,45 +553,91 @@
       || null;
   }
 
-  const SEG_GAP = 0.45;   // 相邻 cue 间隔小于它才合并
-  // 「一句一段」的三个封口条件（满足任一就断段）：
-  //   ① 出现句末标点 ② 字符数达到上限 ③ 这段已经持续太久
-  // 之所以不能只靠标点：ASR 经常整段没有标点，会一路粘到 90 字符，
-  // 一次切换显示两三句，看起来就像"跳"。
-  const SEG_MAX = 60;
-  const SEG_MAX_SEC = 5;
+  const SEG_GAP = 0.45;    // 相邻 cue 间隔小于它才合并
+  // 「智能断句」：只在**自然边界**切，不要为了凑长度把句子腰斩
+  //   SEG_SOFT = 达到这个长度后，遇到软边界（逗号/分号/连词）才断
+  //   SEG_HARD = 真的没有任何边界时才硬切（兜底，避免一段太长）
+  //   SEG_MAX_SEC = 时长兜底
+  const SEG_SOFT = 45;
+  const SEG_HARD = 85;
+  const SEG_MAX_SEC = 8;
+
+  // 软边界：句子没说完，但这里断开读起来还算自然
+  function endsSoft(text) {
+    return /[,;:，、；：—–-]$/.test(text)
+      || /\b(and|but|so|because|which|that|if|when|while|or|then|with|for)$/i.test(text);
+  }
+
+  // 下一个 cue 若是新句子（大写开头），说明上一句说完了
+  function startsNewSentence(text) {
+    return /^["'(]?[A-Z]/.test(String(text || '').trim());
+  }
 
   // 把碎片的 cue 合并成"一句一段"，并去掉滚动式字幕的重复
   function buildSegments(cues) {
     const segs = [];
-    cues.forEach((c) => {
+    let buf = null; // { start, end, en }
+
+    const flush = () => {
+      if (!buf || !buf.en) { buf = null; return; }
+      segs.push({
+        start: buf.start,
+        end: Math.max(buf.start + 0.4, buf.end),
+        en: buf.en,
+        zh: '',
+        pending: false,
+        tries: 0
+      });
+      buf = null;
+    };
+
+    for (let i = 0; i < cues.length; i++) {
+      const c = cues[i];
       const text = String(c.text || '').replace(/\s+/g, ' ').trim();
-      if (!text) return;
+      if (!text) continue;
       const start = Number(c.start) || 0;
       const dur = Number(c.dur) || 0;
+      const end = start + dur;
 
-      const prev = segs[segs.length - 1];
-      if (prev) {
-        if (text === prev.en || prev.en.endsWith(' ' + text)) return;
-        if (text.startsWith(prev.en)) {
-          prev.en = text;
-          prev.end = Math.max(prev.end, start + dur);
-          return;
+      // 滚动式字幕的重复形态：完全重复 / 只是重复了尾部 / 把上一段整体又发了一遍
+      if (buf) {
+        if (text === buf.en || buf.en.endsWith(' ' + text)) continue;
+        if (text.startsWith(buf.en)) {
+          buf.en = text;
+          buf.end = Math.max(buf.end, end);
+          continue;
         }
+        const gap = start - buf.end;
+        if (gap > SEG_GAP) {
+          flush(); // 停顿明显 → 这是一句的结束
+        } else {
+          buf.en = (buf.en + ' ' + text).trim();
+          buf.end = Math.max(buf.end, end);
 
-        const gap = start - prev.end;
-        const prevDone = /[.!?。！？]["')\]]?$/.test(prev.en);
-        const tooLong = prev.en.length + text.length > SEG_MAX;
-        const tooSlow = (start + dur - prev.start) > SEG_MAX_SEC;
+          const sentenceEnd = /[.!?。！？]["')\]]?$/.test(text);
+          const next = cues[i + 1];
+          const nextIsNew = !!next && startsNewSentence(next.text);
+          const tooHard = buf.en.length >= SEG_HARD || (buf.end - buf.start) >= SEG_MAX_SEC;
+          const longEnough = buf.en.length >= SEG_SOFT;
 
-        if (gap <= SEG_GAP && !prevDone && !tooLong && !tooSlow) {
-          prev.en = (prev.en + ' ' + text).trim();
-          prev.end = Math.max(prev.end, start + dur);
-          return;
+          // 只在自然边界收口：句末标点 / 软边界 / 下一句是新句子 / 兜底硬上限
+          if (sentenceEnd || (longEnough && endsSoft(text)) || (longEnough && nextIsNew) || tooHard) {
+            flush();
+          }
+          continue;
         }
       }
-      segs.push({ start: start, end: Math.max(start + 0.4, start + dur), en: text, zh: '', pending: false, tries: 0 });
-    });
+
+      buf = { start: start, end: end, en: text };
+
+      // 单个 cue 本身就够长且说完了 → 立刻收口
+      if (/[.!?。！？]["')\]]?$/.test(text) || text.length >= SEG_HARD
+        || (end - start) >= SEG_MAX_SEC) {
+        flush();
+      }
+    }
+
+    flush();
 
     // 时长缺失时用"到下一段开始"补齐，避免整段只闪一下
     for (let i = 0; i < segs.length; i++) {
