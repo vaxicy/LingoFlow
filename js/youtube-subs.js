@@ -45,6 +45,7 @@
     preload: 'on',
     pipeline: 'live',
     segments: [],        // [{ start, end, en, zh, pending, tries }]
+    zhByText: new Map(), // 规范化文本 → 译文：同一句话出现多次只翻一次
     segTimer: null,
     segToken: 0,
     lastSegIndex: -1,
@@ -553,7 +554,12 @@
   }
 
   const SEG_GAP = 0.45;   // 相邻 cue 间隔小于它才合并
-  const SEG_MAX = 90;     // 合并后单行最长字符数
+  // 「一句一段」的三个封口条件（满足任一就断段）：
+  //   ① 出现句末标点 ② 字符数达到上限 ③ 这段已经持续太久
+  // 之所以不能只靠标点：ASR 经常整段没有标点，会一路粘到 90 字符，
+  // 一次切换显示两三句，看起来就像"跳"。
+  const SEG_MAX = 60;
+  const SEG_MAX_SEC = 5;
 
   // 把碎片的 cue 合并成"一句一段"，并去掉滚动式字幕的重复
   function buildSegments(cues) {
@@ -572,9 +578,13 @@
           prev.end = Math.max(prev.end, start + dur);
           return;
         }
+
         const gap = start - prev.end;
         const prevDone = /[.!?。！？]["')\]]?$/.test(prev.en);
-        if (gap <= SEG_GAP && !prevDone && prev.en.length + text.length <= SEG_MAX) {
+        const tooLong = prev.en.length + text.length > SEG_MAX;
+        const tooSlow = (start + dur - prev.start) > SEG_MAX_SEC;
+
+        if (gap <= SEG_GAP && !prevDone && !tooLong && !tooSlow) {
           prev.en = (prev.en + ' ' + text).trim();
           prev.end = Math.max(prev.end, start + dur);
           return;
@@ -591,6 +601,25 @@
       }
     }
     return segs;
+  }
+
+  function normSegText(s) {
+    return String(s || '').toLowerCase().replace(/[^\p{L}\p{N} ]/gu, '').replace(/\s+/g, ' ').trim();
+  }
+
+  function rememberSegZh(text, zh) {
+    if (!zh) return;
+    const key = normSegText(text);
+    if (key.length >= 2) state.zhByText.set(key, zh);
+  }
+
+  // 同一句话（重复出现的 cue / 重播）直接复用已有译文，避免重复请求
+  function applyKnownZh(segs) {
+    segs.forEach((s) => {
+      if (s.zh) return;
+      const hit = state.zhByText.get(normSegText(s.en));
+      if (hit) s.zh = hit;
+    });
   }
 
   function findSegIndex(t) {
@@ -680,6 +709,7 @@
       const dst = res && res.success && res.translation ? String(res.translation).trim() : '';
       if (!dst) return;
       seg.zh = dst;
+      rememberSegZh(seg.en, dst);
       saveCache();
       segTick();
     });
@@ -701,7 +731,11 @@
       const collect = (a, b) => {
         for (let i = a; i < b && targets.length < CHUNK; i++) {
           const s = state.segments[i];
-          if (!s.zh && !s.pending && (s.tries || 0) < 2) targets.push(s);
+          if (s.zh || s.pending || (s.tries || 0) >= 2) continue;
+          // 这句话之前翻过（重复 cue / 重播）→ 直接复用，不重复请求
+          const known = state.zhByText.get(normSegText(s.en));
+          if (known) { s.zh = known; continue; }
+          targets.push(s);
         }
       };
       collect(from, state.segments.length);
@@ -725,7 +759,7 @@
         targets.forEach((s, i) => {
           s.pending = false;
           const t = list[i] ? String(list[i]).trim() : '';
-          if (t) { s.zh = t; filled += 1; } else { s.tries = (s.tries || 0) + 1; }
+          if (t) { s.zh = t; rememberSegZh(s.en, t); filled += 1; } else { s.tries = (s.tries || 0) + 1; }
         });
 
         if (filled) { saveCache(); segTick(); }
@@ -762,6 +796,7 @@
 
   function activatePrefetch(segs) {
     state.segments = segs;
+    applyKnownZh(segs);
     state.pipeline = 'prefetch';
     state.lastSegIndex = -1;
     state.lastText = '';
@@ -789,9 +824,11 @@
     loadCache(key, (cached) => {
       if (!state.running) return;
       if (cached && cached.length) {
-        activatePrefetch(cached.map((s) => ({
+        const segs = cached.map((s) => ({
           start: s.s, end: s.e, en: s.en, zh: s.zh || '', pending: false, tries: 0
-        })));
+        }));
+        segs.forEach((s) => rememberSegZh(s.en, s.zh));
+        activatePrefetch(segs);
         return;
       }
 
